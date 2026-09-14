@@ -53,7 +53,7 @@ struct ArticleScreen: View {
                         article: article,
                         palette: palette,
                         gutter: Self.gutter,
-                        viewport: viewport.size
+                        scrollOffset: scrollOffset
                     )
                     .opacity(hasAppeared ? 1 : 0)
                     .offset(y: hasAppeared ? 0 : 12)

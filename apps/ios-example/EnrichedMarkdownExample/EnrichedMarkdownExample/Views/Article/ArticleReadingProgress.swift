@@ -45,8 +45,9 @@ struct ArticleReadingProgress: View {
 /// Feeds the screen's scroll offset and content height from the scroll view.
 ///
 /// `scrollOffset` is the sentinel's `minY` in the scroll view's space — zero
-/// at rest and increasingly negative as the article is read — on every
-/// system, so the two sources below are interchangeable to the caller.
+/// at rest, positive while pulled past the top and increasingly negative as
+/// the article is read — on every system, so the two sources below are
+/// interchangeable to the caller.
 ///
 /// From iOS 18 the scroll view reports its own geometry, which also updates
 /// during a scroll on iOS 26, where a `GeometryReader` inside the content no
@@ -59,13 +60,14 @@ struct ArticleScrollTracking: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content.onScrollGeometryChange(for: ArticleScrollMetrics.self) { geometry in
-                // Clamped to the scrollable range: the rubber-band past either
-                // end would otherwise re-evaluate the screen on every frame
-                // of the bounce for values the page has no use for.
+                // Negative while pulled past the top — the hero stretches into
+                // that — but capped at the end: the rubber-band past the foot
+                // would otherwise re-evaluate the screen on every frame of the
+                // bounce for values the page has no use for.
                 let scrollable = max(geometry.contentSize.height - geometry.containerSize.height, 0)
                 let travelled = geometry.contentOffset.y + geometry.contentInsets.top
                 return ArticleScrollMetrics(
-                    travelled: min(max(travelled, 0), scrollable),
+                    travelled: min(travelled, scrollable),
                     contentHeight: geometry.contentSize.height
                 )
             } action: { _, metrics in

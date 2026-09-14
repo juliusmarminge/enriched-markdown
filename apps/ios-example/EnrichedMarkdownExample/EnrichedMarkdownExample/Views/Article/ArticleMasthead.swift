@@ -9,8 +9,9 @@ struct ArticleMasthead: View {
     let article: Article
     let palette: ArticlePalette
     let gutter: CGFloat
-    /// Viewport size, used by the hero's parallax instead of `UIScreen`.
-    let viewport: CGSize
+    /// The scroll view's offset from rest: positive while the page is pulled
+    /// down past its top, negative once it has been scrolled. Drives the hero.
+    let scrollOffset: CGFloat
 
     // MARK: - Views
 
@@ -21,7 +22,8 @@ struct ArticleMasthead: View {
                 caption: article.heroCaption,
                 palette: palette,
                 gutter: gutter,
-                viewport: viewport
+                pull: max(scrollOffset, 0),
+                travelled: max(-scrollOffset, 0)
             )
 
             kicker
@@ -134,11 +136,13 @@ struct ArticleBylineStrip: View {
 
 // MARK: -
 
-/// Edge-to-edge hero image with a light parallax; the figure line is printed
-/// on a scrim over its foot, the way a cover credits its photograph.
+/// Edge-to-edge hero image that answers the scroll.
 ///
-/// The image is drawn taller than its window and slid against the scroll, so
-/// it drifts rather than tracks — enough to read as depth, not as motion.
+/// Pulled past the top, it stretches to fill the gap and zooms with it, so the
+/// page never shows a seam above the picture. Scrolled away, it drifts at a
+/// fraction of the content's speed and dims as the article covers it, and the
+/// caption fades out ahead of it. All of it is a function of the offset, so
+/// there is nothing to animate and nothing to catch up.
 struct ArticleHeroFigure: View {
     // MARK: - Properties
 
@@ -146,28 +150,47 @@ struct ArticleHeroFigure: View {
     let caption: String
     let palette: ArticlePalette
     let gutter: CGFloat
-    let viewport: CGSize
+    /// Distance the page has been pulled past its top.
+    let pull: CGFloat
+    /// Distance the page has been scrolled from rest.
+    let travelled: CGFloat
 
     private let height: CGFloat = 268
-    private let overdraw: CGFloat = 72
+    /// Fraction of the content's speed the image gives up to the parallax.
+    private let drift: CGFloat = 0.42
+
+    /// 0 at rest, 1 once the image has scrolled out of the window.
+    private var leaving: CGFloat {
+        min(travelled / height, 1)
+    }
+
+    /// The caption goes ahead of the picture, gone by a third of the way out.
+    private var captionOpacity: Double {
+        Double(max(1 - leaving * 1.8, 0))
+    }
 
     // MARK: - Views
 
     var body: some View {
         GeometryReader { frame in
-            image
-                .frame(width: frame.size.width, height: height + overdraw)
-                .offset(y: parallax(midY: frame.frame(in: .global).midY))
-                .frame(width: frame.size.width, height: height)
-                .clipped()
-                .overlay(alignment: .bottom) {
-                    figureLine
-                        .padding(.horizontal, gutter)
-                        .padding(.top, 56)
-                        .padding(.bottom, 16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(scrim)
-                }
+            ZStack(alignment: .bottom) {
+                image
+                    .offset(y: travelled * drift)
+                    .frame(width: frame.size.width, height: height + pull)
+                    .clipped()
+                    .overlay(Color.black.opacity(leaving * 0.5))
+
+                figureLine
+                    .padding(.horizontal, gutter)
+                    .padding(.top, 56)
+                    .padding(.bottom, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(scrim)
+                    .opacity(captionOpacity)
+            }
+            // The stretch overflows upward, out of a window that stays the
+            // same height in layout, so nothing below the hero moves with it.
+            .frame(width: frame.size.width, height: height, alignment: .bottom)
         }
         .frame(height: height)
     }
@@ -203,15 +226,6 @@ struct ArticleHeroFigure: View {
             endPoint: .bottom
         )
     }
-
-    // MARK: - Methods
-
-    /// Half the overdraw at most, so the image never uncovers its window.
-    private func parallax(midY: CGFloat) -> CGFloat {
-        let limit = overdraw / 2
-        let travel = (midY - viewport.height / 2) / max(viewport.height, 1)
-        return min(max(travel * limit, -limit), limit)
-    }
 }
 
 // MARK: -
@@ -222,7 +236,7 @@ struct ArticleHeroFigure: View {
             article: .featured,
             palette: .light,
             gutter: 24,
-            viewport: CGSize(width: 393, height: 852)
+            scrollOffset: 0
         )
     }
     .background(ArticlePalette.light.paper)
