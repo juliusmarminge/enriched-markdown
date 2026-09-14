@@ -3,8 +3,8 @@ import EnrichedMarkdownLaTeX
 import SwiftUI
 
 /// Long-form article rendered entirely from markdown — prose, LaTeX math, a
-/// figure, a table and a code block — to show the library carrying a real
-/// document rather than a feature checklist.
+/// figure, GitHub alerts, a table and a code block — to show the library
+/// carrying a real document rather than a feature checklist.
 ///
 /// The masthead and the colophon are SwiftUI; everything between them is a
 /// single `EnrichedMarkdownText`, on the same cool paper and the same 30pt
@@ -206,7 +206,7 @@ private struct ArticleBody: View, Equatable {
     }
 
     var body: some View {
-        EnrichedMarkdownText(markdown, flags: Md4cFlags(highlight: true))
+        EnrichedMarkdownText(markdown, flags: Md4cFlags(highlight: true, admonitions: true))
             .markdownLaTeX()
             .markdownTheme(ArticleMarkdownTheme(palette, figureHeight: figureHeight))
             .frame(maxWidth: .infinity, alignment: .leading)

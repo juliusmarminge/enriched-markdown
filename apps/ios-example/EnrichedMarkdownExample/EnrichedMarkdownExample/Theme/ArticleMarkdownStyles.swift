@@ -34,6 +34,14 @@ struct ArticlePalette: Equatable {
     let codeText: Color
     let codeBackground: Color
     let codeBorder: Color
+    /// GitHub alert tints. A note wears the accent; the rest each get one
+    /// hue, held to the same weight as the cobalt so no alert shouts.
+    let tip: Color
+    let important: Color
+    let warning: Color
+    let caution: Color
+    /// Opacity the alert tint is diluted to for its fill.
+    let alertFill: Double
 
     static let light = ArticlePalette(
         paper: Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255),
@@ -50,7 +58,12 @@ struct ArticlePalette: Equatable {
         highlightInk: Color(red: 18 / 255, green: 36 / 255, blue: 94 / 255),
         codeText: Color(red: 228 / 255, green: 233 / 255, blue: 243 / 255),
         codeBackground: Color(red: 15 / 255, green: 23 / 255, blue: 42 / 255),
-        codeBorder: Color(red: 34 / 255, green: 48 / 255, blue: 75 / 255)
+        codeBorder: Color(red: 34 / 255, green: 48 / 255, blue: 75 / 255),
+        tip: Color(red: 24 / 255, green: 138 / 255, blue: 82 / 255),
+        important: Color(red: 122 / 255, green: 63 / 255, blue: 224 / 255),
+        warning: Color(red: 184 / 255, green: 112 / 255, blue: 10 / 255),
+        caution: Color(red: 204 / 255, green: 56 / 255, blue: 56 / 255),
+        alertFill: 0.08
     )
 
     static let dark = ArticlePalette(
@@ -68,7 +81,12 @@ struct ArticlePalette: Equatable {
         highlightInk: Color(red: 220 / 255, green: 229 / 255, blue: 255 / 255),
         codeText: Color(red: 214 / 255, green: 222 / 255, blue: 236 / 255),
         codeBackground: Color(red: 5 / 255, green: 9 / 255, blue: 20 / 255),
-        codeBorder: Color(red: 27 / 255, green: 39 / 255, blue: 66 / 255)
+        codeBorder: Color(red: 27 / 255, green: 39 / 255, blue: 66 / 255),
+        tip: Color(red: 82 / 255, green: 200 / 255, blue: 132 / 255),
+        important: Color(red: 171 / 255, green: 141 / 255, blue: 255 / 255),
+        warning: Color(red: 240 / 255, green: 180 / 255, blue: 76 / 255),
+        caution: Color(red: 240 / 255, green: 116 / 255, blue: 116 / 255),
+        alertFill: 0.14
     )
 
     static func forScheme(_ scheme: ColorScheme) -> ArticlePalette {
@@ -116,8 +134,11 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
             .borderColor(palette.accent)
             .borderWidth(3)
             .gapWidth(18)
+            .padding(14)
             .marginTop(8)
             .marginBottom(26)
+
+        articleAlerts(palette)
 
         List()
             .fontFamily(ArticleFont.serif, size: 18)
@@ -211,4 +232,23 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
             .foregroundStyle(palette.highlightInk)
             .background(palette.highlight)
     }
+}
+
+/// GitHub alerts share the pull quote's geometry and type; each type only
+/// recolors the bar, the icon and the title, and takes a wash of its own
+/// hue as a fill so the callout reads as a panel where the quote reads as
+/// a margin note.
+private func articleAlerts(_ palette: ArticlePalette) -> MarkdownThemeGroup {
+    let tints: [(AdmonitionType, Color)] = [
+        (.note, palette.accent),
+        (.tip, palette.tip),
+        (.important, palette.important),
+        (.warning, palette.warning),
+        (.caution, palette.caution)
+    ]
+    return MarkdownThemeGroup(contents: tints.map { type, tint in
+        Admonition(type)
+            .foregroundStyle(tint)
+            .background(tint.opacity(palette.alertFill))
+    })
 }

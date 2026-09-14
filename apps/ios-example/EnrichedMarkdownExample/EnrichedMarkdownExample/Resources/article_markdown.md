@@ -24,6 +24,9 @@ That is the wave equation, and its speed is pinned by two constants that were fi
 
 $$c = \frac{1}{\sqrt{\mu_0 \varepsilon_0}} \approx 2.998 \times 10^8 \ \mathrm{m\,s^{-1}}$$
 
+> [!NOTE]
+> Inside matter the constants become $\varepsilon$ and $\mu$, and the same derivation gives a slower wave, $c/n$. The refractive index is Maxwell's equations reading out the medium.
+
 ## The plane-wave ansatz
 
 Every solution can be assembled from exponentials. Writing $\Psi(x, t) = A e^{i(kx - \omega t)}$ and leaning on Euler's identity,
@@ -31,6 +34,9 @@ Every solution can be assembled from exponentials. Writing $\Psi(x, t) = A e^{i(
 $$e^{i\theta} = \cos\theta + i\sin\theta$$
 
 turns differentiation into multiplication: $\partial_t \to -i\omega$ and $\partial_x \to ik$. The wave equation collapses to a single algebraic constraint, the dispersion relation $\omega = ck$.
+
+> [!TIP]
+> Euler's identity is the whole trick. Every derivative in the wave equation becomes a multiplication, so a partial differential equation turns into algebra — and the algebra is what a solver actually computes.
 
 A general disturbance is then just a weighted sum of those exponentials, with the weights fixed once and for all by the shape it started as:
 
@@ -51,6 +57,9 @@ $$i\hbar \frac{\partial}{\partial t} \Psi(\mathbf{r}, t) = \left( -\frac{\hbar^2
 It is first order in time rather than second, and the $i$ on the left is not bookkeeping — it is structural. The consequence is that $\Psi$ is irreducibly complex, so ==the amplitude itself is never measured==. Only its modulus is:
 
 $$\int_{-\infty}^{\infty} \left| \Psi(x, t) \right|^2 dx = 1$$
+
+> [!IMPORTANT]
+> The $i$ is not decoration. Drop it and the equation describes diffusion — heat spreading along a bar — and nothing interferes with anything. The complex amplitude is what lets two paths cancel.
 
 Matter also pays a price vacuum does not. Expanding the dispersion relation about the centre of a packet,
 
@@ -98,6 +107,9 @@ func step(
 ```
 
 Stability requires the Courant number $r = c \, \Delta t / \Delta x$ to satisfy $r \le 1$: ==no disturbance may cross more than one cell per step==. Push past it and the simulation does not merely lose accuracy, it diverges — the discrete grid enforcing its own speed limit, for much the same reason the continuous one does.
+
+> [!WARNING]
+> Keep $r \le 1$. At $r = 1.05$ the error grows by a fixed factor every step, and four hundred steps later the field bears no relation to the one you started with — Fig. 2 is that run.
 
 ![Two panels: a pulse that holds its shape, and the same pulse shaking itself apart](article_courant.png)
 
