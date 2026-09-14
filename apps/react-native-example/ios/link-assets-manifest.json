@@ -6,6 +6,22 @@
       "sha1": "f0e110c73ff02b2fc7f60bd96697c42ee9730ae2"
     },
     {
+      "path": "assets/fonts/IBMPlexMono-Medium.ttf",
+      "sha1": "d1246280a315c377a651879047723bab6e3b411e"
+    },
+    {
+      "path": "assets/fonts/IBMPlexMono-Regular.ttf",
+      "sha1": "2b7c2393fff41a6e1446fd6351002e1aa1a999e8"
+    },
+    {
+      "path": "assets/fonts/InstrumentSerif-Italic.ttf",
+      "sha1": "cfeb4692b8c04348aa63861d0796024af37b85dc"
+    },
+    {
+      "path": "assets/fonts/InstrumentSerif-Regular.ttf",
+      "sha1": "760dce2e432fb3711579d4de1cf5319ecaf28c7f"
+    },
+    {
       "path": "assets/fonts/Montserrat-Bold.ttf",
       "sha1": "be7c1438070ab637e11716915e4e50903726dcc8"
     },
@@ -40,6 +56,18 @@
     {
       "path": "assets/fonts/Poppins-SemiBold.ttf",
       "sha1": "622ca6ccbe2f22c5611dffa016b745bd26be154c"
+    },
+    {
+      "path": "assets/fonts/Spectral-Italic.ttf",
+      "sha1": "67838c1fb47a828cac4898547d3cf1ba45336c75"
+    },
+    {
+      "path": "assets/fonts/Spectral-Regular.ttf",
+      "sha1": "ebe00acfa7061ceae902a2c0d8a88f0717152103"
+    },
+    {
+      "path": "assets/fonts/Spectral-SemiBold.ttf",
+      "sha1": "b74f667f6fb6d81fee8ed58b1183e5728337de23"
     }
   ]
 }

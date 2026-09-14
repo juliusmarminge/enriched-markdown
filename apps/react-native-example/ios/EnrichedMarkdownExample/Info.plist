@@ -74,6 +74,13 @@
 		<string>Poppins-Regular.ttf</string>
 		<string>Poppins-SemiBold.ttf</string>
 		<string>Poppins-Italic.ttf</string>
+		<string>InstrumentSerif-Italic.ttf</string>
+		<string>Spectral-Regular.ttf</string>
+		<string>IBMPlexMono-Medium.ttf</string>
+		<string>IBMPlexMono-Regular.ttf</string>
+		<string>InstrumentSerif-Regular.ttf</string>
+		<string>Spectral-SemiBold.ttf</string>
+		<string>Spectral-Italic.ttf</string>
 	</array>
 </dict>
 </plist>

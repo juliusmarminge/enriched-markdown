@@ -3,6 +3,7 @@ import { Stack } from './navigation/Stack';
 import HomeScreen from './screens/home/HomeScreen';
 import PlaygroundScreen from './screens/playground/PlaygroundScreen';
 import TextScreen from './screens/text/TextScreen';
+import ArticleScreen from './screens/article/ArticleScreen';
 import InputScreen from './screens/input/InputScreen';
 import StreamingMarkdownSimulator from './screens/streaming/StreamingMarkdownSimulator';
 import StorybookScreen from './screens/storybook/StorybookScreen';
@@ -37,6 +38,11 @@ export default function App() {
           name="Text"
           component={TextScreen}
           options={{ title: 'Text' }}
+        />
+        <Stack.Screen
+          name="Article"
+          component={ArticleScreen}
+          options={{ title: 'Article' }}
         />
         <Stack.Screen
           name="Input"

@@ -31,6 +31,13 @@ const SCREENS: ScreenItem[] = [
     color: '#34C759',
   },
   {
+    route: 'Article',
+    label: 'Article',
+    subtext: 'LaTeX, native video and prose in one document',
+    testID: 'home-block-article',
+    color: '#0D0F14',
+  },
+  {
     route: 'Input',
     label: 'Input',
     subtext: 'chat-style rich text input',
