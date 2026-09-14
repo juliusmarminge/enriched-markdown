@@ -2,17 +2,17 @@ import EnrichedMarkdown
 import EnrichedMarkdownLaTeX
 import SwiftUI
 
-/// Editorial palette for the Article screen: warm paper, near-black ink and a
-/// single clay accent, in a light and a dark cut.
+/// Palette for the Article screen: cool paper, near-black ink and a single
+/// cobalt accent, in a light cut (the default) and a deep-navy dark cut.
 ///
 /// Two explicit sets rather than semantic colors: `foregroundStyle(Color)`
 /// resolves to a static `UIColor` at theme-build time, so a light/dark swap has
-/// to come from rebuilding the theme. The article also wants a warm paper
+/// to come from rebuilding the theme. The article also wants a tinted paper
 /// ground that `UIColor.systemBackground` does not provide.
 struct ArticlePalette: Equatable {
     /// Page ground.
     let paper: Color
-    /// Raised-but-quiet ground: blockquotes, table headers, chips.
+    /// Raised-but-quiet ground: the colophon card, chips, table stripes.
     let surface: Color
     /// Alternating table rows — one step from `paper`, never two.
     let surfaceAlt: Color
@@ -20,52 +20,55 @@ struct ArticlePalette: Equatable {
     let heading: Color
     let muted: Color
     let rule: Color
-    /// Links, inline code, bullets — the one saturated color on the page.
+    /// Kicker chip, table header, links, bullets — the one saturated color.
     let accent: Color
-    /// The accent where it decorates rather than signals: quote bar, monogram.
+    /// The accent where it decorates rather than signals: the quote bar.
     let accentSoft: Color
-    /// Marker wash behind a highlighted span — the accent diluted into the
-    /// paper, never a stationery yellow, which would fight the clay.
+    /// The accent diluted into the paper: inline code and display math grounds.
+    let accentWash: Color
+    /// Marker wash behind a highlighted span, one step past `accentWash`.
     let highlight: Color
-    /// Ink on that wash: a touch darker than `body`, so the span reads as
-    /// emphasis and not merely as a colored rectangle.
+    /// Ink on that wash: the accent deepened, so the span reads as emphasis
+    /// and not merely as a colored rectangle.
     let highlightInk: Color
     let codeText: Color
     let codeBackground: Color
     let codeBorder: Color
 
     static let light = ArticlePalette(
-        paper: Color(red: 250 / 255, green: 249 / 255, blue: 245 / 255),
-        surface: Color(red: 240 / 255, green: 238 / 255, blue: 230 / 255),
-        surfaceAlt: Color(red: 246 / 255, green: 244 / 255, blue: 237 / 255),
-        body: Color(red: 43 / 255, green: 42 / 255, blue: 38 / 255),
-        heading: Color(red: 20 / 255, green: 20 / 255, blue: 19 / 255),
-        muted: Color(red: 122 / 255, green: 118 / 255, blue: 108 / 255),
-        rule: Color(red: 226 / 255, green: 222 / 255, blue: 211 / 255),
-        accent: Color(red: 189 / 255, green: 93 / 255, blue: 58 / 255),
-        accentSoft: Color(red: 217 / 255, green: 119 / 255, blue: 87 / 255),
-        highlight: Color(red: 246 / 255, green: 219 / 255, blue: 196 / 255),
-        highlightInk: Color(red: 56 / 255, green: 36 / 255, blue: 25 / 255),
-        codeText: Color(red: 232 / 255, green: 230 / 255, blue: 223 / 255),
-        codeBackground: Color(red: 38 / 255, green: 38 / 255, blue: 36 / 255),
-        codeBorder: Color(red: 58 / 255, green: 57 / 255, blue: 53 / 255)
+        paper: Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255),
+        surface: Color(red: 232 / 255, green: 237 / 255, blue: 245 / 255),
+        surfaceAlt: Color(red: 238 / 255, green: 242 / 255, blue: 248 / 255),
+        body: Color(red: 31 / 255, green: 38 / 255, blue: 51 / 255),
+        heading: Color(red: 11 / 255, green: 18 / 255, blue: 32 / 255),
+        muted: Color(red: 102 / 255, green: 113 / 255, blue: 138 / 255),
+        rule: Color(red: 211 / 255, green: 218 / 255, blue: 230 / 255),
+        accent: Color(red: 42 / 255, green: 86 / 255, blue: 232 / 255),
+        accentSoft: Color(red: 92 / 255, green: 124 / 255, blue: 242 / 255),
+        accentWash: Color(red: 228 / 255, green: 234 / 255, blue: 252 / 255),
+        highlight: Color(red: 214 / 255, green: 224 / 255, blue: 255 / 255),
+        highlightInk: Color(red: 18 / 255, green: 36 / 255, blue: 94 / 255),
+        codeText: Color(red: 228 / 255, green: 233 / 255, blue: 243 / 255),
+        codeBackground: Color(red: 15 / 255, green: 23 / 255, blue: 42 / 255),
+        codeBorder: Color(red: 34 / 255, green: 48 / 255, blue: 75 / 255)
     )
 
     static let dark = ArticlePalette(
-        paper: Color(red: 26 / 255, green: 26 / 255, blue: 24 / 255),
-        surface: Color(red: 35 / 255, green: 35 / 255, blue: 32 / 255),
-        surfaceAlt: Color(red: 30 / 255, green: 30 / 255, blue: 28 / 255),
-        body: Color(red: 214 / 255, green: 211 / 255, blue: 201 / 255),
-        heading: Color(red: 245 / 255, green: 243 / 255, blue: 238 / 255),
-        muted: Color(red: 143 / 255, green: 138 / 255, blue: 128 / 255),
-        rule: Color(red: 54 / 255, green: 53 / 255, blue: 48 / 255),
-        accent: Color(red: 224 / 255, green: 138 / 255, blue: 107 / 255),
-        accentSoft: Color(red: 224 / 255, green: 138 / 255, blue: 107 / 255),
-        highlight: Color(red: 78 / 255, green: 48 / 255, blue: 35 / 255),
-        highlightInk: Color(red: 245 / 255, green: 225 / 255, blue: 210 / 255),
-        codeText: Color(red: 226 / 255, green: 224 / 255, blue: 217 / 255),
-        codeBackground: Color(red: 19 / 255, green: 19 / 255, blue: 18 / 255),
-        codeBorder: Color(red: 46 / 255, green: 45 / 255, blue: 41 / 255)
+        paper: Color(red: 10 / 255, green: 16 / 255, blue: 32 / 255),
+        surface: Color(red: 19 / 255, green: 28 / 255, blue: 49 / 255),
+        surfaceAlt: Color(red: 15 / 255, green: 23 / 255, blue: 40 / 255),
+        body: Color(red: 200 / 255, green: 209 / 255, blue: 227 / 255),
+        heading: Color(red: 241 / 255, green: 244 / 255, blue: 250 / 255),
+        muted: Color(red: 126 / 255, green: 138 / 255, blue: 166 / 255),
+        rule: Color(red: 32 / 255, green: 44 / 255, blue: 72 / 255),
+        accent: Color(red: 110 / 255, green: 141 / 255, blue: 255 / 255),
+        accentSoft: Color(red: 78 / 255, green: 111 / 255, blue: 232 / 255),
+        accentWash: Color(red: 21 / 255, green: 31 / 255, blue: 61 / 255),
+        highlight: Color(red: 27 / 255, green: 43 / 255, blue: 99 / 255),
+        highlightInk: Color(red: 220 / 255, green: 229 / 255, blue: 255 / 255),
+        codeText: Color(red: 214 / 255, green: 222 / 255, blue: 236 / 255),
+        codeBackground: Color(red: 5 / 255, green: 9 / 255, blue: 20 / 255),
+        codeBorder: Color(red: 27 / 255, green: 39 / 255, blue: 66 / 255)
     )
 
     static func forScheme(_ scheme: ColorScheme) -> ArticlePalette {
@@ -73,12 +76,9 @@ struct ArticlePalette: Equatable {
     }
 }
 
-/// The article's markdown theme: Newsreader on warm paper, one clay accent,
-/// and a 30pt baseline the whole page is measured against.
-///
-/// The serif is deliberate — KaTeX typesets math in a Computer Modern-like
-/// serif, so serif prose lets the formulas sit in the paragraph instead of
-/// looking pasted onto it.
+/// The article's markdown theme: Newsreader prose under Space Grotesk
+/// headings, one cobalt accent, and a 30pt baseline the page is measured
+/// against.
 ///
 /// `figureHeight` is the rendered height of block images. Attachments take a
 /// fixed height rather than an aspect ratio, so the caller measures the text
@@ -91,77 +91,74 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
             .lineHeight(30)
             .marginBottom(20)
 
-        Heading(1)
-            .fontFamily(ArticleFont.display, size: 34)
+        // Grotesk section heads against serif prose: the heading is a label
+        // for the section, not a louder line of it.
+        Heading(2)
+            .fontFamily(ArticleFont.display, size: 23)
             .foregroundStyle(palette.heading)
-            .lineHeight(41)
+            .lineHeight(30)
+            .marginTop(40)
             .marginBottom(12)
 
-        Heading(2)
-            .fontFamily(ArticleFont.serifSemibold, size: 26)
-            .foregroundStyle(palette.heading)
-            .lineHeight(33)
-            .marginTop(44)
-            .marginBottom(14)
-
         Heading(3)
-            .fontFamily(ArticleFont.serifSemibold, size: 20)
+            .fontFamily(ArticleFont.display, size: 18)
             .foregroundStyle(palette.heading)
-            .lineHeight(27)
-            .marginTop(32)
+            .lineHeight(26)
+            .marginTop(30)
             .marginBottom(8)
 
-        // Set in italic, so `**Abstract.**` inside it resolves to the family's
-        // real bold-italic face rather than a synthesized slant.
+        // Upright, a size up, on bare paper behind a solid cobalt bar — a
+        // pull quote rather than a boxed aside.
         Blockquote()
-            .fontFamily(ArticleFont.serifItalic, size: 18)
+            .fontFamily(ArticleFont.serif, size: 19)
             .foregroundStyle(palette.body)
-            .lineHeight(30)
-            .borderColor(palette.accentSoft)
-            .borderWidth(2)
-            .backgroundStyle(palette.surface)
-            .gapWidth(20)
-            .marginTop(6)
+            .lineHeight(31)
+            .borderColor(palette.accent)
+            .borderWidth(3)
+            .gapWidth(18)
+            .marginTop(8)
             .marginBottom(26)
 
         List()
             .fontFamily(ArticleFont.serif, size: 18)
             .foregroundStyle(palette.body)
             .lineHeight(30)
-            .bulletColor(palette.accentSoft)
-            .bulletSize(5)
-            .markerColor(palette.muted)
+            .bulletColor(palette.accent)
+            .bulletSize(6)
+            .markerColor(palette.accent)
             .markerMinWidth(20)
             .gapWidth(12)
-            .marginLeft(20)
+            .marginLeft(18)
             .marginBottom(24)
 
-        // Grotesk headers: a serif at 12pt in a narrow cell turns to mush.
+        // Solid cobalt header band with paper-colored labels; the rows below
+        // stay quiet so the band is the only weight in the table.
         Table()
             .fontFamily(ArticleFont.serif, size: 15)
             .foregroundStyle(palette.body)
             .lineHeight(25)
             .headerFontFamily(ArticleFont.label, size: 12)
-            .headerTextColor(palette.heading)
-            .headerBackground(palette.surface)
+            .headerTextColor(palette.paper)
+            .headerBackground(palette.accent)
             .rowEvenBackground(palette.surfaceAlt)
             .rowOddBackground(palette.paper)
             .borderColor(palette.rule)
             .borderWidth(1)
-            .borderRadius(12)
+            .borderRadius(8)
             .cellPaddingHorizontal(14)
-            .cellPaddingVertical(12)
+            .cellPaddingVertical(11)
             .marginTop(8)
             .marginBottom(28)
 
-        // `CodeBlock.fontSize` already pins the monospaced design.
+        // `CodeBlock.fontSize` already pins the monospaced design. Navy ground
+        // in both cuts: the one deliberately dark panel on the light page.
         CodeBlock()
             .fontSize(13.5)
             .foregroundStyle(palette.codeText)
             .backgroundStyle(palette.codeBackground)
             .borderColor(palette.codeBorder)
             .borderWidth(1)
-            .borderRadius(14)
+            .borderRadius(10)
             .padding(18)
             .lineHeight(22)
             .marginTop(6)
@@ -170,17 +167,18 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
         // `Code` already defaults `fontDesign` to `.monospaced`.
         Code()
             .foregroundStyle(palette.accent)
-            .backgroundStyle(palette.surface)
+            .backgroundStyle(palette.accentWash)
 
         BlockImage()
             .height(figureHeight)
-            .borderRadius(14)
+            .borderRadius(8)
             .marginTop(10)
             .marginBottom(10)
 
+        // Cobalt carries the link on its own; no underline.
         Link()
             .foregroundStyle(palette.accent)
-            .underline(true)
+            .underline(false)
 
         Strong()
             .foregroundStyle(palette.heading)
@@ -188,18 +186,17 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
         ThematicBreak()
             .color(palette.rule)
             .height(1)
-            .marginTop(44)
-            .marginBottom(36)
+            .marginTop(40)
+            .marginBottom(32)
 
-        // Display math gets the same square-edged ground as the blockquote —
-        // `MathBlock` has no border or corner radius, so the quote's language
-        // is the one it can speak. The panel earns its keep on the long
-        // formulas: it bounds the region that scrolls, so a clipped edge reads
-        // as more-to-the-right rather than as a rendering fault.
+        // Display math sits on the accent wash — the same ground as inline
+        // code, so formula and code read as the same kind of object. The
+        // panel also bounds the region a long formula scrolls within, so a
+        // clipped edge reads as more-to-the-right, not as a rendering fault.
         MathBlock()
             .fontSize(19)
             .foregroundStyle(palette.heading)
-            .background(palette.surface)
+            .background(palette.accentWash)
             .padding(16)
             .marginTop(4)
             .marginBottom(20)
@@ -208,8 +205,8 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
         InlineMath()
             .foregroundStyle(palette.body)
 
-        // The wash is painted over the whole 30pt line box, so it wants to be
-        // close to the paper; the ink does the emphasizing.
+        // The wash is painted over the whole 30pt line box, so it stays one
+        // step from the paper; the deepened ink does the emphasizing.
         Highlight()
             .foregroundStyle(palette.highlightInk)
             .background(palette.highlight)

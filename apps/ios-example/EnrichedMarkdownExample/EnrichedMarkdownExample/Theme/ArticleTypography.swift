@@ -2,15 +2,16 @@ import SwiftUI
 
 /// Type families bundled for the Article screen.
 ///
-/// Newsreader carries the prose: a warm transitional serif whose optical-size
-/// axis was instanced into two cuts — a 16pt text cut for running copy and a
-/// 48pt display cut, drawn with finer hairlines, for the masthead headline.
-/// Space Grotesk handles the small mechanical labels (kicker, byline, caption,
-/// table headers) that a serif sets poorly at 11-13pt.
+/// Space Grotesk fronts the page: the headline, section headings, every label
+/// and the byline strip are set in it, so the article opens like a dispatch
+/// rather than a magazine spread. Newsreader carries only the running prose —
+/// KaTeX typesets math in a Computer Modern-like serif, so serif body text
+/// lets the formulas sit inside a paragraph instead of looking pasted onto it.
 ///
 /// Names are PostScript names; the files ship in `Resources/Fonts`.
 enum ArticleFont {
-    static let display = "NewsreaderDisplay-Regular"
+    /// Headline and section headings.
+    static let display = "SpaceGrotesk-Medium"
     static let serif = "Newsreader-Regular"
     static let serifItalic = "Newsreader-Italic"
     static let serifSemibold = "Newsreader-SemiBold"
@@ -19,7 +20,7 @@ enum ArticleFont {
 }
 
 extension Font {
-    /// Headline cut — only above ~28pt, where its hairlines survive.
+    /// Grotesk medium at headline size.
     static func articleDisplay(_ size: CGFloat) -> Font {
         .custom(ArticleFont.display, size: size)
     }
@@ -37,7 +38,7 @@ extension Font {
         .custom(ArticleFont.label, size: size)
     }
 
-    /// Grotesk regular, for captions and secondary metadata.
+    /// Grotesk regular, for the deck, captions and secondary metadata.
     static func articleMeta(_ size: CGFloat) -> Font {
         .custom(ArticleFont.meta, size: size)
     }

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Foot of the page: a rule, the library's mark, and one line on what was
-/// rendered above it.
+/// Foot of the page: a card carrying the library's mark and one line on what
+/// was rendered above it.
 struct ArticleColophon: View {
     // MARK: - Properties
 
@@ -11,28 +11,25 @@ struct ArticleColophon: View {
     // MARK: - Views
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Rectangle()
-                .fill(palette.rule)
-                .frame(height: 1)
+        HStack(alignment: .top, spacing: 14) {
+            mark
 
-            HStack(alignment: .top, spacing: 13) {
-                mark
+            VStack(alignment: .leading, spacing: 5) {
+                Text("ENRICHED MARKDOWN")
+                    .font(.articleLabel(11))
+                    .tracking(1.7)
+                    .foregroundStyle(palette.accent)
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("ENRICHED MARKDOWN")
-                        .font(.articleLabel(11))
-                        .tracking(1.7)
-                        .foregroundStyle(palette.heading)
-
-                    Text("Prose, LaTeX, figures, tables and code — one markdown source, rendered natively on iOS.")
-                        .font(.articleMeta(12))
-                        .lineSpacing(4)
-                        .foregroundStyle(palette.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text("Prose, LaTeX, figures, tables and code — one markdown source, rendered natively on iOS.")
+                    .font(.articleMeta(12))
+                    .lineSpacing(4)
+                    .foregroundStyle(palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(palette.surface))
         .padding(.horizontal, gutter)
     }
 
@@ -41,8 +38,9 @@ struct ArticleColophon: View {
         if let logo = Image(bundledPNG: "logo_icon") {
             logo
                 .resizable()
-                .frame(width: 26, height: 26)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .frame(width: 24, height: 24)
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(palette.paper))
         }
     }
 }

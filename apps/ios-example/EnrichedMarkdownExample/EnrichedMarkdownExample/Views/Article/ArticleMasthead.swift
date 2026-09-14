@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The opening spread: kicker rule, display headline, deck, byline, and the
-/// full-bleed hero figure that hands off to the markdown body.
+/// The opening spread, cover-first: the full-bleed hero with its caption on a
+/// scrim, then the kicker chip, headline, deck and the byline strip that hands
+/// off to the markdown body.
 struct ArticleMasthead: View {
     // MARK: - Properties
 
@@ -15,37 +16,6 @@ struct ArticleMasthead: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            kicker
-                .padding(.horizontal, gutter)
-                .padding(.top, 14)
-
-            Text(article.title)
-                .font(.articleDisplay(43))
-                .tracking(-0.7)
-                .lineSpacing(1)
-                .foregroundStyle(palette.heading)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, gutter)
-                .padding(.top, 16)
-
-            Text(article.deck)
-                .font(.articleSerifItalic(19))
-                .lineSpacing(6)
-                .foregroundStyle(palette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, gutter)
-                .padding(.top, 14)
-
-            byline
-                .padding(.horizontal, gutter)
-                .padding(.top, 24)
-
-            Rectangle()
-                .fill(palette.rule)
-                .frame(height: 1)
-                .padding(.horizontal, gutter)
-                .padding(.top, 22)
-
             ArticleHeroFigure(
                 imageName: article.heroImageName,
                 caption: article.heroCaption,
@@ -53,53 +23,119 @@ struct ArticleMasthead: View {
                 gutter: gutter,
                 viewport: viewport
             )
-            .padding(.top, 26)
+
+            kicker
+                .padding(.horizontal, gutter)
+                .padding(.top, 22)
+
+            Text(article.title)
+                .font(.articleDisplay(38))
+                .tracking(-1.1)
+                .foregroundStyle(palette.heading)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, gutter)
+                .padding(.top, 14)
+
+            Text(article.deck)
+                .font(.articleMeta(17))
+                .lineSpacing(5)
+                .foregroundStyle(palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, gutter)
+                .padding(.top, 12)
+
+            ArticleBylineStrip(article: article, palette: palette)
+                .padding(.horizontal, gutter)
+                .padding(.top, 24)
         }
     }
 
-    /// Tracked-out section label with a hairline running out to the margin.
+    /// Solid cobalt chip: the section label as a stamp, not a running head.
     private var kicker: some View {
-        HStack(spacing: 12) {
-            Text(article.kicker.uppercased())
-                .font(.articleLabel(11))
-                .tracking(1.9)
-                .foregroundStyle(palette.accent)
-
-            Rectangle()
-                .fill(palette.rule)
-                .frame(height: 1)
-        }
-    }
-
-    private var byline: some View {
-        HStack(spacing: 13) {
-            Text(article.authorInitials)
-                .font(.articleLabel(13))
-                .tracking(0.5)
-                .foregroundStyle(palette.accent)
-                .frame(width: 38, height: 38)
-                .background(Circle().fill(palette.accentSoft.opacity(0.15)))
-                .overlay(Circle().strokeBorder(palette.accentSoft.opacity(0.3), lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(article.authorName)
-                    .font(.articleLabel(14))
-                    .foregroundStyle(palette.heading)
-
-                Text("\(article.publishedOn) · \(article.readingTime)")
-                    .font(.articleMeta(12))
-                    .foregroundStyle(palette.muted)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .accessibilityElement(children: .combine)
+        Text(article.kicker.uppercased())
+            .font(.articleLabel(10))
+            .tracking(1.6)
+            .foregroundStyle(palette.paper)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(palette.accent))
     }
 }
 
 // MARK: -
 
-/// Edge-to-edge hero image with a light parallax and a captioned figure line.
+/// Byline as a spec sheet: two labelled cells between hairlines, the author's
+/// monogram as a square tag at the head of the row.
+struct ArticleBylineStrip: View {
+    // MARK: - Properties
+
+    let article: Article
+    let palette: ArticlePalette
+
+    // MARK: - Views
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(palette.rule)
+                .frame(height: 1)
+
+            HStack(spacing: 0) {
+                HStack(spacing: 11) {
+                    monogram
+                    cell("Written by", article.authorName)
+                }
+
+                Spacer(minLength: 14)
+
+                Rectangle()
+                    .fill(palette.rule)
+                    .frame(width: 1)
+                    .padding(.vertical, 2)
+
+                Spacer(minLength: 14)
+
+                cell("Published", "\(article.publishedOn) · \(article.readingTime)")
+            }
+            .padding(.vertical, 14)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Rectangle()
+                .fill(palette.rule)
+                .frame(height: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var monogram: some View {
+        Text(article.authorInitials)
+            .font(.articleLabel(12))
+            .tracking(0.4)
+            .foregroundStyle(palette.paper)
+            .frame(width: 32, height: 32)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(palette.accent))
+    }
+
+    private func cell(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label.uppercased())
+                .font(.articleLabel(9.5))
+                .tracking(1.3)
+                .foregroundStyle(palette.muted)
+
+            Text(value)
+                .font(.articleLabel(13))
+                .foregroundStyle(palette.heading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+    }
+}
+
+// MARK: -
+
+/// Edge-to-edge hero image with a light parallax; the figure line is printed
+/// on a scrim over its foot, the way a cover credits its photograph.
 ///
 /// The image is drawn taller than its window and slid against the scroll, so
 /// it drifts rather than tracks — enough to read as depth, not as motion.
@@ -112,25 +148,28 @@ struct ArticleHeroFigure: View {
     let gutter: CGFloat
     let viewport: CGSize
 
-    private let height: CGFloat = 218
-    private let overdraw: CGFloat = 64
+    private let height: CGFloat = 268
+    private let overdraw: CGFloat = 72
 
     // MARK: - Views
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            GeometryReader { frame in
-                image
-                    .frame(width: frame.size.width, height: height + overdraw)
-                    .offset(y: parallax(midY: frame.frame(in: .global).midY))
-                    .frame(width: frame.size.width, height: height)
-                    .clipped()
-            }
-            .frame(height: height)
-
-            figureLine
-                .padding(.horizontal, gutter)
+        GeometryReader { frame in
+            image
+                .frame(width: frame.size.width, height: height + overdraw)
+                .offset(y: parallax(midY: frame.frame(in: .global).midY))
+                .frame(width: frame.size.width, height: height)
+                .clipped()
+                .overlay(alignment: .bottom) {
+                    figureLine
+                        .padding(.horizontal, gutter)
+                        .padding(.top, 56)
+                        .padding(.bottom, 16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(scrim)
+                }
         }
+        .frame(height: height)
     }
 
     @ViewBuilder
@@ -147,14 +186,22 @@ struct ArticleHeroFigure: View {
             Text("FIG. 1")
                 .font(.articleLabel(10))
                 .tracking(1.3)
-                .foregroundStyle(palette.accent)
 
             Text(caption)
                 .font(.articleMeta(12))
                 .lineSpacing(3)
-                .foregroundStyle(palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .foregroundStyle(.white.opacity(0.92))
+    }
+
+    /// Fades from nothing above the caption to a readable dark foot.
+    private var scrim: some View {
+        LinearGradient(
+            colors: [.black.opacity(0), .black.opacity(0.7)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     // MARK: - Methods

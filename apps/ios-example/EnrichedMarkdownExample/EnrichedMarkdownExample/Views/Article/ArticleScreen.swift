@@ -7,7 +7,7 @@ import SwiftUI
 /// document rather than a feature checklist.
 ///
 /// The masthead and the colophon are SwiftUI; everything between them is a
-/// single `EnrichedMarkdownText`, on the same warm paper and the same 30pt
+/// single `EnrichedMarkdownText`, on the same cool paper and the same 30pt
 /// baseline, so the seam between app chrome and rendered markdown disappears.
 struct ArticleScreen: View {
     // MARK: - Properties
@@ -15,7 +15,10 @@ struct ArticleScreen: View {
     let article: Article
 
     @Environment(\.colorScheme) private var systemColorScheme
-    @State private var schemeOverride: ColorScheme?
+    /// Light by default: the page is designed on cool paper and a recording
+    /// should open on it whatever the device is set to. The toggle in the
+    /// corner flips to the navy cut for the second half of a demo.
+    @State private var schemeOverride: ColorScheme? = .light
     @State private var pressedLink: URL?
     @State private var linkAlertVisible: Bool = false
     @State private var scrollOffset: CGFloat = 0
@@ -74,11 +77,14 @@ struct ArticleScreen: View {
             }
             .scrollIndicators(.hidden)
             .coordinateSpace(name: Self.scrollSpace)
-            .safeAreaInset(edge: .top, spacing: 0) {
+            .modifier(ArticleScrollTracking(scrollOffset: $scrollOffset, contentHeight: $contentHeight))
+            .overlay(alignment: .bottomLeading) {
                 ArticleReadingProgress(
                     progress: readingProgress(viewportHeight: viewport.size.height),
                     palette: palette
                 )
+                .padding(.leading, 20)
+                .padding(.bottom, 28)
             }
             .overlay(alignment: .bottomTrailing) {
                 appearanceToggle
@@ -95,14 +101,12 @@ struct ArticleScreen: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(article.title)
-                    .font(.articleSerif(16))
+                    .font(.articleLabel(15))
                     .foregroundStyle(palette.heading)
                     .opacity(runningTitleOpacity)
                     .accessibilityHidden(runningTitleOpacity < 0.5)
             }
         }
-        .onPreferenceChange(ArticleScrollOffsetKey.self) { scrollOffset = $0 }
-        .onPreferenceChange(ArticleContentHeightKey.self) { contentHeight = $0 }
         .onAppear {
             withAnimation(.easeOut(duration: 0.45).delay(0.05)) { hasAppeared = true }
         }
@@ -117,7 +121,8 @@ struct ArticleScreen: View {
     }
 
     /// Zero-height probe: its distance from the top of the scroll view is how
-    /// far the article has been read.
+    /// far the article has been read. Read by `ArticleScrollTracking` on
+    /// iOS 16 and 17; later systems take the offset from the scroll view.
     private var offsetSentinel: some View {
         GeometryReader { frame in
             Color.clear.preference(
@@ -134,7 +139,7 @@ struct ArticleScreen: View {
         }
     }
 
-    /// Inverted-ink disc, kept clear of the text column so a tap during a demo
+    /// Cobalt disc, kept clear of the text column so a tap during a demo
     /// never lands on a link.
     private var appearanceToggle: some View {
         Button {
@@ -146,13 +151,12 @@ struct ArticleScreen: View {
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(palette.paper)
                 .rotationEffect(.degrees(effectiveScheme == .dark ? 0 : -30))
-                .frame(width: 46, height: 46)
-                .background(Circle().fill(palette.heading))
-                .overlay(Circle().strokeBorder(palette.paper.opacity(0.16), lineWidth: 1))
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(palette.accent))
                 .shadow(
-                    color: .black.opacity(effectiveScheme == .dark ? 0.55 : 0.18),
-                    radius: 14,
-                    y: 6
+                    color: .black.opacity(effectiveScheme == .dark ? 0.45 : 0.16),
+                    radius: 12,
+                    y: 5
                 )
         }
         .buttonStyle(.plain)
@@ -172,7 +176,7 @@ struct ArticleScreen: View {
 
     /// The running head takes over once the printed headline has scrolled off.
     private var runningTitleOpacity: Double {
-        Double(min(max((-scrollOffset - 96) / 56, 0), 1))
+        Double(min(max((-scrollOffset - 360) / 56, 0), 1))
     }
 }
 
@@ -207,7 +211,7 @@ private struct ArticleBody: View, Equatable {
             .markdownTheme(ArticleMarkdownTheme(palette, figureHeight: figureHeight))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, gutter)
-            .padding(.top, 30)
+            .padding(.top, 28)
             .padding(.bottom, 4)
             .onLinkPress(onLinkPress)
     }

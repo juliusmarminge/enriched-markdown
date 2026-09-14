@@ -26,7 +26,7 @@ private let menuItems: [HomeMenuItem] = [
     HomeMenuItem(
         route: .article,
         label: "Article",
-        subtext: "long-form document with LaTeX",
+        subtext: "LaTeX, figures and prose in one document",
         color: .tileNavy,
         accessibilityId: "home-block-article"
     ),
