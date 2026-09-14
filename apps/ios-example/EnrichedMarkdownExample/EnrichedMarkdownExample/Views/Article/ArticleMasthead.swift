@@ -12,6 +12,9 @@ struct ArticleMasthead: View {
     /// The scroll view's offset from rest: positive while the page is pulled
     /// down past its top, negative once it has been scrolled. Drives the hero.
     let scrollOffset: CGFloat
+    /// Flips once after the screen appears; the spread reveals itself in
+    /// order, hero first, byline last.
+    let appeared: Bool
 
     // MARK: - Views
 
@@ -25,10 +28,12 @@ struct ArticleMasthead: View {
                 pull: max(scrollOffset, 0),
                 travelled: max(-scrollOffset, 0)
             )
+            .modifier(Reveal(appeared: appeared, order: 0, rise: 0))
 
             kicker
                 .padding(.horizontal, gutter)
                 .padding(.top, 22)
+                .modifier(Reveal(appeared: appeared, order: 1))
 
             Text(article.title)
                 .font(.articleDisplay(38))
@@ -37,6 +42,7 @@ struct ArticleMasthead: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, gutter)
                 .padding(.top, 14)
+                .modifier(Reveal(appeared: appeared, order: 2))
 
             Text(article.deck)
                 .font(.articleMeta(17))
@@ -45,10 +51,12 @@ struct ArticleMasthead: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, gutter)
                 .padding(.top, 12)
+                .modifier(Reveal(appeared: appeared, order: 3))
 
             ArticleBylineStrip(article: article, palette: palette)
                 .padding(.horizontal, gutter)
                 .padding(.top, 24)
+                .modifier(Reveal(appeared: appeared, order: 4))
         }
     }
 
@@ -61,6 +69,23 @@ struct ArticleMasthead: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Capsule().fill(palette.accent))
+    }
+}
+
+// MARK: -
+
+/// Fades a piece of the masthead in and lifts it into place, `order` steps
+/// after the one before it.
+private struct Reveal: ViewModifier {
+    let appeared: Bool
+    let order: Int
+    var rise: CGFloat = 10
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : rise)
+            .animation(.easeOut(duration: 0.55).delay(0.08 * Double(order)), value: appeared)
     }
 }
 
@@ -236,7 +261,8 @@ struct ArticleHeroFigure: View {
             article: .featured,
             palette: .light,
             gutter: 24,
-            scrollOffset: 0
+            scrollOffset: 0,
+            appeared: true
         )
     }
     .background(ArticlePalette.light.paper)

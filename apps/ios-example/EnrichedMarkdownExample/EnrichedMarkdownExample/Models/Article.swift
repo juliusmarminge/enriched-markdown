@@ -11,10 +11,12 @@ struct Article {
     let authorName: String
     let authorInitials: String
     let publishedOn: String
-    let readingTime: String
+    let readingMinutes: Int
     let heroImageName: String
     let heroCaption: String
     let body: String
+
+    var readingTime: String { "\(readingMinutes) min read" }
 }
 
 extension Article {
@@ -26,7 +28,7 @@ extension Article {
             authorName: "Elena Marchetti",
             authorInitials: "EM",
             publishedOn: "September 2026",
-            readingTime: "9 min read",
+            readingMinutes: 9,
             heroImageName: "article_hero",
             heroCaption: "A transverse wave and its slower envelope, sampled on the uniform grid a solver steps over.",
             body: Bundle.main.articleMarkdown

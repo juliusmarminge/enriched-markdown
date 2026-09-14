@@ -113,7 +113,7 @@ Stability requires the Courant number $r = c \, \Delta t / \Delta x$ to satisfy 
 
 ![Two panels: a pulse that holds its shape, and the same pulse shaking itself apart](article_courant.png)
 
-*Fig. 2 — The same pulse after four hundred steps at $r = 0.9$ and at $r = 1.05$. Identical code, one number apart.*
+###### FIG. 2 — The same pulse after four hundred steps at $r = 0.9$ and at $r = 1.05$. Identical code, one number apart.
 
 ---
 

@@ -1,5 +1,6 @@
 import EnrichedMarkdown
 import EnrichedMarkdownLaTeX
+import SafariServices
 import SwiftUI
 
 /// Long-form article rendered entirely from markdown — prose, LaTeX math, a
@@ -16,13 +17,11 @@ struct ArticleScreen: View {
 
     @Environment(\.colorScheme) private var systemColorScheme
     /// Light by default: the page is designed on cool paper and a recording
-    /// should open on it whatever the device is set to. The toggle in the
-    /// corner flips to the navy cut for the second half of a demo.
+    /// should open on it whatever the device is set to. The navy cut in
+    /// `ArticlePalette.dark` is there for when this is switched to `nil`.
     @State private var schemeOverride: ColorScheme? = .light
-    @State private var pressedLink: URL?
-    @State private var linkAlertVisible: Bool = false
+    @State private var presentedLink: PresentedLink?
     @State private var scrollOffset: CGFloat = 0
-    @State private var contentHeight: CGFloat = 0
     @State private var hasAppeared: Bool = false
 
     private static let scrollSpace = "article-scroll"
@@ -39,6 +38,10 @@ struct ArticleScreen: View {
         ArticlePalette.forScheme(effectiveScheme)
     }
 
+    private var travelled: CGFloat {
+        max(-scrollOffset, 0)
+    }
+
     // MARK: - Views
 
     var body: some View {
@@ -53,42 +56,26 @@ struct ArticleScreen: View {
                         article: article,
                         palette: palette,
                         gutter: Self.gutter,
-                        scrollOffset: scrollOffset
+                        scrollOffset: scrollOffset,
+                        appeared: hasAppeared
                     )
-                    .opacity(hasAppeared ? 1 : 0)
-                    .offset(y: hasAppeared ? 0 : 12)
 
                     ArticleBody(
                         markdown: article.body,
                         palette: palette,
                         figureHeight: (columnWidth * Self.figureRatio).rounded(),
                         gutter: Self.gutter,
-                        onLinkPress: { url in
-                            pressedLink = url
-                            linkAlertVisible = true
-                        }
+                        onLinkPress: open(link:)
                     )
                     .equatable()
 
                     ArticleColophon(palette: palette, gutter: Self.gutter)
                         .padding(.bottom, 72)
                 }
-                .background(contentHeightReader)
             }
             .scrollIndicators(.hidden)
             .coordinateSpace(name: Self.scrollSpace)
-            .modifier(ArticleScrollTracking(scrollOffset: $scrollOffset, contentHeight: $contentHeight))
-            .overlay(alignment: .bottomLeading) {
-                ArticleReadingProgress(
-                    progress: readingProgress(viewportHeight: viewport.size.height),
-                    palette: palette
-                )
-                .padding(.leading, 20)
-                .padding(.bottom, 28)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                appearanceToggle
-            }
+            .modifier(ArticleScrollTracking(scrollOffset: $scrollOffset))
         }
         .background(palette.paper.ignoresSafeArea())
         .markdownSelectionColor(palette.accent.opacity(0.28))
@@ -108,15 +95,11 @@ struct ArticleScreen: View {
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.45).delay(0.05)) { hasAppeared = true }
+            hasAppeared = true
         }
-        .alert("Link Pressed!", isPresented: $linkAlertVisible, presenting: pressedLink) { url in
-            Button("Open in Browser") {
-                UIApplication.shared.open(url)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { url in
-            Text("You tapped on: \(url.absoluteString)")
+        .sheet(item: $presentedLink) { link in
+            ArticleLinkSheet(url: link.url, tint: palette.accent)
+                .ignoresSafeArea()
         }
     }
 
@@ -133,50 +116,21 @@ struct ArticleScreen: View {
         .frame(height: 0)
     }
 
-    private var contentHeightReader: some View {
-        GeometryReader { frame in
-            Color.clear.preference(key: ArticleContentHeightKey.self, value: frame.size.height)
-        }
-    }
-
-    /// Cobalt disc, kept clear of the text column so a tap during a demo
-    /// never lands on a link.
-    private var appearanceToggle: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                schemeOverride = effectiveScheme == .dark ? .light : .dark
-            }
-        } label: {
-            Image(systemName: effectiveScheme == .dark ? "sun.max.fill" : "moon.fill")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(palette.paper)
-                .rotationEffect(.degrees(effectiveScheme == .dark ? 0 : -30))
-                .frame(width: 40, height: 40)
-                .background(Circle().fill(palette.accent))
-                .shadow(
-                    color: .black.opacity(effectiveScheme == .dark ? 0.45 : 0.16),
-                    radius: 12,
-                    y: 5
-                )
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, 20)
-        .padding(.bottom, 28)
-        .accessibilityLabel(effectiveScheme == .dark ? "Switch to light" : "Switch to dark")
-        .accessibilityIdentifier("article-appearance-toggle")
-    }
-
     // MARK: - Methods
-
-    private func readingProgress(viewportHeight: CGFloat) -> CGFloat {
-        let scrollable = contentHeight - viewportHeight
-        guard scrollable > 1 else { return 0 }
-        return min(max(-scrollOffset / scrollable, 0), 1)
-    }
 
     /// The running head takes over once the printed headline has scrolled off.
     private var runningTitleOpacity: Double {
-        Double(min(max((-scrollOffset - 360) / 56, 0), 1))
+        Double(min(max((travelled - 360) / 56, 0), 1))
+    }
+
+    /// Web links open in an in-app Safari sheet; anything else goes to the
+    /// system.
+    private func open(link url: URL) {
+        if ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
+            presentedLink = PresentedLink(url: url)
+        } else {
+            UIApplication.shared.open(url)
+        }
     }
 }
 
@@ -197,7 +151,7 @@ private struct ArticleBody: View, Equatable {
     let onLinkPress: (URL) -> Void
 
     /// The closure is deliberately not compared: it is recreated on every
-    /// parent evaluation and only ever writes the alert state.
+    /// parent evaluation and only ever presents the link sheet.
     static func == (lhs: ArticleBody, rhs: ArticleBody) -> Bool {
         lhs.markdown == rhs.markdown
             && lhs.palette == rhs.palette
@@ -215,6 +169,28 @@ private struct ArticleBody: View, Equatable {
             .padding(.bottom, 4)
             .onLinkPress(onLinkPress)
     }
+}
+
+// MARK: -
+
+private struct PresentedLink: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
+}
+
+/// Safari, in a sheet, in the article's accent.
+private struct ArticleLinkSheet: UIViewControllerRepresentable {
+    let url: URL
+    let tint: Color
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        let controller = SFSafariViewController(url: url)
+        controller.preferredControlTintColor = UIColor(tint)
+        controller.dismissButtonStyle = .close
+        return controller
+    }
+
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
 // MARK: -

@@ -109,21 +109,7 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
             .lineHeight(30)
             .marginBottom(20)
 
-        // Grotesk section heads against serif prose: the heading is a label
-        // for the section, not a louder line of it.
-        Heading(2)
-            .fontFamily(ArticleFont.display, size: 23)
-            .foregroundStyle(palette.heading)
-            .lineHeight(30)
-            .marginTop(40)
-            .marginBottom(12)
-
-        Heading(3)
-            .fontFamily(ArticleFont.display, size: 18)
-            .foregroundStyle(palette.heading)
-            .lineHeight(26)
-            .marginTop(30)
-            .marginBottom(8)
+        articleHeadings(palette)
 
         // Upright, a size up, on bare paper behind a solid cobalt bar — a
         // pull quote rather than a boxed aside.
@@ -194,7 +180,7 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
             .height(figureHeight)
             .borderRadius(8)
             .marginTop(10)
-            .marginBottom(10)
+            .marginBottom(12)
 
         // Cobalt carries the link on its own; no underline.
         Link()
@@ -232,6 +218,32 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
             .foregroundStyle(palette.highlightInk)
             .background(palette.highlight)
     }
+}
+
+/// Grotesk section heads against serif prose: the heading is a label for
+/// the section, not a louder line of it. Level 6 doubles as the figure
+/// caption — the same small label the hero prints on its scrim.
+private func articleHeadings(_ palette: ArticlePalette) -> MarkdownThemeGroup {
+    MarkdownThemeGroup(contents: [
+        Heading(2)
+            .fontFamily(ArticleFont.display, size: 23)
+            .foregroundStyle(palette.heading)
+            .lineHeight(30)
+            .marginTop(40)
+            .marginBottom(12),
+        Heading(3)
+            .fontFamily(ArticleFont.display, size: 18)
+            .foregroundStyle(palette.heading)
+            .lineHeight(26)
+            .marginTop(30)
+            .marginBottom(8),
+        Heading(6)
+            .fontFamily(ArticleFont.meta, size: 12)
+            .foregroundStyle(palette.muted)
+            .lineHeight(18)
+            .marginTop(0)
+            .marginBottom(28)
+    ])
 }
 
 /// GitHub alerts share the pull quote's geometry and type; each type only
