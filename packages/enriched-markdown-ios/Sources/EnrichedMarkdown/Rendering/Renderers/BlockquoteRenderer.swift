@@ -70,13 +70,34 @@ final class BlockquoteRenderer: NodeRenderer {
             )
         }
 
-        let range = NSRange(location: contentStart, length: end - start)
-        applyBlockAttributes(to: output, range: range, levels: levels)
-        applyParagraphLayout(to: output, range: range, depth: depth)
+        // Every level pads its own box: an empty paragraph of the padding's
+        // height above the content and another below, inside the box so the
+        // bars and fill run through them (the same construction as a code
+        // block's padding).
+        let padding = config.blockquote.padding ?? 0
+        let content = NSRange(location: contentStart, length: end - start)
+        var box = content
+        if padding > 0 {
+            output.insert(spacer(height: padding), at: contentStart)
+            box.length += 1
+            ParagraphStyleHelpers.ensureTrailingNewline(in: output)
+            output.append(spacer(height: padding))
+            box.length = output.length - box.location
+        }
+
+        applyBlockAttributes(to: output, range: box, levels: levels)
+        applyParagraphLayout(to: output, range: box, depth: depth, padding: padding)
 
         if depth == 0, let marginBottom = config.blockquote.marginBottom, marginBottom > 0 {
             ParagraphStyleHelpers.applyBlockSpacingAfter(to: output, marginBottom: marginBottom)
         }
+    }
+
+    private func spacer(height: CGFloat) -> NSAttributedString {
+        NSAttributedString(string: "\n", attributes: [
+            .paragraphStyle: ParagraphStyleHelpers.spacerParagraphStyle(height: height),
+            MarkdownAttribute.blockquoteSpacer: true
+        ])
     }
 
     /// Depth, background, and bar colors on every run the quote owns; runs a
@@ -108,11 +129,17 @@ final class BlockquoteRenderer: NodeRenderer {
         }
     }
 
-    /// Indents the quote's own paragraphs past the bars and applies the
-    /// configured line height. List items position themselves (their indent
-    /// already includes the quote offset) and nested quotes are already laid
-    /// out, so both are skipped.
-    private func applyParagraphLayout(to output: NSMutableAttributedString, range: NSRange, depth: Int) {
+    /// Indents the quote's own paragraphs past the bars, insets their
+    /// trailing edge by the padding, and applies the configured line height.
+    /// List items position themselves (their indent already includes the
+    /// quote offset) and only take the trailing inset; nested quotes and
+    /// padding spacers are already laid out, so both are skipped.
+    private func applyParagraphLayout(
+        to output: NSMutableAttributedString,
+        range: NSRange,
+        depth: Int,
+        padding: CGFloat
+    ) {
         let levelSpacing = (config.blockquote.borderWidth ?? 3) + (config.blockquote.gapWidth ?? 16)
         let indent = CGFloat(depth + 1) * levelSpacing
         let string = output.string as NSString
@@ -126,11 +153,19 @@ final class BlockquoteRenderer: NodeRenderer {
             location = NSMaxRange(applyRange)
 
             let attrs = output.attributes(at: applyRange.location, effectiveRange: nil)
-            if attrs[MarkdownAttribute.listDepth] != nil {
+            if attrs[MarkdownAttribute.blockquoteSpacer] != nil {
                 continue
             }
             if let paragraphDepth = MarkdownAttributeValue.intValue(from: attrs[MarkdownAttribute.blockquoteDepth]),
                paragraphDepth > depth {
+                continue
+            }
+            if attrs[MarkdownAttribute.listDepth] != nil {
+                if padding > 0 {
+                    let style = ParagraphStyleHelpers.getOrCreateParagraphStyle(in: output, at: applyRange.location)
+                    style.tailIndent = -padding
+                    output.addAttribute(.paragraphStyle, value: style, range: applyRange)
+                }
                 continue
             }
 
@@ -142,7 +177,7 @@ final class BlockquoteRenderer: NodeRenderer {
             let style = ParagraphStyleHelpers.getOrCreateParagraphStyle(in: output, at: applyRange.location)
             style.firstLineHeadIndent = paragraphIndent
             style.headIndent = paragraphIndent
-            style.tailIndent = 0
+            style.tailIndent = -padding
             output.addAttribute(.paragraphStyle, value: style, range: applyRange)
 
             if let lineHeight = config.blockquote.lineHeight {

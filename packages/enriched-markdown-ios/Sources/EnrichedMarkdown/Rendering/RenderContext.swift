@@ -41,6 +41,10 @@ enum MarkdownAttribute {
     /// Present on an admonition's title paragraph; the value is the type's
     /// raw string. The title's head indent reserves the icon column.
     static let admonitionHeader = NSAttributedString.Key("EnrichedMarkdownAdmonitionHeader")
+    /// Present on the empty paragraphs a quote's `padding` adds above its
+    /// first and below its last paragraph. They carry the quote's depth and
+    /// colors so the bars and fill run through them, but no text layout.
+    static let blockquoteSpacer = NSAttributedString.Key("EnrichedMarkdownBlockquoteSpacer")
     static let listDepth = NSAttributedString.Key("EnrichedMarkdownListDepth")
     static let listType = NSAttributedString.Key("EnrichedMarkdownListType")
     static let listItemNumber = NSAttributedString.Key("EnrichedMarkdownListItemNumber")

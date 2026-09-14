@@ -13,6 +13,7 @@ public struct Blockquote: MarkdownThemeElement, BackgroundThemeElement {
     public var textAlignment: TextAlignment?
     public var borderWidth: CGFloat?
     public var gapWidth: CGFloat?
+    public var padding: CGFloat?
 
     public init() {}
 
@@ -40,6 +41,14 @@ public struct Blockquote: MarkdownThemeElement, BackgroundThemeElement {
         return copy
     }
 
+    /// Inner padding above, below, and after the quoted content, at every
+    /// nesting level; the leading inset stays `gapWidth`. Admonitions share it.
+    public func padding(_ value: CGFloat) -> Self {
+        var copy = self
+        copy.padding = value
+        return copy
+    }
+
     public func apply(to config: inout MarkdownStyleConfig, traitCollection: UITraitCollection) {
         if fontSpec != nil || fontWeight != nil || fontDesign != nil {
             config.blockquote.font = ThemeResolver.applyFont(
@@ -62,5 +71,6 @@ public struct Blockquote: MarkdownThemeElement, BackgroundThemeElement {
         if let lineHeight { config.blockquote.lineHeight = lineHeight }
         if let borderWidth { config.blockquote.borderWidth = borderWidth }
         if let gapWidth { config.blockquote.gapWidth = gapWidth }
+        if let padding { config.blockquote.padding = padding }
     }
 }

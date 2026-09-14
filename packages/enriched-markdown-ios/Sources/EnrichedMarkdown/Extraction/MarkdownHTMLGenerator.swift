@@ -273,10 +273,20 @@ enum MarkdownHTMLGenerator {
             ?? (root ? styles.blockquoteBgColor : nil)
         var style = background.map { "background-color: \($0); " } ?? ""
         style += "border-inline-start: \(styles.blockquoteBorderWidth)px solid \(borderColor); "
+        // A configured padding wraps every level like the native renderer;
+        // otherwise the root keeps its fixed vertical padding and nested
+        // quotes only the leading gap.
+        let gap = styles.blockquoteGapWidth
+        if let padding = styles.blockquotePadding {
+            style += "padding: \(padding)px \(padding)px \(padding)px \(gap)px; "
+        } else {
+            style += root
+                ? "padding: \(Fixed.blockquotePaddingVertical) \(gap)px; "
+                : "padding-inline-start: \(gap)px; "
+        }
         style += root
-            ? "padding: \(Fixed.blockquotePaddingVertical) \(styles.blockquoteGapWidth)px; "
-                + "margin: 0 0 \(styles.blockquoteMarginBottom)px 0; \(Fixed.blockquoteBorderRadiusCorners);"
-            : "padding-inline-start: \(styles.blockquoteGapWidth)px; margin: \(Fixed.blockquoteNestedMargin);"
+            ? "margin: 0 0 \(styles.blockquoteMarginBottom)px 0; \(Fixed.blockquoteBorderRadiusCorners);"
+            : "margin: \(Fixed.blockquoteNestedMargin);"
         return "<blockquote style=\"\(style)\">"
     }
 

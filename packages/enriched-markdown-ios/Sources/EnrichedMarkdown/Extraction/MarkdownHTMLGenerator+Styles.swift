@@ -23,6 +23,8 @@ extension MarkdownHTMLGenerator {
         let blockquoteBorderColor: String
         let blockquoteBorderWidth: Int
         let blockquoteGapWidth: Int
+        /// nil when the theme sets none; the generator then uses its fixed vertical padding.
+        let blockquotePadding: Int?
         let blockquoteMarginBottom: Int
         let blockquoteFontSize: Int
 
@@ -80,6 +82,7 @@ extension MarkdownHTMLGenerator {
             blockquoteBorderColor = cssColor(config.blockquote.borderColor)
             blockquoteBorderWidth = Int(config.blockquote.borderWidth ?? 0)
             blockquoteGapWidth = Int(config.blockquote.gapWidth ?? 0)
+            blockquotePadding = config.blockquote.padding.map { Int($0) }
             blockquoteMarginBottom = Int(config.blockquote.marginBottom ?? 0)
             blockquoteFontSize = config.blockquote.font.map { Int($0.pointSize) } ?? bodySize
 

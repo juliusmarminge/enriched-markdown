@@ -658,6 +658,50 @@ final class RendererTests: XCTestCase {
         XCTAssertLessThan(outerRange.location, nestedRange.location)
     }
 
+    func testBlockquotePaddingWrapsContentInSpacersAndInsetsTrailingEdge() {
+        var padded = config!
+        padded.blockquote.padding = 12
+        let result = MarkdownRenderer.render("> quote text", config: padded)
+
+        var spacers: [(NSRange, NSParagraphStyle?)] = []
+        let whole = NSRange(location: 0, length: result.length)
+        result.enumerateAttribute(MarkdownAttribute.blockquoteSpacer, in: whole) { value, range, _ in
+            guard value != nil else { return }
+            let style = result.attribute(.paragraphStyle, at: range.location, effectiveRange: nil)
+            spacers.append((range, style as? NSParagraphStyle))
+        }
+        let textLocation = (result.string as NSString).range(of: "quote text").location
+
+        XCTAssertEqual(spacers.count, 2)
+        XCTAssertLessThan(spacers[0].0.location, textLocation)
+        XCTAssertGreaterThan(spacers[1].0.location, textLocation)
+        for (range, style) in spacers {
+            XCTAssertEqual(style?.minimumLineHeight, 12)
+            XCTAssertEqual(style?.maximumLineHeight, 12)
+            let depth = result.attribute(MarkdownAttribute.blockquoteDepth, at: range.location, effectiveRange: nil)
+            XCTAssertEqual(
+                MarkdownAttributeValue.intValue(from: depth),
+                0,
+                "spacers carry the quote's depth so its bar and fill cover them"
+            )
+        }
+        let textStyle = result.attribute(.paragraphStyle, at: textLocation, effectiveRange: nil) as? NSParagraphStyle
+        XCTAssertEqual(textStyle?.tailIndent, -12)
+    }
+
+    func testBlockquoteWithoutPaddingAddsNoSpacers() {
+        let result = MarkdownRenderer.render("> quote text", config: config)
+        var spacers = 0
+        let whole = NSRange(location: 0, length: result.length)
+        result.enumerateAttribute(MarkdownAttribute.blockquoteSpacer, in: whole) { value, _, _ in
+            if value != nil { spacers += 1 }
+        }
+        XCTAssertEqual(spacers, 0)
+        let textLocation = (result.string as NSString).range(of: "quote text").location
+        let textStyle = result.attribute(.paragraphStyle, at: textLocation, effectiveRange: nil) as? NSParagraphStyle
+        XCTAssertEqual(textStyle?.tailIndent, 0)
+    }
+
     func testBlockquoteDepthAttributeIsReadableAsInteger() {
         let result = MarkdownRenderer.render("> quote", config: config)
         var foundDepth = false

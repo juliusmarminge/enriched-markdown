@@ -204,6 +204,10 @@ public struct BlockquoteStyle: Equatable, Sendable {
     public var borderColor: UIColor?
     public var borderWidth: CGFloat?
     public var gapWidth: CGFloat?
+    /// Inner padding between the box and its content: above the first and
+    /// below the last paragraph, and along the trailing edge, at every
+    /// nesting level. The leading inset stays `gapWidth`.
+    public var padding: CGFloat?
     /// Per-type colors for `> [!NOTE]`-style alerts (`Md4cFlags(admonitions: true)`).
     public var admonitions: [AdmonitionType: AdmonitionStyle]
 
@@ -217,6 +221,7 @@ public struct BlockquoteStyle: Equatable, Sendable {
         borderColor: UIColor? = nil,
         borderWidth: CGFloat? = nil,
         gapWidth: CGFloat? = nil,
+        padding: CGFloat? = nil,
         admonitions: [AdmonitionType: AdmonitionStyle] = [:]
     ) {
         self.font = font
@@ -228,6 +233,7 @@ public struct BlockquoteStyle: Equatable, Sendable {
         self.borderColor = borderColor
         self.borderWidth = borderWidth
         self.gapWidth = gapWidth
+        self.padding = padding
         self.admonitions = admonitions
     }
 
@@ -241,6 +247,7 @@ public struct BlockquoteStyle: Equatable, Sendable {
         borderColor = other.borderColor ?? borderColor
         borderWidth = other.borderWidth ?? borderWidth
         gapWidth = other.gapWidth ?? gapWidth
+        padding = other.padding ?? padding
         for (type, style) in other.admonitions {
             admonitions[type, default: AdmonitionStyle()].merge(style)
         }

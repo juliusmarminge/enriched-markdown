@@ -67,6 +67,19 @@ final class AdmonitionRenderingTests: XCTestCase {
         XCTAssertEqual(body[.font] as? UIFont, config.blockquote.font)
     }
 
+    func testPaddingSpacerPrecedesTitleAndCarriesTint() {
+        var padded = config!
+        padded.blockquote.padding = 10
+        let result = render("> [!NOTE]\n> body", config: padded)
+        let titleLocation = (result.string as NSString).range(of: "Note").location
+
+        XCTAssertGreaterThan(titleLocation, 0)
+        let spacer = result.attributes(at: titleLocation - 1, effectiveRange: nil)
+        XCTAssertNotNil(spacer[MarkdownAttribute.blockquoteSpacer])
+        XCTAssertEqual(spacer[MarkdownAttribute.blockquoteBarColors] as? [UIColor], [tint(.note)])
+        XCTAssertEqual(paragraphStyle(onWord: "body", in: result)?.tailIndent, -10)
+    }
+
     func testTitleReservesIconColumnAndGapBeforeBody() {
         let result = render("> [!NOTE]\n> body")
         let titleStyle = paragraphStyle(onWord: "Note", in: result)
