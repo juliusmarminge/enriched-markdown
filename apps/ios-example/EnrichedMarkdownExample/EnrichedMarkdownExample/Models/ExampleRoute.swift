@@ -3,6 +3,7 @@ enum ExampleRoute {
     case playground
     case text
     case article
+    case whatsNew
     case math
     case input
     case stream
@@ -14,6 +15,7 @@ enum ExampleRoute {
         case .playground: return "Playground"
         case .text: return "Text"
         case .article: return "Article"
+        case .whatsNew: return "What's New"
         case .math: return "Math"
         case .input: return "Input"
         case .stream: return "Stream"

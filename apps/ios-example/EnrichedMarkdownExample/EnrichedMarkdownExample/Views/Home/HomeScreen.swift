@@ -31,6 +31,13 @@ private let menuItems: [HomeMenuItem] = [
         accessibilityId: "home-block-article"
     ),
     HomeMenuItem(
+        route: .whatsNew,
+        label: "What's New",
+        subtext: "LaTeX, highlights, spoilers and admonitions",
+        color: .brandNavy,
+        accessibilityId: "home-block-whats-new"
+    ),
+    HomeMenuItem(
         route: .math,
         label: "Math",
         subtext: "LaTeX math rendering",

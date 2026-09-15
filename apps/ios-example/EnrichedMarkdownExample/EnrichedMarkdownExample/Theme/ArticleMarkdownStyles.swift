@@ -212,12 +212,24 @@ func ArticleMarkdownTheme(_ palette: ArticlePalette, figureHeight: CGFloat) -> M
         InlineMath()
             .foregroundStyle(palette.body)
 
+        articleMarks(palette)
+    }
+}
+
+/// Inline marks: the highlighter's wash and the spoiler's veil.
+private func articleMarks(_ palette: ArticlePalette) -> MarkdownThemeGroup {
+    MarkdownThemeGroup(contents: [
         // The wash is painted over the whole 30pt line box, so it stays one
         // step from the paper; the deepened ink does the emphasizing.
         Highlight()
             .foregroundStyle(palette.highlightInk)
-            .background(palette.highlight)
-    }
+            .background(palette.highlight),
+        // Cobalt particles over the paper until tapped; the text underneath
+        // keeps the paragraph's serif once revealed.
+        Spoiler()
+            .color(palette.accent)
+            .background(palette.paper)
+    ])
 }
 
 /// Grotesk section heads against serif prose: the heading is a label for

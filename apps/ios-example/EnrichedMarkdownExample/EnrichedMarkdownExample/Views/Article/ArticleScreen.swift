@@ -4,8 +4,8 @@ import SafariServices
 import SwiftUI
 
 /// Long-form article rendered entirely from markdown — prose, LaTeX math, a
-/// figure, GitHub alerts, a table and a code block — to show the library
-/// carrying a real document rather than a feature checklist.
+/// figure, GitHub alerts, a spoiler, a table and a code block — to show the
+/// library carrying a real document rather than a feature checklist.
 ///
 /// The masthead and the colophon are SwiftUI; everything between them is a
 /// single `EnrichedMarkdownText`, on the same cool paper and the same 30pt

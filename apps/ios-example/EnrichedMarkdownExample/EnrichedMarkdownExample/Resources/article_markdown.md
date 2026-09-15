@@ -24,6 +24,8 @@ That is the wave equation, and its speed is pinned by two constants that were fi
 
 $$c = \frac{1}{\sqrt{\mu_0 \varepsilon_0}} \approx 2.998 \times 10^8 \ \mathrm{m\,s^{-1}}$$
 
+Weber and Kohlrausch had measured that ratio in 1856, from the discharge of a Leyden jar, and got ||3.107 × 10⁸ m/s — within four percent of the speed of light||. Maxwell saw the coincidence and refused to call it one.
+
 > [!NOTE]
 > Inside matter the constants become $\varepsilon$ and $\mu$, and the same derivation gives a slower wave, $c/n$. The refractive index is Maxwell's equations reading out the medium.
 
