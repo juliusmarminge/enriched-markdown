@@ -1,4 +1,5 @@
 import React from 'react';
+import clsx from 'clsx';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import CodeBlock from '@theme/CodeBlock';
 import ExampleControls, {
@@ -12,6 +13,12 @@ import styles from './styles.module.css';
 // the alias in docusaurus.config.js. It runs client-side only (BrowserOnly)
 // because that build injects a <style> into document.head at module eval,
 // which would crash server-side rendering during `yarn build`.
+//
+// Both panes stay mounted and the inactive one is hidden with CSS rather than
+// conditionally unmounted, so the example source (the Code pane's CodeBlock) is
+// always present in the server-rendered HTML. Crawlers and HTML-to-markdown /
+// LLM tooling never run the client-only Preview or click the Code tab, so a
+// conditionally-mounted CodeBlock would be invisible to them.
 
 interface Props {
   /** Raw source of the example, imported via `!!raw-loader!`. Shown in Code. */
@@ -56,23 +63,20 @@ export default function InteractiveExample({
         onReset={isLive ? () => setResetKey((key) => key + 1) : undefined}
       />
 
-      {tab === 'preview' ? (
-        <div className={styles.preview}>
-          {isLive ? (
-            <BrowserOnly
-              fallback={<div className={styles.loading}>Loading...</div>}
-            >
-              {() => <Component key={resetKey} />}
-            </BrowserOnly>
-          ) : (
-            <ComingSoon />
-          )}
-        </div>
-      ) : (
-        <div className={styles.code}>
-          <CodeBlock language="tsx">{src.trim()}</CodeBlock>
-        </div>
-      )}
+      <div className={clsx(styles.preview, tab !== 'preview' && styles.hidden)}>
+        {isLive ? (
+          <BrowserOnly
+            fallback={<div className={styles.loading}>Loading...</div>}
+          >
+            {() => <Component key={resetKey} />}
+          </BrowserOnly>
+        ) : (
+          <ComingSoon />
+        )}
+      </div>
+      <div className={clsx(styles.code, tab !== 'code' && styles.hidden)}>
+        <CodeBlock language="tsx">{src.trim()}</CodeBlock>
+      </div>
     </div>
   );
 }

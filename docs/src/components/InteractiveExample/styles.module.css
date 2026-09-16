@@ -7,6 +7,12 @@
   overflow: hidden;
 }
 
+/* The inactive pane stays in the DOM (so the example source is always in the
+   server-rendered HTML) but is removed from layout. */
+.hidden {
+  display: none;
+}
+
 /* The example switches its own text colors on color scheme (react-native
    useColorScheme, synced to the site theme in Root.js), so the canvas follows
    the theme too: light off-white in light mode, a lifted off-navy card in dark
