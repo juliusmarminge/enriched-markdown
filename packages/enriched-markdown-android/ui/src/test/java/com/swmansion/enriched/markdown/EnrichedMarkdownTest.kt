@@ -88,6 +88,20 @@ class EnrichedMarkdownTest {
   }
 
   @Test
+  fun childAdoptsTheRenderedBufferWithoutCopyingIt() {
+    val segments = MarkdownSegmentRenderer.render(splitASTIntoSegments(mixedBlocks), defaultStyle, context)
+    val rendered = segments[0] as RenderedSegment.Text
+
+    val container = EnrichedMarkdown(context)
+    container.applyRenderedSegments(segments)
+    val child = container.getChildAt(0) as EnrichedMarkdownInternalText
+
+    // Freezing the buffer into a SpannableString costs a span copy quadratic in
+    // span count, so the view is set up to adopt the rendered one verbatim.
+    assertSame(rendered.styledText, child.text)
+  }
+
+  @Test
   fun containerContributesNoStrayMarginToHeight() {
     documents.forEach { (document, _) ->
       val segments = MarkdownSegmentRenderer.render(splitASTIntoSegments(document), defaultStyle, context)

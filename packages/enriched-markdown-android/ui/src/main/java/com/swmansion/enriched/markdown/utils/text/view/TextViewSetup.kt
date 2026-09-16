@@ -2,13 +2,30 @@ package com.swmansion.enriched.markdown.utils.text.view
 
 import android.graphics.Color
 import android.os.Build
+import android.text.Spannable
+import android.text.SpannableString
 import android.view.textclassifier.TextClassifier
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.ViewCompat
 import com.swmansion.enriched.markdown.accessibility.AccessibleMarkdownTextView
 
+/**
+ * Hands the rendered buffer to [TextView][android.widget.TextView] as-is.
+ *
+ * The default factory copies the text into a fresh `SpannableString` on every
+ * `setText`, and `SpannableString.setSpan` scans the spans it already holds
+ * before appending, so that copy costs O(spans^2) - tens of milliseconds of main
+ * thread time for a long document. `Renderer` builds a private buffer per
+ * segment and nothing else holds a reference to it, so the view can adopt it
+ * without a defensive copy.
+ */
+private object NoCopySpannableFactory : Spannable.Factory() {
+  override fun newSpannable(source: CharSequence): Spannable = source as? Spannable ?: SpannableString(source)
+}
+
 fun AccessibleMarkdownTextView.setupAsMarkdownTextView() {
   setBackgroundColor(Color.TRANSPARENT)
+  setSpannableFactory(NoCopySpannableFactory)
   includeFontPadding = false
   movementMethod = LinkLongPressMovementMethod.createInstance()
   setTextIsSelectable(true)

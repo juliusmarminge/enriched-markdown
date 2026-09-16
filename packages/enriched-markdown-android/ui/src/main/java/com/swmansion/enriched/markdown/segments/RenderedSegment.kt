@@ -1,7 +1,7 @@
 package com.swmansion.enriched.markdown.segments
 
 import android.content.Context
-import android.text.SpannableString
+import android.text.Spannable
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.renderer.Renderer
 import com.swmansion.enriched.markdown.spans.ImageSpan
@@ -11,7 +11,7 @@ sealed interface RenderedSegment {
   val signature: Long
 
   data class Text(
-    val styledText: SpannableString,
+    val styledText: Spannable,
     val imageSpans: List<ImageSpan>,
     val needsJustify: Boolean,
     val lastElementMarginBottom: Float,
