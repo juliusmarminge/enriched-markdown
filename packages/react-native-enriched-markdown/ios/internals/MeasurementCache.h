@@ -42,23 +42,28 @@ struct MeasurementCacheKey {
   bool md4cFlagsLatexMath;
   bool md4cFlagsHardSoftBreaks;
   bool md4cFlagsPreserveBlankLines;
+  bool md4cFlagsAdmonitions;
   size_t styleFingerprint;
   CGFloat fontScale;
   MarkdownFlavor flavor;
   std::string lineBreakStrategyIOS;
   std::string writingDirection;
+  int numberOfLines;
+  std::string ellipsizeMode;
 
   bool operator==(const MeasurementCacheKey &other) const
   {
     return std::tie(markdown, maxWidth, allowTrailingMargin, allowFontScaling, maxFontSizeMultiplier,
                     md4cFlagsUnderline, md4cFlagsSuperscript, md4cFlagsSubscript, md4cFlagsHighlight,
-                    md4cFlagsLatexMath, md4cFlagsHardSoftBreaks, md4cFlagsPreserveBlankLines, styleFingerprint,
-                    fontScale, flavor, lineBreakStrategyIOS, writingDirection) ==
+                    md4cFlagsLatexMath, md4cFlagsHardSoftBreaks, md4cFlagsPreserveBlankLines, md4cFlagsAdmonitions,
+                    styleFingerprint, fontScale, flavor, lineBreakStrategyIOS, writingDirection, numberOfLines,
+                    ellipsizeMode) ==
            std::tie(other.markdown, other.maxWidth, other.allowTrailingMargin, other.allowFontScaling,
                     other.maxFontSizeMultiplier, other.md4cFlagsUnderline, other.md4cFlagsSuperscript,
                     other.md4cFlagsSubscript, other.md4cFlagsHighlight, other.md4cFlagsLatexMath,
-                    other.md4cFlagsHardSoftBreaks, other.md4cFlagsPreserveBlankLines, other.styleFingerprint,
-                    other.fontScale, other.flavor, other.lineBreakStrategyIOS, other.writingDirection);
+                    other.md4cFlagsHardSoftBreaks, other.md4cFlagsPreserveBlankLines, other.md4cFlagsAdmonitions,
+                    other.styleFingerprint, other.fontScale, other.flavor, other.lineBreakStrategyIOS,
+                    other.writingDirection, other.numberOfLines, other.ellipsizeMode);
   }
 };
 
@@ -78,11 +83,14 @@ struct MeasurementCacheKeyHash {
     HashUtils::hash_one(h, key.md4cFlagsLatexMath);
     HashUtils::hash_one(h, key.md4cFlagsHardSoftBreaks);
     HashUtils::hash_one(h, key.md4cFlagsPreserveBlankLines);
+    HashUtils::hash_one(h, key.md4cFlagsAdmonitions);
     HashUtils::hash_one(h, key.styleFingerprint);
     HashUtils::hash_one(h, key.fontScale);
     HashUtils::hash_one(h, static_cast<uint8_t>(key.flavor));
     HashUtils::hash_one(h, key.lineBreakStrategyIOS);
     HashUtils::hash_one(h, key.writingDirection);
+    HashUtils::hash_one(h, key.numberOfLines);
+    HashUtils::hash_one(h, key.ellipsizeMode);
     return h;
   }
 };
@@ -134,6 +142,8 @@ template <typename StyleStruct> inline size_t computeStyleFingerprint(const Styl
 
   // Visual/Spacing Elements
   hashFields(s.image.height, s.image.maxHeight, s.image.aspectRatio, s.image.marginTop, s.image.marginBottom);
+  hashFields(s.video.marginTop, s.video.marginBottom, s.video.borderRadius, s.video.aspectRatio,
+             s.video.backgroundColor);
   hashFields(s.inlineImage.size);
   hashFields(s.thematicBreak.height, s.thematicBreak.marginTop, s.thematicBreak.marginBottom);
 
@@ -164,11 +174,14 @@ inline MeasurementCacheKey buildMeasurementCacheKey(const PropsType &props, CGFl
       .md4cFlagsLatexMath = props.md4cFlags.latexMath,
       .md4cFlagsHardSoftBreaks = props.md4cFlags.hardSoftBreaks,
       .md4cFlagsPreserveBlankLines = props.md4cFlags.preserveBlankLines,
+      .md4cFlagsAdmonitions = props.md4cFlags.admonitions,
       .styleFingerprint = computeStyleFingerprint(props.markdownStyle),
       .fontScale = fontScale,
       .flavor = flavor,
       .lineBreakStrategyIOS = props.lineBreakStrategyIOS,
       .writingDirection = props.writingDirection,
+      .numberOfLines = props.numberOfLines,
+      .ellipsizeMode = props.ellipsizeMode,
   };
 }
 

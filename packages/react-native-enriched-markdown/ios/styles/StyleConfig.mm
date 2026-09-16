@@ -145,6 +145,12 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   CGFloat _imageMarginTop;
   CGFloat _imageMarginBottom;
   NSDictionary<NSString *, NSString *> *_imageRequestHeaders;
+  // Video properties
+  CGFloat _videoMarginTop;
+  CGFloat _videoMarginBottom;
+  CGFloat _videoBorderRadius;
+  CGFloat _videoAspectRatio;
+  RCTUIColor *_videoBackgroundColor;
   // Inline image properties
   CGFloat _inlineImageSize;
   // Blockquote properties
@@ -161,6 +167,9 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   RCTUIColor *_blockquoteBackgroundColor;
   CGFloat _blockquoteBorderRadius;
   CGFloat _blockquotePadding;
+  // Per-admonition-type colors keyed by type ("note"/"tip"/…). Empty until set.
+  NSDictionary<NSString *, RCTUIColor *> *_admonitionColors;
+  NSDictionary<NSString *, RCTUIColor *> *_admonitionBackgroundColors;
   ENRMFontSlot *_blockquoteFont;
   // List style properties (combined for both ordered and unordered lists)
   CGFloat _listStyleFontSize;
@@ -286,6 +295,8 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
     _primaryFont, _paragraphFont, _h1Font, _h2Font, _h3Font, _h4Font, _h5Font, _h6Font, _listMarkerFont, _listStyleFont,
     _codeBlockFont, _blockquoteFont, _tableFont, _tableHeaderFont
   ];
+  _admonitionColors = @{};
+  _admonitionBackgroundColors = @{};
   return self;
 }
 
@@ -427,6 +438,11 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   copy->_imageMarginTop = _imageMarginTop;
   copy->_imageMarginBottom = _imageMarginBottom;
   copy->_imageRequestHeaders = [_imageRequestHeaders copy];
+  copy->_videoMarginTop = _videoMarginTop;
+  copy->_videoMarginBottom = _videoMarginBottom;
+  copy->_videoBorderRadius = _videoBorderRadius;
+  copy->_videoAspectRatio = _videoAspectRatio;
+  copy->_videoBackgroundColor = [_videoBackgroundColor copy];
   copy->_inlineImageSize = _inlineImageSize;
   copy->_blockquoteFontSize = _blockquoteFontSize;
   copy->_blockquoteFontFamily = [_blockquoteFontFamily copy];
@@ -441,6 +457,8 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   copy->_blockquoteBackgroundColor = [_blockquoteBackgroundColor copy];
   copy->_blockquoteBorderRadius = _blockquoteBorderRadius;
   copy->_blockquotePadding = _blockquotePadding;
+  copy->_admonitionColors = [_admonitionColors copy];
+  copy->_admonitionBackgroundColors = [_admonitionBackgroundColors copy];
   copy->_listStyleFontSize = _listStyleFontSize;
   copy->_listStyleFontFamily = [_listStyleFontFamily copy];
   copy->_listStyleFontWeight = [_listStyleFontWeight copy];
@@ -1599,6 +1617,56 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   _imageRequestHeaders = [newValue copy];
 }
 
+- (CGFloat)videoMarginTop
+{
+  return _videoMarginTop;
+}
+
+- (void)setVideoMarginTop:(CGFloat)newValue
+{
+  _videoMarginTop = newValue;
+}
+
+- (CGFloat)videoMarginBottom
+{
+  return _videoMarginBottom;
+}
+
+- (void)setVideoMarginBottom:(CGFloat)newValue
+{
+  _videoMarginBottom = newValue;
+}
+
+- (CGFloat)videoBorderRadius
+{
+  return _videoBorderRadius;
+}
+
+- (void)setVideoBorderRadius:(CGFloat)newValue
+{
+  _videoBorderRadius = newValue;
+}
+
+- (CGFloat)videoAspectRatio
+{
+  return _videoAspectRatio;
+}
+
+- (void)setVideoAspectRatio:(CGFloat)newValue
+{
+  _videoAspectRatio = newValue;
+}
+
+- (RCTUIColor *)videoBackgroundColor
+{
+  return _videoBackgroundColor;
+}
+
+- (void)setVideoBackgroundColor:(RCTUIColor *)newValue
+{
+  _videoBackgroundColor = newValue;
+}
+
 - (CGFloat)inlineImageSize
 {
   return _inlineImageSize;
@@ -1759,6 +1827,28 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
 - (void)setBlockquotePadding:(CGFloat)newValue
 {
   _blockquotePadding = newValue;
+}
+
+- (void)setAdmonitionColors:(NSDictionary<NSString *, RCTUIColor *> *)colors
+           backgroundColors:(NSDictionary<NSString *, RCTUIColor *> *)backgroundColors
+{
+  _admonitionColors = [colors copy];
+  _admonitionBackgroundColors = [backgroundColors copy];
+}
+
+// The tint (border + title + icon) for an admonition type; falls back to the
+// base blockquote border color if the type was never configured.
+- (RCTUIColor *)admonitionColorForType:(NSString *)type
+{
+  RCTUIColor *color = _admonitionColors[type];
+  return color ?: _blockquoteBorderColor;
+}
+
+// The callout fill for an admonition type; clear (no fill) when unset.
+- (RCTUIColor *)admonitionBackgroundColorForType:(NSString *)type
+{
+  RCTUIColor *color = _admonitionBackgroundColors[type];
+  return color ?: [RCTUIColor clearColor];
 }
 
 // List style properties (combined for both ordered and unordered lists)

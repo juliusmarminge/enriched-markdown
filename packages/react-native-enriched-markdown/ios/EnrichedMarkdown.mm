@@ -4,6 +4,7 @@
 #import "ENRMAsyncRenderCoordinator.h"
 #import "ENRMAtomicSize.h"
 #import "ENRMImageAttachment.h"
+#import "ENRMLatexErrorCoordinator.h"
 #import "ENRMMarkdownParser.h"
 #import "ENRMTailFadeInAnimator.h"
 #import "ENRMTextInteractionUtils.h"
@@ -18,7 +19,12 @@
 #if ENRICHED_MARKDOWN_MATH
 #import "ENRMMathContainerView.h"
 #endif
+#if ENRICHED_MARKDOWN_VIDEO
+#import "ENRMVideoContainerView.h"
+#endif
+#import "ENRMBlockquoteContainerView.h"
 #import "ENRMCodeBlockContainerView.h"
+#import "ENRMDynamicBlockProps.h"
 #import "ENRMSpoilerCapable.h"
 #import "ENRMSpoilerOverlayView.h"
 #import "ENRMSpoilerTapUtils.h"
@@ -33,6 +39,7 @@
 #import "MarkdownExtractor.h"
 #import "MeasurementCache.h"
 #import "ParagraphStyleUtils.h"
+#import "RenderContext.h"
 #import "RenderedMarkdownSegment.h"
 #import "RuntimeKeys.h"
 #import "SegmentReconciler.h"
@@ -76,11 +83,11 @@ static char kENRMSegmentFadeAnimatorKey;
 - (void)emitImagePress:(NSString *)url altText:(NSString *)altText;
 - (void)emitTaskListItemPress:(NSInteger)index checked:(BOOL)checked text:(NSString *)text;
 - (void)emitCopyPress:(NSString *)code language:(NSString *)language;
+- (void)emitCodeBlockPress:(NSString *)code language:(NSString *)language;
 - (void)emitContextMenuItemPress:(NSString *)itemText
                     selectedText:(NSString *)selectedText
                   selectionStart:(NSUInteger)selectionStart
                     selectionEnd:(NSUInteger)selectionEnd;
-- (void)pushBlockContextMenuToSegments;
 @end
 
 @implementation EnrichedMarkdown {
@@ -90,6 +97,7 @@ static char kENRMSegmentFadeAnimatorKey;
   BOOL _isGFM;
   NSString *_cachedMarkdown;
   NSString *_renderedMarkdown;
+  ENRMLatexErrorCoordinator *_latexErrorCoordinator;
   NSMutableArray<RCTUIView *> *_segmentViews;
   NSMutableArray<NSNumber *> *_segmentSignatures;
   ENRMSegmentViewRegistry *_segmentViewRegistry;
@@ -108,7 +116,6 @@ static char kENRMSegmentFadeAnimatorKey;
   BOOL _enableLinkPreview;
   BOOL _enableTaskListItemToggle;
   BOOL _enableImagePress;
-  BOOL _enableBlockContextMenu;
   BOOL _streamingAnimation;
   ENRMTableStreamingMode _tableStreamingMode;
   ENRMCodeBlockStreamingMode _codeBlockStreamingMode;
@@ -123,6 +130,8 @@ static char kENRMSegmentFadeAnimatorKey;
   ENRMSelectionMenuConfig _selectionMenuConfig;
   ENRMAccessibilityLabels *_accessibilityLabels;
   ENRMSelectionMenuLabels _selectionMenuLabels;
+
+  ENRMDynamicBlockProps *_dynamicBlockProps;
 
   ENRMSpoilerOverlay _spoilerOverlay;
 
@@ -149,6 +158,7 @@ static char kENRMSegmentFadeAnimatorKey;
   flags.highlight = props.highlight;
   flags.hardSoftBreaks = props.hardSoftBreaks;
   flags.preserveBlankLines = props.preserveBlankLines;
+  flags.admonitions = props.admonitions;
   return flags;
 }
 
@@ -164,6 +174,22 @@ static char kENRMSegmentFadeAnimatorKey;
     _isGFM = defaultProps->isGFM;
     _segmentViews = [NSMutableArray array];
     _segmentSignatures = [NSMutableArray array];
+    __weak __typeof(self) weakLatexSelf = self;
+    _latexErrorCoordinator =
+        [[ENRMLatexErrorCoordinator alloc] initWithEmit:^BOOL(NSString *source, NSString *message, BOOL displayMode) {
+          __typeof(self) strongSelf = weakLatexSelf;
+          if (!strongSelf)
+            return NO;
+          auto emitter = std::static_pointer_cast<EnrichedMarkdownEventEmitter const>(strongSelf->_eventEmitter);
+          if (!emitter)
+            return NO;
+          emitter->onLatexError({
+              .source = std::string(source.UTF8String ?: ""),
+              .message = std::string(message.UTF8String ?: ""),
+              .displayMode = displayMode ? true : false,
+          });
+          return YES;
+        }];
     _dirtyFlags = ENRMDirtyNone;
     [self configureSegmentViewRegistry];
 
@@ -176,7 +202,7 @@ static char kENRMSegmentFadeAnimatorKey;
     _enableLinkPreview = YES;
     _enableTaskListItemToggle = YES;
     _enableImagePress = NO;
-    _enableBlockContextMenu = YES;
+    _dynamicBlockProps = [[ENRMDynamicBlockProps alloc] init];
     _streamingAnimation = NO;
     _tableStreamingMode = ENRMTableStreamingModeProgressive;
     _codeBlockStreamingMode = ENRMCodeBlockStreamingModeProgressive;
@@ -297,7 +323,85 @@ static char kENRMSegmentFadeAnimatorKey;
                             [codeBlockView applyCodeBlockNode:segment.codeBlockSegment.codeBlockNode];
                           }]];
 
+  [handlers addObject:[ENRMSegmentViewHandler handlerWithKind:ENRMSegmentKindBlockquote
+                          matchesView:^BOOL(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            return [view isKindOfClass:[ENRMBlockquoteContainerView class]];
+                          }
+                          createView:^RCTUIView *(ENRMRenderedSegment *segment) {
+                            EnrichedMarkdown *strongSelf = weakSelf;
+                            if (!strongSelf) {
+                              return [[RCTUIView alloc] init];
+                            }
+
+                            ENRMBlockquoteContainerView *view =
+                                [strongSelf createBlockquoteViewForSegment:segment.blockquoteSegment];
+                            [strongSelf animateBlockViewIfNeeded:view];
+                            return view;
+                          }
+                          updateView:^(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            [(ENRMBlockquoteContainerView *)view
+                                applyBlockquoteNode:segment.blockquoteSegment.blockquoteNode];
+                          }]];
+
+#if ENRICHED_MARKDOWN_VIDEO
+  [handlers addObject:[ENRMSegmentViewHandler handlerWithKind:ENRMSegmentKindVideo
+                          matchesView:^BOOL(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            return [view isKindOfClass:[ENRMVideoContainerView class]];
+                          }
+                          createView:^RCTUIView *(ENRMRenderedSegment *segment) {
+                            EnrichedMarkdown *strongSelf = weakSelf;
+                            if (!strongSelf) {
+                              return [[RCTUIView alloc] init];
+                            }
+
+                            ENRMVideoContainerView *view =
+                                [[ENRMVideoContainerView alloc] initWithConfig:strongSelf->_config];
+                            view.dynamicProps = strongSelf->_dynamicBlockProps;
+                            [view applyVideoNode:segment.videoSegment.videoNode];
+                            [strongSelf animateBlockViewIfNeeded:view];
+                            return view;
+                          }
+                          updateView:^(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            ENRMVideoContainerView *videoView = (ENRMVideoContainerView *)view;
+                            [videoView applyVideoNode:segment.videoSegment.videoNode];
+                            [videoView reapplyStyle];
+                          }]];
+#endif
+
   _segmentViewRegistry = [[ENRMSegmentViewRegistry alloc] initWithHandlers:handlers];
+}
+
+- (ENRMBlockquoteContainerView *)createBlockquoteViewForSegment:(ENRMBlockquoteSegment *)blockquoteSegment
+{
+  ENRMBlockquoteContainerView *view = [[ENRMBlockquoteContainerView alloc] initWithConfig:_config];
+  view.allowFontScaling = _fontScaleObserver.allowFontScaling;
+  view.lineBreakStrategy = _lineBreakStrategy;
+  view.dynamicProps = _dynamicBlockProps;
+
+  __weak EnrichedMarkdown *weakSelf = self;
+  view.onCopyPress = ^(NSString *code, NSString *language) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf)
+      [strongSelf emitCopyPress:code language:language];
+  };
+  view.onCodeBlockPress = ^(NSString *code, NSString *language) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf)
+      [strongSelf emitCodeBlockPress:code language:language];
+  };
+  view.onLinkPress = ^(NSString *url) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && url)
+      [strongSelf emitLinkPress:url];
+  };
+  view.onLinkLongPress = ^(NSString *url) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && url)
+      [strongSelf emitLinkLongPress:url];
+  };
+
+  [view applyBlockquoteNode:blockquoteSegment.blockquoteNode];
+  return view;
 }
 
 - (CGSize)computeSegmentLayoutForWidth:(CGFloat)width applyFrames:(BOOL)applyFrames
@@ -362,7 +466,18 @@ static char kENRMSegmentFadeAnimatorKey;
       yOffset += _config.codeBlockMarginTop;
       segmentHeight = [(ENRMCodeBlockContainerView *)segment measureHeight:width];
       maxContentWidth = width;
+    } else if ([segment isKindOfClass:[ENRMBlockquoteContainerView class]]) {
+      yOffset += _config.blockquoteMarginTop;
+      segmentHeight = [(ENRMBlockquoteContainerView *)segment measureHeight:width];
+      maxContentWidth = width;
     }
+#if ENRICHED_MARKDOWN_VIDEO
+    else if ([segment isKindOfClass:[ENRMVideoContainerView class]]) {
+      yOffset += _config.videoMarginTop;
+      segmentHeight = [(ENRMVideoContainerView *)segment measureHeight:width];
+      maxContentWidth = width;
+    }
+#endif
 
     if (applyFrames) {
       CGFloat segmentX = 0;
@@ -399,7 +514,14 @@ static char kENRMSegmentFadeAnimatorKey;
 #endif
     else if ([segment isKindOfClass:[ENRMCodeBlockContainerView class]] && shouldAddBottomMargin) {
       yOffset += _config.codeBlockMarginBottom;
+    } else if ([segment isKindOfClass:[ENRMBlockquoteContainerView class]] && shouldAddBottomMargin) {
+      yOffset += _config.blockquoteMarginBottom;
     }
+#if ENRICHED_MARKDOWN_VIDEO
+    else if ([segment isKindOfClass:[ENRMVideoContainerView class]] && shouldAddBottomMargin) {
+      yOffset += _config.videoMarginBottom;
+    }
+#endif
   }];
 
   return CGSizeMake(maxContentWidth, yOffset);
@@ -512,49 +634,6 @@ static char kENRMSegmentFadeAnimatorKey;
   }
 }
 
-// Table and math views cache the copy labels at creation time, so re-push them
-// on prop updates (e.g. a language change without a remount) to avoid stale
-// labels. Only the copy/copy-as-markdown labels apply to these block menus.
-- (void)pushSelectionMenuLabelsToSegments
-{
-  for (RCTUIView *segment in _segmentViews) {
-    if ([segment isKindOfClass:[TableContainerView class]]) {
-      TableContainerView *tableView = (TableContainerView *)segment;
-      tableView.copyLabel = _selectionMenuLabels.copyLabel;
-      tableView.copyAsMarkdownLabel = _selectionMenuLabels.copyAsMarkdownLabel;
-    }
-#if ENRICHED_MARKDOWN_MATH
-    else if ([segment isKindOfClass:[ENRMMathContainerView class]]) {
-      ENRMMathContainerView *mathView = (ENRMMathContainerView *)segment;
-      mathView.copyLabel = _selectionMenuLabels.copyLabel;
-      mathView.copyAsMarkdownLabel = _selectionMenuLabels.copyAsMarkdownLabel;
-    }
-#endif
-    else if ([segment isKindOfClass:[ENRMCodeBlockContainerView class]]) {
-      ENRMCodeBlockContainerView *codeBlockView = (ENRMCodeBlockContainerView *)segment;
-      codeBlockView.copyLabel = _selectionMenuLabels.copyLabel;
-      codeBlockView.copyAsMarkdownLabel = _selectionMenuLabels.copyAsMarkdownLabel;
-    }
-  }
-}
-
-- (void)pushBlockContextMenuToSegments
-{
-  for (RCTUIView *segment in _segmentViews) {
-    if ([segment isKindOfClass:[TableContainerView class]]) {
-      ((TableContainerView *)segment).enableBlockContextMenu = _enableBlockContextMenu;
-    }
-#if ENRICHED_MARKDOWN_MATH
-    else if ([segment isKindOfClass:[ENRMMathContainerView class]]) {
-      ((ENRMMathContainerView *)segment).enableBlockContextMenu = _enableBlockContextMenu;
-    }
-#endif
-    else if ([segment isKindOfClass:[ENRMCodeBlockContainerView class]]) {
-      ((ENRMCodeBlockContainerView *)segment).enableBlockContextMenu = _enableBlockContextMenu;
-    }
-  }
-}
-
 - (void)requestHeightUpdate
 {
   ENRMRequestHeightUpdate<EnrichedMarkdownState>(_state, _heightUpdateCounter, self);
@@ -622,7 +701,8 @@ static char kENRMSegmentFadeAnimatorKey;
           return NO;
 
         renderedSegments = ENRMRenderSegmentsFromAST(ast, config, allowTrailingMargin, allowFontScaling,
-                                                     maxFontSizeMultiplier, lineBreakStrategy);
+                                                     maxFontSizeMultiplier, lineBreakStrategy,
+                                                     /*blockquoteContent*/ NO);
         for (ENRMRenderedSegment *segment in renderedSegments) {
           if (segment.kind == ENRMSegmentKindText && segment.textResult) {
             ENRMApplyWritingDirectionMode(segment.textResult.attributedText, writingDirectionMode,
@@ -648,7 +728,7 @@ static char kENRMSegmentFadeAnimatorKey;
 
   NSArray<ENRMRenderedSegment *> *segments =
       ENRMRenderSegmentsFromAST(ast, _config, _allowTrailingMargin, _fontScaleObserver.allowFontScaling,
-                                _maxFontSizeMultiplier, _lineBreakStrategy);
+                                _maxFontSizeMultiplier, _lineBreakStrategy, /*blockquoteContent*/ NO);
   for (ENRMRenderedSegment *segment in segments) {
     if (segment.kind == ENRMSegmentKindText && segment.textResult) {
       ENRMApplyWritingDirectionMode(segment.textResult.attributedText, _writingDirectionMode, _resolvedLayoutDirection);
@@ -773,6 +853,7 @@ static char kENRMSegmentFadeAnimatorKey;
   view.accessibilityInfo = segment.accessibilityInfo;
   view.accessibilityLabels = _accessibilityLabels;
   view.textView.selectable = _selectable;
+  [_latexErrorCoordinator wireReporters:segment.context.mathReporters];
   [view applyAttributedText:segment.attributedText context:segment.context];
 
   const auto &selectionProps = *std::static_pointer_cast<EnrichedMarkdownProps const>(self->_props);
@@ -806,7 +887,7 @@ static char kENRMSegmentFadeAnimatorKey;
                                   selectionEnd:selectionEnd];
         });
     return buildEditMenuForSelection(textView.textStorage, textView.selectedRange, segmentMarkdown, strongSelf->_config,
-                                     @[ baseMenu ], customItems, strongSelf->_selectionMenuConfig);
+                                     @[ baseMenu ], customItems, strongSelf -> _selectionMenuConfig);
   }];
 #endif
 
@@ -820,12 +901,10 @@ static char kENRMSegmentFadeAnimatorKey;
   tableView.allowFontScaling = _fontScaleObserver.allowFontScaling;
   tableView.maxFontSizeMultiplier = _maxFontSizeMultiplier;
   tableView.enableLinkPreview = _enableLinkPreview;
-  tableView.enableBlockContextMenu = _enableBlockContextMenu;
+  tableView.dynamicProps = _dynamicBlockProps;
   tableView.writingDirectionMode = _writingDirectionMode;
   tableView.resolvedLayoutDirection = _resolvedLayoutDirection;
   tableView.accessibilityLabels = _accessibilityLabels;
-  tableView.copyLabel = _selectionMenuLabels.copyLabel;
-  tableView.copyAsMarkdownLabel = _selectionMenuLabels.copyAsMarkdownLabel;
 
   __weak EnrichedMarkdown *weakSelf = self;
 
@@ -862,10 +941,12 @@ static char kENRMSegmentFadeAnimatorKey;
 - (ENRMMathContainerView *)createMathViewForSegment:(ENRMMathSegment *)mathSegment
 {
   ENRMMathContainerView *mathView = [[ENRMMathContainerView alloc] initWithConfig:_config];
-  mathView.enableBlockContextMenu = _enableBlockContextMenu;
+  mathView.dynamicProps = _dynamicBlockProps;
   mathView.accessibilityLabels = _accessibilityLabels;
-  mathView.copyLabel = _selectionMenuLabels.copyLabel;
-  mathView.copyAsMarkdownLabel = _selectionMenuLabels.copyAsMarkdownLabel;
+  ENRMLatexErrorCoordinator *coordinator = _latexErrorCoordinator;
+  mathView.onLatexError = ^(NSString *source, NSString *message, BOOL displayMode) {
+    [coordinator reportSource:source message:message displayMode:displayMode];
+  };
   [mathView applyLatex:mathSegment.latex];
   return mathView;
 }
@@ -874,15 +955,18 @@ static char kENRMSegmentFadeAnimatorKey;
 - (ENRMCodeBlockContainerView *)createCodeBlockViewForSegment:(ENRMCodeBlockSegment *)codeBlockSegment
 {
   ENRMCodeBlockContainerView *codeBlockView = [[ENRMCodeBlockContainerView alloc] initWithConfig:_config];
-  codeBlockView.enableBlockContextMenu = _enableBlockContextMenu;
-  codeBlockView.copyLabel = _selectionMenuLabels.copyLabel;
-  codeBlockView.copyAsMarkdownLabel = _selectionMenuLabels.copyAsMarkdownLabel;
+  codeBlockView.dynamicProps = _dynamicBlockProps;
 
   __weak EnrichedMarkdown *weakSelf = self;
   codeBlockView.onCopyPress = ^(NSString *code, NSString *language) {
     EnrichedMarkdown *strongSelf = weakSelf;
     if (strongSelf)
       [strongSelf emitCopyPress:code language:language];
+  };
+  codeBlockView.onCodeBlockPress = ^(NSString *code, NSString *language) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf)
+      [strongSelf emitCodeBlockPress:code language:language];
   };
 
   codeBlockView.pending = codeBlockSegment == _pendingCodeBlockSegment;
@@ -947,7 +1031,6 @@ static char kENRMSegmentFadeAnimatorKey;
   }
 
   if (applyMarkdownStyleToConfig(_config, newViewProps.markdownStyle, oldViewProps.markdownStyle)) {
-    [ENRMImageAttachment clearAttachmentRegistry];
     _dirtyFlags |= ENRMDirtyForceHeight | ENRMDirtyRender;
     if (!markdownChanged) {
       _dirtyFlags |= ENRMDirtyRecreateSegments;
@@ -1000,7 +1083,8 @@ static char kENRMSegmentFadeAnimatorKey;
       newViewProps.md4cFlags.latexMath != oldViewProps.md4cFlags.latexMath ||
       newViewProps.md4cFlags.highlight != oldViewProps.md4cFlags.highlight ||
       newViewProps.md4cFlags.hardSoftBreaks != oldViewProps.md4cFlags.hardSoftBreaks ||
-      newViewProps.md4cFlags.preserveBlankLines != oldViewProps.md4cFlags.preserveBlankLines) {
+      newViewProps.md4cFlags.preserveBlankLines != oldViewProps.md4cFlags.preserveBlankLines ||
+      newViewProps.md4cFlags.admonitions != oldViewProps.md4cFlags.admonitions) {
     _md4cFlags = [EnrichedMarkdown flagsFromProps:newViewProps.md4cFlags];
     _dirtyFlags |= ENRMDirtyForceHeight | ENRMDirtyRender;
   }
@@ -1014,10 +1098,10 @@ static char kENRMSegmentFadeAnimatorKey;
   _enableTaskListItemToggle = newViewProps.enableTaskListItemToggle;
   _enableImagePress = newViewProps.enableImagePress;
 
-  if (_enableBlockContextMenu != newViewProps.enableBlockContextMenu) {
-    _enableBlockContextMenu = newViewProps.enableBlockContextMenu;
-    [self pushBlockContextMenuToSegments];
-  }
+  // Block gates: mutate the shared box in place. Every existing and future block
+  // view reads it live at use-time, so no push into segments is needed.
+  _dynamicBlockProps.enableBlockContextMenu = newViewProps.enableBlockContextMenu;
+  _dynamicBlockProps.enableCodeBlockPress = newViewProps.enableCodeBlockPress;
 
   if (newViewProps.streamingAnimation != oldViewProps.streamingAnimation) {
     _streamingAnimation = newViewProps.streamingAnimation;
@@ -1059,7 +1143,10 @@ static char kENRMSegmentFadeAnimatorKey;
   _selectionMenuConfig =
       ENRMBuildSelectionMenuConfig(_selectionMenuLabels, newViewProps.selectionMenuConfig.copyAsMarkdown,
                                    newViewProps.selectionMenuConfig.copyImageUrl);
-  [self pushSelectionMenuLabelsToSegments];
+  // Block menu labels live in the shared box; block views read them live at
+  // menu-open. (_selectionMenuLabels also feeds the text selection menu above.)
+  _dynamicBlockProps.copyLabel = _selectionMenuLabels.copyLabel;
+  _dynamicBlockProps.copyAsMarkdownLabel = _selectionMenuLabels.copyAsMarkdownLabel;
 
   if (ENRMAccessibilityLabelsChanged(oldViewProps.accessibilityLabels, newViewProps.accessibilityLabels)) {
     _accessibilityLabels = [[ENRMAccessibilityLabels alloc] init];
@@ -1244,7 +1331,7 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
     BOOL isInsideView = CGRectContainsPoint(textSegment.textView.bounds, segmentPoint);
 #endif
     if (isInsideView) {
-      if (isPointOnInteractiveElement(textSegment.textView, segmentPoint, _enableImagePress)) {
+      if (isPointOnInteractiveElement(textSegment.textView, segmentPoint, _enableImagePress, NO)) {
         return nil;
       }
       break;
@@ -1306,6 +1393,14 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
         {.code = std::string(code.UTF8String ?: ""), .language = std::string(language.UTF8String ?: "")});
 }
 
+- (void)emitCodeBlockPress:(NSString *)code language:(NSString *)language
+{
+  auto emitter = std::static_pointer_cast<EnrichedMarkdownEventEmitter const>(_eventEmitter);
+  if (emitter)
+    emitter->onCodeBlockPress(
+        {.code = std::string(code.UTF8String ?: ""), .language = std::string(language.UTF8String ?: "")});
+}
+
 - (void)emitContextMenuItemPress:(NSString *)itemText
                     selectedText:(NSString *)selectedText
                   selectionStart:(NSUInteger)selectionStart
@@ -1319,6 +1414,12 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
         .selectionStart = (int)selectionStart,
         .selectionEnd = (int)selectionEnd,
     });
+}
+
+- (void)updateEventEmitter:(const facebook::react::EventEmitter::Shared &)eventEmitter
+{
+  [super updateEventEmitter:eventEmitter];
+  [_latexErrorCoordinator flushPending];
 }
 
 - (void)textTapped:(ENRMTapRecognizer *)recognizer

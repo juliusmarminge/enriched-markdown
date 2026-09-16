@@ -103,8 +103,6 @@ class BlockStyleContext {
 
   fun setCodeBlockStyle(style: CodeBlockStyle) = pushBlockStyle(BlockType.CODE_BLOCK, style)
 
-  fun isInsideBlockElement(): Boolean = blockquoteDepth > 0 || listDepth > 0
-
   fun incrementListItemNumber() {
     listItemNumber++
   }
@@ -142,6 +140,8 @@ class BlockStyleContext {
         "BlockStyle is null. Inline renderers must be used within a block context.",
       )
   }
+
+  fun currentBlockStyleOrNull(): BlockStyle? = blockStyleStack.lastOrNull()?.blockStyle
 
   fun resetForNewRender() {
     blockStyleStack.clear()

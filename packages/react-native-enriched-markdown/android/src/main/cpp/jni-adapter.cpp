@@ -79,6 +79,10 @@ static jint nodeTypeToJavaOrdinal(NodeType type) {
       return 30;
     case NodeType::BlankLine:
       return 31;
+    case NodeType::Admonition:
+      return 32;
+    case NodeType::Video:
+      return 33;
     default:
       return 0;
   }
@@ -240,6 +244,10 @@ JNIEXPORT jobject JNICALL Java_com_swmansion_enriched_markdown_parser_Parser_nat
         jfieldID preserveBlankLinesField = env->GetFieldID(flagsClass, "preserveBlankLines", "Z");
         if (preserveBlankLinesField) {
           md4cFlags.preserveBlankLines = env->GetBooleanField(flags, preserveBlankLinesField) == JNI_TRUE;
+        }
+        jfieldID admonitionsField = env->GetFieldID(flagsClass, "admonitions", "Z");
+        if (admonitionsField) {
+          md4cFlags.admonitions = env->GetBooleanField(flags, admonitionsField) == JNI_TRUE;
         }
         env->DeleteLocalRef(flagsClass);
       }

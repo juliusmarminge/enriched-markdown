@@ -86,6 +86,15 @@ final class HTMLGeneratorTests: XCTestCase {
         XCTAssertTrue(result.contains("<sub>2</sub>"))
     }
 
+    func testHighlightEmitsMarkWithBackground() {
+        config.highlight.backgroundColor = UIColor(red: 1, green: 0, blue: 0, alpha: 1)
+        config.highlight.foregroundColor = nil
+
+        let result = html(for: "==marked==", flags: Md4cFlags(highlight: true))
+
+        XCTAssertTrue(result.contains("<mark style=\"background-color: #FF0000;\">marked</mark>"))
+    }
+
     func testLinkCarriesHrefAndStyle() {
         let result = html(for: "[press](https://swmansion.com)")
 
@@ -145,6 +154,42 @@ final class HTMLGeneratorTests: XCTestCase {
         XCTAssertEqual(result.components(separatedBy: "<blockquote").count - 1, 2)
         XCTAssertEqual(result.components(separatedBy: "</blockquote>").count - 1, 2)
         XCTAssertTrue(result.contains("padding-inline-start:"))
+    }
+
+    func testAdmonitionEmitsTintedCalloutWithIconHeader() {
+        let result = html(for: "> [!NOTE]\n> body", flags: Md4cFlags(admonitions: true))
+
+        XCTAssertEqual(result.components(separatedBy: "<blockquote").count - 1, 1)
+        XCTAssertTrue(result.contains("border-inline-start: 3px solid #0969DA;"), result)
+        XCTAssertTrue(result.contains("background-color: transparent;"))
+        XCTAssertTrue(result.contains("<svg width=\"17\" height=\"17\" viewBox=\"0 0 16 16\" fill=\"#0969DA\""))
+        XCTAssertTrue(result.contains("<span>Note</span></div><p style="))
+        XCTAssertTrue(result.contains("body</p></blockquote>"))
+        XCTAssertFalse(result.contains(">Note</p>"))
+    }
+
+    func testAdmonitionBackgroundComesFromTheme() {
+        config.blockquote.admonitions[.tip]?.backgroundColor = UIColor(red: 1, green: 0, blue: 0, alpha: 1)
+        let result = html(for: "> [!TIP]\n> body", flags: Md4cFlags(admonitions: true))
+
+        XCTAssertTrue(result.contains("background-color: #FF0000; border-inline-start: 3px solid #1A7F37;"), result)
+    }
+
+    func testNestedAdmonitionOpensItsOwnCallout() {
+        let result = html(for: "> [!WARNING]\n> outer\n>\n> > [!TIP]\n> > inner", flags: Md4cFlags(admonitions: true))
+
+        XCTAssertEqual(result.components(separatedBy: "<blockquote").count - 1, 2)
+        XCTAssertEqual(result.components(separatedBy: "</blockquote>").count - 1, 2)
+        XCTAssertTrue(result.contains("<span>Warning</span>"))
+        XCTAssertTrue(result.contains("<span>Tip</span>"))
+        XCTAssertTrue(result.contains("outer</p><blockquote style=\"background-color: transparent; border-inline-start: 3px solid #1A7F37;"), result)
+    }
+
+    func testAdmonitionAfterSiblingQuoteAtSameDepthStartsANewCallout() {
+        let result = html(for: "> [!NOTE]\n> a\n>\n> > plain\n>\n> > [!TIP]\n> > b", flags: Md4cFlags(admonitions: true))
+
+        XCTAssertEqual(result.components(separatedBy: "<blockquote").count - 1, 3)
+        XCTAssertTrue(result.contains("plain</p></blockquote><blockquote style=\"background-color: transparent;"), result)
     }
 
     func testUnorderedList() {

@@ -4,6 +4,15 @@ import XCTest
 @testable import EnrichedMarkdown
 
 final class MarkdownTextViewTests: XCTestCase {
+    /// A text view only keeps first responder status while its window is alive.
+    private var window: UIWindow?
+
+    override func tearDown() {
+        window?.isHidden = true
+        window = nil
+        super.tearDown()
+    }
+
     func testDefaultConfiguration() {
         let textView = MarkdownTextView()
 
@@ -56,5 +65,113 @@ final class MarkdownTextViewTests: XCTestCase {
 
         XCTAssertTrue(environment.markdownSelectable)
         XCTAssertNil(environment.markdownSelectionColor)
+    }
+
+    // MARK: - Measurement cache
+
+    // Measuring lays out the whole document, so the result is cached against
+    // the width and the text it was measured for. These cover the
+    // invalidation: a stale height is a misdrawn page, not a slow one.
+
+    private func attributed(_ string: String, size: CGFloat = 17) -> NSAttributedString {
+        NSAttributedString(string: string, attributes: [.font: UIFont.systemFont(ofSize: size)])
+    }
+
+    private static let measureWidth: CGFloat = 200
+
+    private func height(of textView: MarkdownTextView, width: CGFloat = measureWidth) -> CGFloat {
+        textView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+    }
+
+    func testRepeatedMeasurementsAgree() {
+        let textView = MarkdownTextView()
+        textView.setMarkdownAttributedText(attributed("One line of text"))
+
+        XCTAssertEqual(height(of: textView), height(of: textView))
+    }
+
+    func testLongerTextMeasuresTaller() {
+        let textView = MarkdownTextView()
+        textView.setMarkdownAttributedText(attributed("Short"))
+        let short = height(of: textView)
+
+        textView.setMarkdownAttributedText(attributed(String(repeating: "Much longer body copy. ", count: 20)))
+
+        XCTAssertGreaterThan(height(of: textView), short)
+    }
+
+    func testNarrowerWidthMeasuresTaller() {
+        let textView = MarkdownTextView()
+        textView.setMarkdownAttributedText(attributed(String(repeating: "Wrapping body copy. ", count: 10)))
+        let wide = height(of: textView, width: 400)
+
+        XCTAssertGreaterThan(height(of: textView, width: 120), wide)
+    }
+
+    /// Growing the font changes the height without changing the string, so the
+    /// cache must key on the instance and not on its text.
+    func testLargerFontMeasuresTallerForTheSameString() {
+        let textView = MarkdownTextView()
+        textView.setMarkdownAttributedText(attributed("Same string", size: 12))
+        let small = height(of: textView)
+
+        textView.setMarkdownAttributedText(attributed("Same string", size: 40))
+
+        XCTAssertGreaterThan(height(of: textView), small)
+    }
+
+    /// A distinct instance holding equal content is not a re-render: the text
+    /// view keeps what it has, and the measurement stays valid.
+    func testEqualReplacementKeepsMeasurement() {
+        let textView = MarkdownTextView()
+        textView.setMarkdownAttributedText(attributed("Stable content"))
+        let before = height(of: textView)
+
+        textView.setMarkdownAttributedText(attributed("Stable content"))
+
+        XCTAssertEqual(height(of: textView), before)
+        XCTAssertEqual(textView.attributedText.string, "Stable content")
+    }
+
+    // MARK: - Selection handle hit testing
+
+    /// On screen and selected is what it takes for UIKit to hand back caret
+    /// rects; returns the text view and where its end knob sits.
+    private func selectingTextView() throws -> (textView: MarkdownTextView, endKnob: CGPoint) {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        self.window = window
+        let textView = MarkdownTextView()
+        textView.frame = window.bounds
+        window.addSubview(textView)
+        window.makeKeyAndVisible()
+        textView.setMarkdownAttributedText(attributed("Selection handles sit at both ends"))
+        textView.layoutIfNeeded()
+        textView.becomeFirstResponder()
+        textView.selectedRange = NSRange(location: 0, length: 9)
+
+        let selection = try XCTUnwrap(textView.selectedTextRange)
+        let end = textView.caretRect(for: selection.end)
+        return (textView, CGPoint(x: end.midX, y: end.maxY))
+    }
+
+    func testPointOnEndKnobIsASelectionHandle() throws {
+        let (textView, endKnob) = try selectingTextView()
+
+        XCTAssertTrue(textView.isPointOnSelectionHandle(endKnob))
+    }
+
+    func testPointAwayFromKnobsIsNotASelectionHandle() throws {
+        let (textView, endKnob) = try selectingTextView()
+
+        XCTAssertFalse(textView.isPointOnSelectionHandle(endKnob.applying(.init(translationX: 120, y: 120))))
+    }
+
+    /// This is what keeps plain link taps working.
+    func testNoSelectionMeansNoSelectionHandles() throws {
+        let (textView, endKnob) = try selectingTextView()
+
+        textView.selectedRange = NSRange(location: 0, length: 0)
+
+        XCTAssertFalse(textView.isPointOnSelectionHandle(endKnob))
     }
 }

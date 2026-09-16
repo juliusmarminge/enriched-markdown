@@ -1,6 +1,7 @@
 import type { MarkdownStyle } from 'react-native-enriched-markdown';
 import type { StoryArgs } from './storyTypes';
 import type {
+  AdmonitionStyleControls,
   BlockquoteStyleControls,
   CodeBlockStyleControls,
   EmphasisStyleControls,
@@ -25,6 +26,7 @@ import type {
   TaskListStyleControls,
   ThematicBreakStyleControls,
   UnderlineStyleControls,
+  VideoStyleControls,
 } from './storybookMarkdownStyles';
 
 /**
@@ -109,6 +111,39 @@ export function toBlockquoteStyle(
   };
 }
 
+function admonitionColors(color: string, backgroundColor: string) {
+  return {
+    ...(color ? { color } : {}),
+    ...(backgroundColor ? { backgroundColor } : {}),
+  };
+}
+
+// Blockquote style with the admonition palette nested under it. Admonitions
+// reuse the blockquote geometry and only theme colors per type.
+export function toAdmonitionStyle(
+  controls: AdmonitionStyleControls
+): NonNullable<MarkdownStyle['blockquote']> {
+  return {
+    ...toBlockquoteStyle(controls),
+    admonitions: {
+      note: admonitionColors(controls.noteColor, controls.noteBackgroundColor),
+      tip: admonitionColors(controls.tipColor, controls.tipBackgroundColor),
+      important: admonitionColors(
+        controls.importantColor,
+        controls.importantBackgroundColor
+      ),
+      warning: admonitionColors(
+        controls.warningColor,
+        controls.warningBackgroundColor
+      ),
+      caution: admonitionColors(
+        controls.cautionColor,
+        controls.cautionBackgroundColor
+      ),
+    },
+  };
+}
+
 export function toCodeBlockStyle(
   controls: CodeBlockStyleControls
 ): NonNullable<MarkdownStyle['codeBlock']> {
@@ -152,6 +187,18 @@ export function toImageStyle(
     borderRadius: controls.borderRadius,
     marginTop: controls.marginTop,
     marginBottom: controls.marginBottom,
+  };
+}
+
+export function toVideoStyle(
+  controls: VideoStyleControls
+): NonNullable<MarkdownStyle['video']> {
+  return {
+    marginTop: controls.marginTop,
+    marginBottom: controls.marginBottom,
+    borderRadius: controls.borderRadius,
+    ...(controls.aspectRatio > 0 ? { aspectRatio: controls.aspectRatio } : {}),
+    backgroundColor: controls.backgroundColor,
   };
 }
 

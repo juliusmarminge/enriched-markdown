@@ -32,7 +32,9 @@ typedef NS_ENUM(NSInteger, MarkdownNodeType) {
   MarkdownNodeTypeSubscript,
   MarkdownNodeTypeHighlight,
   MarkdownNodeTypeSoftBreak,
-  MarkdownNodeTypeBlankLine
+  MarkdownNodeTypeBlankLine,
+  MarkdownNodeTypeAdmonition,
+  MarkdownNodeTypeVideo
 };
 
 @interface MarkdownASTNode : NSObject
@@ -47,3 +49,7 @@ typedef NS_ENUM(NSInteger, MarkdownNodeType) {
 - (void)setAttribute:(NSString *)key value:(NSString *)value;
 
 @end
+
+/// A node type that md4c emits as a standalone block stacked vertically,
+/// as opposed to an inline span.
+BOOL ENRMIsTopLevelBlockType(MarkdownNodeType type);

@@ -24,6 +24,19 @@ interface HeadingStyleInternal extends BaseBlockStyleInternal {
   textAlign: string;
 }
 
+interface AdmonitionColorsInternal {
+  color: ColorValue;
+  backgroundColor: ColorValue;
+}
+
+interface AdmonitionsStyleInternal {
+  note: AdmonitionColorsInternal;
+  tip: AdmonitionColorsInternal;
+  important: AdmonitionColorsInternal;
+  warning: AdmonitionColorsInternal;
+  caution: AdmonitionColorsInternal;
+}
+
 interface BlockquoteStyleInternal extends BaseBlockStyleInternal {
   borderColor: ColorValue;
   borderWidth: CodegenTypes.Float;
@@ -31,6 +44,7 @@ interface BlockquoteStyleInternal extends BaseBlockStyleInternal {
   backgroundColor: ColorValue;
   borderRadius: CodegenTypes.Float;
   padding: CodegenTypes.Float;
+  admonitions: AdmonitionsStyleInternal;
 }
 
 interface ListStyleInternal extends BaseBlockStyleInternal {
@@ -121,6 +135,14 @@ interface ImageStyleInternal {
   borderRadius: CodegenTypes.Float;
   marginTop: CodegenTypes.Float;
   marginBottom: CodegenTypes.Float;
+}
+
+interface VideoStyleInternal {
+  marginTop: CodegenTypes.Float;
+  marginBottom: CodegenTypes.Float;
+  borderRadius: CodegenTypes.Float;
+  aspectRatio: CodegenTypes.Float;
+  backgroundColor: ColorValue;
 }
 
 interface InlineImageStyleInternal {
@@ -222,6 +244,7 @@ export interface MarkdownStyleInternal {
   underline: UnderlineStyleInternal;
   code: CodeStyleInternal;
   image: ImageStyleInternal;
+  video: VideoStyleInternal;
   inlineImage: InlineImageStyleInternal;
   thematicBreak: ThematicBreakStyleInternal;
   table: TableStyleInternal;
@@ -254,6 +277,17 @@ export interface TaskListItemPressEvent {
 }
 
 export interface CopyPressEvent {
+  code: string;
+  language: string;
+}
+
+export interface LatexErrorEvent {
+  source: string;
+  message: string;
+  displayMode: boolean;
+}
+
+export interface CodeBlockPressEvent {
   code: string;
   language: string;
 }
@@ -359,6 +393,12 @@ export interface Md4cFlagsInternal {
    * @default false
    */
   preserveBlankLines: boolean;
+  /**
+   * Enable GitHub-style admonitions/alerts extension.
+   * Forced off for `flavor="commonmark"`.
+   * @default true
+   */
+  admonitions: boolean;
 }
 
 interface StreamingConfigInternal {
@@ -425,8 +465,25 @@ export interface NativeProps extends ViewProps {
    * action. Receives the copied code and its language.
    */
   onCopyPress?: CodegenTypes.BubblingEventHandler<CopyPressEvent>;
+  /** Fired when a fenced code block is tapped. Receives its code and language. */
+  onCodeBlockPress?: CodegenTypes.BubblingEventHandler<CodeBlockPressEvent>;
   /**
-   * Controls the long-press copy menu on code blocks, tables, and block math.
+   * Gates native code block tap handling; set to `true` by the JS wrapper when
+   * `onCodeBlockPress` is provided.
+   * @default false
+   */
+  enableCodeBlockPress?: CodegenTypes.WithDefault<boolean, false>;
+  /**
+   * Callback fired when a math expression cannot be parsed or rendered by the
+   * LaTeX engine. Receives the raw LaTeX `source` of the failing inline span or
+   * block (no delimiters), the engine's error `message` (empty when none), and
+   * `displayMode` (false = inline `$...$`, true = block `$$...$$`). The whole
+   * expression is the unit of failure; the engine does not report a single
+   * offending command.
+   */
+  onLatexError?: CodegenTypes.BubblingEventHandler<LatexErrorEvent>;
+  /**
+   * Controls the long-press copy menu on code blocks, tables, block math, and blockquotes/admonitions.
    * @default true
    */
   enableBlockContextMenu?: CodegenTypes.WithDefault<boolean, true>;
@@ -553,6 +610,19 @@ export interface NativeProps extends ViewProps {
    * @platform ios
    */
   writingDirection?: CodegenTypes.WithDefault<string, 'first-strong'>;
+  /**
+   * No-op for the GFM backend. Declared for parity with the CommonMark
+   * component so the shared JS props can be forwarded uniformly. GFM renders
+   * independent block segments and cannot honor a document-wide line cap, so
+   * this is ignored - see the GFM tracking issue.
+   * @default 0
+   */
+  numberOfLines?: CodegenTypes.WithDefault<CodegenTypes.Int32, 0>;
+  /**
+   * No-op for the GFM backend. See `numberOfLines`.
+   * @default 'tail'
+   */
+  ellipsizeMode?: CodegenTypes.WithDefault<string, 'tail'>;
 }
 
 export default codegenNativeComponent<NativeProps>('EnrichedMarkdown', {

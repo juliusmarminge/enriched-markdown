@@ -3,7 +3,7 @@ import UIKit
 
 struct MarkdownTextViewRepresentable: UIViewRepresentable {
     let attributedText: NSAttributedString
-    let sourceMarkdown: String?
+    let source: RenderedSource?
     let styleConfig: MarkdownStyleConfig
     let onLinkPress: ((URL) -> Void)?
     let onLinkLongPress: ((URL) -> Void)?
@@ -11,6 +11,9 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
     let isSelectionEnabled: Bool
     let selectionColor: Color?
     let onTaskListItemTap: ((TaskListInteraction.Hit) -> Void)?
+    let spoilerOverlay: MarkdownSpoilerOverlay
+    let onSpoilerTap: ((NSRange) -> Void)?
+    let accessibilityLabels: MarkdownAccessibilityLabels
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -26,19 +29,23 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
     func updateUIView(_ textView: MarkdownTextView, context: Context) {
         context.coordinator.onLinkPress = onLinkPress
         context.coordinator.onLinkLongPress = onLinkLongPress
-        context.coordinator.sourceMarkdown = sourceMarkdown
+        context.coordinator.source = source
         context.coordinator.selectionMenuConfig = selectionMenuConfig
         textView.onLinkPress = onLinkPress
         textView.styleConfig = styleConfig
         textView.isSelectionEnabled = isSelectionEnabled
         textView.tintColor = selectionColor.map { UIColor($0) }
         textView.onTaskListItemTap = onTaskListItemTap
+        textView.spoilerOverlays.mode = spoilerOverlay
+        textView.onSpoilerTap = onSpoilerTap
+        textView.accessibilityLabels = accessibilityLabels
         textView.setMarkdownAttributedText(attributedText)
     }
 
     static func dismantleUIView(_ uiView: MarkdownTextView, coordinator: Coordinator) {
         uiView.delegate = nil
         uiView.onTaskListItemTap = nil
+        uiView.onSpoilerTap = nil
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: MarkdownTextView, context: Context) -> CGSize? {
@@ -50,7 +57,7 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate {
         var onLinkPress: ((URL) -> Void)?
         var onLinkLongPress: ((URL) -> Void)?
-        var sourceMarkdown: String?
+        var source: RenderedSource?
         var selectionMenuConfig = MarkdownSelectionMenuConfig()
 
         /// Routes a link tap; returns true when a handler consumed it.
@@ -72,6 +79,12 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
             return handleLinkPress(url)
         }
 
+        /// See `MarkdownTextView.isTouchOnSelectionHandle`: a selection knob
+        /// parked over a link would otherwise fire it on drag start.
+        private func isGrabbingSelectionHandle(_ textView: UITextView) -> Bool {
+            (textView as? SelectionHandleTouchReporting)?.isTouchOnSelectionHandle ?? false
+        }
+
         // iOS 16 (and 17+ fallback when the UITextItem methods are
         // unavailable): tap arrives as .invokeDefaultAction, long-press as
         // .presentActions or .preview.
@@ -81,6 +94,10 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
             in characterRange: NSRange,
             interaction: UITextItemInteraction
         ) -> Bool {
+            // `false` suppresses the system preview, as `nil` does for the two
+            // UITextItem callbacks below.
+            guard !isGrabbingSelectionHandle(textView) else { return false }
+
             switch interaction {
             case .invokeDefaultAction:
                 return !handleLinkPress(URL)
@@ -97,6 +114,7 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
             primaryActionFor textItem: UITextItem,
             defaultAction: UIAction
         ) -> UIAction? {
+            guard !isGrabbingSelectionHandle(textView) else { return nil }
             guard case .link(let url) = textItem.content, let onLinkPress else {
                 return defaultAction
             }
@@ -109,6 +127,7 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
             menuConfigurationFor textItem: UITextItem,
             defaultMenu: UIMenu
         ) -> UITextItem.MenuConfiguration? {
+            guard !isGrabbingSelectionHandle(textView) else { return nil }
             guard case .link(let url) = textItem.content else {
                 return UITextItem.MenuConfiguration(menu: defaultMenu)
             }
@@ -124,7 +143,7 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
                 config: selectionMenuConfig,
                 selectedRange: range,
                 attributedText: textView.attributedText ?? NSAttributedString(),
-                sourceMarkdown: sourceMarkdown
+                source: source
             )
             var actions = specs.map(Self.makeAction(for:))
 
@@ -205,290 +224,5 @@ struct MarkdownTextViewRepresentable: UIViewRepresentable {
             }
             return result
         }
-    }
-}
-
-final class MarkdownTextView: UITextView {
-    var styleConfig: MarkdownStyleConfig = .baseline() {
-        didSet {
-            updateDecorationStyleConfig()
-        }
-    }
-
-    /// Mirrored from the representable so VoiceOver link elements can invoke
-    /// the press handler via accessibilityActivate.
-    var onLinkPress: ((URL) -> Void)?
-
-    /// Fired with the pre-toggle state when a tap lands in a task item's
-    /// checkbox margin. Nil makes checkbox taps fully inert (the
-    /// `markdownTaskListItemToggleEnabled(false)` case).
-    var onTaskListItemTap: ((TaskListInteraction.Hit) -> Void)?
-
-    /// Our tap recognizer must not steal touches from the text view's own
-    /// recognizers (selection, links), so it observes simultaneously.
-    /// UITextView is the delegate of its internal recognizers — a separate
-    /// object keeps ours out of that plumbing.
-    private final class SimultaneousGestureDelegate: NSObject, UIGestureRecognizerDelegate {
-        func gestureRecognizer(
-            _ gestureRecognizer: UIGestureRecognizer,
-            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
-        ) -> Bool {
-            true
-        }
-    }
-
-    private let tapGestureDelegate = SimultaneousGestureDelegate()
-
-    /// VoiceOver elements built from the attributed string; frames resolve
-    /// lazily against TextKit 2 layout.
-    private var markdownAccessibilityElements: [UIAccessibilityElement] = []
-
-    override var accessibilityElements: [Any]? {
-        get { markdownAccessibilityElements.isEmpty ? super.accessibilityElements : markdownAccessibilityElements }
-        set { super.accessibilityElements = newValue }
-    }
-
-    override var isAccessibilityElement: Bool {
-        get { markdownAccessibilityElements.isEmpty ? super.isAccessibilityElement : false }
-        set { super.isAccessibilityElement = newValue }
-    }
-
-    /// Gates the selection UI while keeping `isSelectable` on, so link taps
-    /// keep working when selection is disabled. Selection requires first
-    /// responder; link interaction does not.
-    var isSelectionEnabled: Bool = true {
-        didSet {
-            guard isSelectionEnabled != oldValue else { return }
-            if !isSelectionEnabled {
-                selectedTextRange = nil
-                if isFirstResponder {
-                    resignFirstResponder()
-                }
-            }
-        }
-    }
-
-    override var canBecomeFirstResponder: Bool {
-        isSelectionEnabled && super.canBecomeFirstResponder
-    }
-
-    override var intrinsicContentSize: CGSize {
-        let width = bounds.width > 0 ? bounds.width : UIView.noIntrinsicMetric
-        guard width != UIView.noIntrinsicMetric else {
-            return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
-        }
-        let size = sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        return CGSize(width: UIView.noIntrinsicMetric, height: size.height)
-    }
-
-    init() {
-        super.init(frame: .zero, textContainer: nil)
-        configure()
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    private func configure() {
-        isEditable = false
-        isSelectable = true
-        isScrollEnabled = false
-        backgroundColor = .clear
-        textContainerInset = .zero
-        textContainer.lineFragmentPadding = 0
-        dataDetectorTypes = []
-        linkTextAttributes = [:]
-        setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
-        tapRecognizer.cancelsTouchesInView = false
-        tapRecognizer.delegate = tapGestureDelegate
-        addGestureRecognizer(tapRecognizer)
-
-        setupDecoration()
-    }
-
-    /// The task item whose checkbox margin contains `point` (view
-    /// coordinates), or nil.
-    func taskListHit(at point: CGPoint) -> TaskListInteraction.Hit? {
-        let containerPoint = CGPoint(
-            x: point.x - textContainerInset.left,
-            y: point.y - textContainerInset.top
-        )
-        return TaskListInteraction.hitTest(
-            point: containerPoint,
-            attributedText: attributedText ?? NSAttributedString(),
-            textLayoutManager: textLayoutManager,
-            containerWidth: bounds.width - textContainerInset.left - textContainerInset.right
-        )
-    }
-
-    @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
-        guard recognizer.state == .ended,
-              let onTaskListItemTap,
-              let hit = taskListHit(at: recognizer.location(in: self))
-        else { return }
-        onTaskListItemTap(hit)
-    }
-
-    /// Injectable so tests avoid UIPasteboard.general, which a headless test
-    /// process is not authorized to access.
-    var pasteboard: UIPasteboard = .general
-
-    /// System Copy puts plain text plus a styled HTML flavor on the
-    /// pasteboard, so rich-text targets keep the formatting.
-    override func copy(_ sender: Any?) {
-        guard let attributedText,
-              attributedText.length > 0,
-              selectedRange.length > 0,
-              selectedRange.location != NSNotFound,
-              selectedRange.location < attributedText.length
-        else {
-            super.copy(sender)
-            return
-        }
-
-        let clamped = NSRange(
-            location: selectedRange.location,
-            length: min(selectedRange.length, attributedText.length - selectedRange.location)
-        )
-        let plain = Self.plainText(of: attributedText, in: clamped)
-        let html = MarkdownHTMLGenerator.generateHTML(
-            from: attributedText,
-            in: clamped,
-            config: styleConfig
-        )
-        pasteboard.items = [[
-            "public.utf8-plain-text": plain,
-            "public.html": html
-        ]]
-    }
-
-    /// Plain text for the pasteboard, with table attachment characters
-    /// replaced by the table's tab-separated content.
-    static func plainText(of attributedText: NSAttributedString, in range: NSRange) -> String {
-        var plain = ""
-        attributedText.enumerateAttribute(.attachment, in: range) { value, runRange, _ in
-            if let table = value as? TableAttachment {
-                plain += table.plainText()
-            } else {
-                plain += (attributedText.string as NSString).substring(with: runRange)
-            }
-        }
-        return plain
-    }
-
-    func setMarkdownAttributedText(_ attributedText: NSAttributedString) {
-        guard !(self.attributedText?.isEqual(to: attributedText) ?? false) else { return }
-        self.attributedText = attributedText
-        invalidateIntrinsicContentSize()
-        setDecorationNeedsDisplay()
-        rebuildAccessibilityElements()
-    }
-
-    private func rebuildAccessibilityElements() {
-        let specs = MarkdownAccessibilityElementBuilder.specs(for: attributedText ?? NSAttributedString())
-        markdownAccessibilityElements = specs.map { spec in
-            if case .link(let url) = spec.kind {
-                return MarkdownLinkAccessibilityElement(textView: self, spec: spec, url: url)
-            }
-            return MarkdownAccessibilityElement(textView: self, spec: spec)
-        }
-    }
-
-    /// Screen-coordinate frame for a character range, unioned over its
-    /// TextKit 2 layout fragments.
-    func accessibilityScreenFrame(for range: NSRange) -> CGRect {
-        guard let textLayoutManager,
-              let contentManager = textLayoutManager.textContentManager,
-              let textRange = TextLayoutHelpers.textRange(range, in: contentManager) else {
-            return .zero
-        }
-
-        textLayoutManager.ensureLayout(for: textRange)
-        var union = CGRect.null
-        textLayoutManager.enumerateTextSegments(in: textRange, type: .standard, options: []) { _, frame, _, _ in
-            union = union.union(frame)
-            return true
-        }
-        guard !union.isNull else { return .zero }
-
-        union.origin.x += textContainerInset.left
-        union.origin.y += textContainerInset.top
-        return UIAccessibility.convertToScreenCoordinates(union, in: self)
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        layoutDecorationView()
-        setDecorationNeedsDisplay()
-    }
-}
-
-private extension MarkdownTextView {
-    private static var backgroundDecorationViewKey: UInt8 = 0
-    private static var foregroundDecorationViewKey: UInt8 = 0
-    private static var viewportDecoratorKey: UInt8 = 0
-
-    var backgroundDecorationView: MarkdownDecorationView {
-        if let view = objc_getAssociatedObject(self, &Self.backgroundDecorationViewKey) as? MarkdownDecorationView {
-            return view
-        }
-        let view = MarkdownDecorationView()
-        view.pass = .background
-        objc_setAssociatedObject(self, &Self.backgroundDecorationViewKey, view, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        return view
-    }
-
-    var foregroundDecorationView: MarkdownDecorationView {
-        if let view = objc_getAssociatedObject(self, &Self.foregroundDecorationViewKey) as? MarkdownDecorationView {
-            return view
-        }
-        let view = MarkdownDecorationView()
-        view.pass = .foreground
-        objc_setAssociatedObject(self, &Self.foregroundDecorationViewKey, view, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        return view
-    }
-
-    var viewportDecorator: MarkdownViewportDecorator {
-        if let decorator = objc_getAssociatedObject(self, &Self.viewportDecoratorKey) as? MarkdownViewportDecorator {
-            return decorator
-        }
-        let decorator = MarkdownViewportDecorator(
-            backgroundView: backgroundDecorationView,
-            foregroundView: foregroundDecorationView
-        )
-        objc_setAssociatedObject(self, &Self.viewportDecoratorKey, decorator, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        return decorator
-    }
-
-    func setupDecoration() {
-        let backgroundView = backgroundDecorationView
-        let foregroundView = foregroundDecorationView
-        backgroundView.textView = self
-        foregroundView.textView = self
-        backgroundView.viewportDecorator = viewportDecorator
-        foregroundView.viewportDecorator = viewportDecorator
-        viewportDecorator.updateStyleConfig(styleConfig)
-        insertSubview(backgroundView, at: 0)
-        addSubview(foregroundView)
-    }
-
-    func layoutDecorationView() {
-        backgroundDecorationView.frame = bounds
-        foregroundDecorationView.frame = bounds
-    }
-
-    func updateDecorationStyleConfig() {
-        viewportDecorator.updateStyleConfig(styleConfig)
-        backgroundDecorationView.setNeedsDisplay()
-        foregroundDecorationView.setNeedsDisplay()
-    }
-
-    func setDecorationNeedsDisplay() {
-        backgroundDecorationView.setNeedsDisplay()
-        foregroundDecorationView.setNeedsDisplay()
     }
 }

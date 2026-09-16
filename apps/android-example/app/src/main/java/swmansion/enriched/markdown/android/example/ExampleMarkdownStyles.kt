@@ -81,6 +81,13 @@ val CustomMarkdownStyle: MarkdownStyle =
       backgroundColor = Color(0xFFF9FAFB)
       gapWidth = 16.dp
       marginBottom = 16.dp
+      admonitions {
+        note { backgroundColor = Color(0xFFDDF4FF) }
+        tip { backgroundColor = Color(0xFFDAFBE1) }
+        important { backgroundColor = Color(0xFFFBEFFF) }
+        warning { backgroundColor = Color(0xFFFFF8C5) }
+        caution { backgroundColor = Color(0xFFFFEBE9) }
+      }
     }
     list {
       fontFamily = MontserratRegular
@@ -95,6 +102,13 @@ val CustomMarkdownStyle: MarkdownStyle =
       gapWidth = 8.dp
       marginLeft = 24.dp
       marginBottom = 16.dp
+    }
+    taskList {
+      checkedColor = Color(0xFF2196F3)
+      borderColor = Color(0xFF9E9E9E)
+      checkmarkColor = Color(0xFFFFFFFF)
+      checkboxSize = 14.dp
+      checkboxBorderRadius = 3.dp
     }
     codeBlock {
       fontFamily = CourierPrimeRegular

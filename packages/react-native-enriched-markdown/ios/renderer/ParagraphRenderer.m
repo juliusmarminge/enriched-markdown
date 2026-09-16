@@ -31,8 +31,13 @@
   }
 
   NSUInteger start = output.length;
+  // Paragraphs directly inside a blockquote keep their block margins so spacing
+  // between blocks matches the top-level document (a heading defaults to
+  // marginTop 0, so the gap before it comes from the preceding paragraph's
+  // marginBottom). List content stays tight - lists own their item spacing.
   BOOL shouldApplyMargin =
-      (context.currentBlockType == BlockTypeNone || context.currentBlockType == BlockTypeParagraph);
+      (context.currentBlockType == BlockTypeNone || context.currentBlockType == BlockTypeParagraph ||
+       context.currentBlockType == BlockTypeBlockquote);
 
   // Detect if the paragraph is a wrapper for a standalone image to use image-specific spacing
   BOOL isBlockImage = (node.children.count == 1 && ((MarkdownASTNode *)node.children[0]).type == MarkdownNodeTypeImage);
@@ -56,7 +61,9 @@
   // Avoid standard line height on block images to prevent vertical alignment issues
   if (!isBlockImage) {
     applyLineHeight(output, range, _config.paragraphLineHeight);
-    applyBaselineOffset(output, range);
+    if (!ENRMBlockTypeReappliesBaselineOffset(context.currentBlockType)) {
+      applyBaselineOffset(output, range);
+    }
   }
 
   applyTextAlignment(output, range, _config.paragraphTextAlign);

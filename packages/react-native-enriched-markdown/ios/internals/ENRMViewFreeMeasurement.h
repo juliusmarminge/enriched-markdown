@@ -1,5 +1,6 @@
 #pragma once
 
+#import "ENRMBlockquoteContainerView.h"
 #import "ENRMCodeBlockContainerView.h"
 #import "ENRMFeatureFlags.h"
 #import "ENRMMarkdownParser.h"
@@ -16,6 +17,9 @@
 #include <type_traits>
 #if ENRICHED_MARKDOWN_MATH
 #import "ENRMMathContainerView.h"
+#endif
+#if ENRICHED_MARKDOWN_VIDEO
+#import "ENRMVideoContainerView.h"
 #endif
 
 /**
@@ -88,6 +92,7 @@ template <typename Md4cFlagsT> static inline ENRMMd4cFlags *ENRMMd4cFlagsFromPro
   flags.highlight = props.highlight;
   flags.hardSoftBreaks = props.hardSoftBreaks;
   flags.preserveBlankLines = props.preserveBlankLines;
+  flags.admonitions = props.admonitions;
   return flags;
 }
 
@@ -128,7 +133,8 @@ static inline StyleConfig *ENRMStyleConfigFromProps(const PropsT &typedProps, CG
  */
 static inline CGSize ENRMMeasureAttributedTextViewFree(NSAttributedString *text, CGFloat maxWidth, StyleConfig *config,
                                                        BOOL allowTrailingMargin, CGFloat lastElementMarginBottom,
-                                                       CGFloat pointScaleFactor)
+                                                       CGFloat pointScaleFactor, NSInteger numberOfLines,
+                                                       NSLineBreakMode lineBreakMode)
 {
   if (text.length == 0) {
     return CGSizeZero;
@@ -136,6 +142,10 @@ static inline CGSize ENRMMeasureAttributedTextViewFree(NSAttributedString *text,
 
   NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:CGSizeMake(maxWidth, CGFLOAT_MAX)];
   textContainer.lineFragmentPadding = 0;
+  if (numberOfLines > 0) {
+    textContainer.maximumNumberOfLines = numberOfLines;
+    textContainer.lineBreakMode = lineBreakMode;
+  }
   NSLayoutManager *layoutManager = [[NSLayoutManager alloc] init];
   layoutManager.allowsNonContiguousLayout = NO;
   layoutManager.usesFontLeading = NO;
@@ -193,8 +203,12 @@ static inline CGSize ENRMMeasureMarkdownViewFree(const PropsT &typedProps, CGFlo
         ENRMResolveWritingDirectionMode([[NSString alloc] initWithUTF8String:typedProps.writingDirection.c_str()]);
     ENRMApplyWritingDirectionMode(text, writingDirectionMode, resolvedLayoutDirection);
 
+    NSInteger numberOfLines = (NSInteger)typedProps.numberOfLines;
+    NSLineBreakMode lineBreakMode =
+        ENRMResolveEllipsizeLineBreakMode([[NSString alloc] initWithUTF8String:typedProps.ellipsizeMode.c_str()]);
     CGSize size = ENRMMeasureAttributedTextViewFree(text, maxWidth, config, typedProps.allowTrailingMargin,
-                                                    result.lastElementMarginBottom, pointScaleFactor);
+                                                    result.lastElementMarginBottom, pointScaleFactor, numberOfLines,
+                                                    lineBreakMode);
     if (size.height == 0) {
       return fallback;
     }
@@ -260,7 +274,7 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
 
     NSArray<ENRMRenderedSegment *> *segments =
         ENRMRenderSegmentsFromAST(ast, config, typedProps.allowTrailingMargin, typedProps.allowFontScaling,
-                                  typedProps.maxFontSizeMultiplier, lineBreakStrategy);
+                                  typedProps.maxFontSizeMultiplier, lineBreakStrategy, /*blockquoteContent*/ NO);
     for (ENRMRenderedSegment *segment in segments) {
       if (segment.kind == ENRMSegmentKindText && segment.textResult) {
         ENRMApplyWritingDirectionMode(segment.textResult.attributedText, writingDirectionMode, resolvedLayoutDirection);
@@ -283,7 +297,7 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
       if (segment.kind == ENRMSegmentKindText && segment.textResult) {
         CGSize textSize = ENRMMeasureAttributedTextViewFree(
             segment.textResult.attributedText, maxWidth, config, shouldAddBottomMargin,
-            segment.textResult.lastElementMarginBottom, pointScaleFactor);
+            segment.textResult.lastElementMarginBottom, pointScaleFactor, 0, NSLineBreakByWordWrapping);
         yOffset += textSize.height;
         maxContentWidth = MAX(maxContentWidth, textSize.width);
       } else if (segment.kind == ENRMSegmentKindTable && segment.tableSegment) {
@@ -306,6 +320,18 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
         if (shouldAddBottomMargin) {
           yOffset += config.codeBlockMarginBottom;
         }
+      } else if (segment.kind == ENRMSegmentKindBlockquote && segment.blockquoteSegment) {
+        yOffset += config.blockquoteMarginTop;
+        yOffset += [ENRMBlockquoteContainerView measureHeightForBlockquoteNode:segment.blockquoteSegment.blockquoteNode
+                                                                        config:config
+                                                                      maxWidth:maxWidth
+                                                              pointScaleFactor:pointScaleFactor
+                                                              allowFontScaling:typedProps.allowFontScaling
+                                                             lineBreakStrategy:lineBreakStrategy];
+        maxContentWidth = maxWidth;
+        if (shouldAddBottomMargin) {
+          yOffset += config.blockquoteMarginBottom;
+        }
       }
 #if ENRICHED_MARKDOWN_MATH
       else if (segment.kind == ENRMSegmentKindMath && segment.mathSegment) {
@@ -316,6 +342,18 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
         maxContentWidth = maxWidth;
         if (shouldAddBottomMargin) {
           yOffset += config.mathMarginBottom;
+        }
+      }
+#endif
+#if ENRICHED_MARKDOWN_VIDEO
+      else if (segment.kind == ENRMSegmentKindVideo && segment.videoSegment) {
+        yOffset += config.videoMarginTop;
+        yOffset += [ENRMVideoContainerView measureHeightForVideoNode:segment.videoSegment.videoNode
+                                                              config:config
+                                                            maxWidth:maxWidth];
+        maxContentWidth = maxWidth;
+        if (shouldAddBottomMargin) {
+          yOffset += config.videoMarginBottom;
         }
       }
 #endif

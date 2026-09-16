@@ -74,7 +74,8 @@ enum MarkdownHTMLGenerator {
         case normal
         case heading(Int)
         case codeBlock
-        case blockquote(depth: Int)
+        /// `admonition` is set on the title paragraph that opens an alert.
+        case blockquote(depth: Int, admonition: AdmonitionType?)
         case list(ListParagraph)
     }
 
@@ -127,7 +128,8 @@ enum MarkdownHTMLGenerator {
             return .heading(min(max(level, 1), 6))
         }
         if let depth = MarkdownAttributeValue.intValue(from: attrs[MarkdownAttribute.blockquoteDepth]) {
-            return .blockquote(depth: depth)
+            let admonition = (attrs[MarkdownAttribute.admonitionHeader] as? String).flatMap(AdmonitionType.init(rawValue:))
+            return .blockquote(depth: depth, admonition: admonition)
         }
         if let depth = MarkdownAttributeValue.intValue(from: attrs[MarkdownAttribute.listDepth]) {
             let ordered = MarkdownAttributeValue.intValue(
@@ -170,8 +172,8 @@ enum MarkdownHTMLGenerator {
         switch paragraph.type {
         case .codeBlock:
             collectCodeBlockLine(inline, state: &state)
-        case .blockquote(let depth):
-            emitBlockquote(inline, depth: depth, into: &html, styles: styles, state: &state)
+        case .blockquote(let depth, let admonition):
+            emitBlockquote(inline, depth: depth, admonition: admonition, into: &html, styles: styles, state: &state)
         case .list(let list):
             emitList(inline, list: list, into: &html, styles: styles, state: &state)
         case .heading(let level):
@@ -228,6 +230,7 @@ enum MarkdownHTMLGenerator {
     private static func emitBlockquote(
         _ content: String,
         depth: Int,
+        admonition: AdmonitionType?,
         into html: inout String,
         styles: CachedStyles,
         state: inout State
@@ -238,30 +241,57 @@ enum MarkdownHTMLGenerator {
             closeAllBlockquotes(&html, state: &state)
         }
 
-        while state.blockquoteDepth > depth {
+        // An admonition title opens a fresh callout even at the current
+        // depth (an alert right after a sibling quote).
+        let keepDepth = admonition == nil ? depth : depth - 1
+        while state.blockquoteDepth > keepDepth {
             html += "</blockquote>"
             state.blockquoteDepth -= 1
         }
 
         while state.blockquoteDepth < depth {
             state.blockquoteDepth += 1
-            if state.blockquoteDepth == 0 {
-                html += "<blockquote style=\"background-color: \(styles.blockquoteBgColor); "
-                    + "border-inline-start: \(styles.blockquoteBorderWidth)px solid \(styles.blockquoteBorderColor); "
-                    + "padding: \(Fixed.blockquotePaddingVertical) \(styles.blockquoteGapWidth)px; "
-                    + "margin: 0 0 \(styles.blockquoteMarginBottom)px 0; "
-                    + "\(Fixed.blockquoteBorderRadiusCorners);\">"
-            } else {
-                html += "<blockquote style=\"border-inline-start: \(styles.blockquoteBorderWidth)px solid \(styles.blockquoteBorderColor); "
-                    + "padding-inline-start: \(styles.blockquoteGapWidth)px; "
-                    + "margin: \(Fixed.blockquoteNestedMargin);\">"
+            let opensAdmonition = state.blockquoteDepth == depth ? admonition : nil
+            html += blockquoteOpening(root: state.blockquoteDepth == 0, admonition: opensAdmonition, styles: styles)
+            if let opensAdmonition {
+                html += admonitionHeader(opensAdmonition, styles: styles)
             }
         }
 
-        html += "<p style=\"margin: \(Fixed.blockquoteParagraphMargin); "
-            + "color: \(styles.blockquoteColor); "
-            + "font-size: \(styles.blockquoteFontSize)px;\">\(content)</p>"
+        if admonition == nil {
+            html += "<p style=\"margin: \(Fixed.blockquoteParagraphMargin); "
+                + "color: \(styles.blockquoteColor); "
+                + "font-size: \(styles.blockquoteFontSize)px;\">\(content)</p>"
+        }
         state.previousWasBlockquote = true
+    }
+
+    /// An admonition recolors the box's bar and fill per type.
+    private static func blockquoteOpening(root: Bool, admonition: AdmonitionType?, styles: CachedStyles) -> String {
+        let borderColor = admonition.map(styles.admonitionTint) ?? styles.blockquoteBorderColor
+        let background = admonition.map { styles.admonitionBackgrounds[$0] ?? "transparent" }
+            ?? (root ? styles.blockquoteBgColor : nil)
+        var style = background.map { "background-color: \($0); " } ?? ""
+        style += "border-inline-start: \(styles.blockquoteBorderWidth)px solid \(borderColor); "
+        style += root
+            ? "padding: \(Fixed.blockquotePaddingVertical) \(styles.blockquoteGapWidth)px; "
+                + "margin: 0 0 \(styles.blockquoteMarginBottom)px 0; \(Fixed.blockquoteBorderRadiusCorners);"
+            : "padding-inline-start: \(styles.blockquoteGapWidth)px; margin: \(Fixed.blockquoteNestedMargin);"
+        return "<blockquote style=\"\(style)\">"
+    }
+
+    /// The icon + title row the web renderer emits.
+    private static func admonitionHeader(_ type: AdmonitionType, styles: CachedStyles) -> String {
+        let tint = styles.admonitionTint(type)
+        let iconSize = styles.admonitionIconSize
+        return "<div style=\"display: flex; align-items: center; gap: \(styles.admonitionIconGap)px; "
+            + "margin-bottom: \(styles.admonitionHeaderMargin)px; color: \(tint); font-weight: bold; "
+            + "font-size: \(styles.blockquoteFontSize)px;\">"
+            + "<svg width=\"\(iconSize)\" height=\"\(iconSize)\" "
+            + "viewBox=\"0 0 \(Int(AdmonitionHeader.iconViewBox)) \(Int(AdmonitionHeader.iconViewBox))\" "
+            + "fill=\"\(tint)\" aria-hidden=\"true\">"
+            + "<path d=\"\(AdmonitionHeader.iconPathData(for: type))\"></path></svg>"
+            + "<span>\(type.title)</span></div>"
     }
 
     private static func emitList(
@@ -355,6 +385,9 @@ enum MarkdownHTMLGenerator {
 
     // MARK: - Inline emission
 
+    /// Block-separator newlines only; U+2028 hard breaks are content and must survive.
+    private static let blockSeparators = CharacterSet(charactersIn: "\n\r")
+
     private static func inlineHTML(
         in text: NSAttributedString,
         range: NSRange,
@@ -383,7 +416,7 @@ enum MarkdownHTMLGenerator {
 
             let cleaned = content
                 .replacingOccurrences(of: "\u{200B}", with: "")
-                .trimmingCharacters(in: .newlines)
+                .trimmingCharacters(in: Self.blockSeparators)
             guard !cleaned.isEmpty else { return }
 
             appendStyledSegment(cleaned, attrs: attrs, into: &html, styles: styles, isCodeBlock: isCodeBlock)
@@ -434,14 +467,12 @@ enum MarkdownHTMLGenerator {
         let isUnderline = (MarkdownAttributeValue.intValue(from: attrs[.underlineStyle]) ?? 0) != 0
         let isCode = MarkdownAttributeValue.boolValue(from: attrs[MarkdownAttribute.inlineCode]) && !isCodeBlock
 
-        let linkURL: String?
-        switch attrs[.link] {
-        case let url as URL: linkURL = url.absoluteString
-        case let string as String: linkURL = string
-        default: linkURL = nil
-        }
+        let linkURL = MarkdownAttributeValue.linkString(from: MarkdownAttributeValue.sourceLink(in: attrs))
 
         var tags: [(open: String, close: String)] = []
+        if MarkdownAttributeValue.boolValue(from: attrs[MarkdownAttribute.highlight]) {
+            tags.append((open: styles.highlightOpenTag, close: "</mark>"))
+        }
         if let linkURL {
             let open = "<a href=\"\(escapeHTML(linkURL))\" style=\"color: \(styles.linkColor); "
                 + "text-decoration: \(styles.linkUnderline ? "underline" : "none");\">"
@@ -476,122 +507,4 @@ enum MarkdownHTMLGenerator {
         }
         return tags
     }
-
-    // MARK: - Styles
-
-    private struct CachedStyles {
-        let paragraphColor: String
-        let paragraphFontSize: Int
-        let paragraphMarginBottom: Int
-
-        let codeBlockColor: String
-        let codeBlockBgColor: String
-        let codeBlockFontSize: Int
-        let codeBlockPadding: Int
-        let codeBlockBorderRadius: Int
-        let codeBlockMarginBottom: Int
-
-        let codeColor: String
-        let codeBgColor: String
-
-        let blockquoteColor: String
-        let blockquoteBgColor: String
-        let blockquoteBorderColor: String
-        let blockquoteBorderWidth: Int
-        let blockquoteGapWidth: Int
-        let blockquoteMarginBottom: Int
-        let blockquoteFontSize: Int
-
-        let listColor: String
-        let listFontSize: Int
-        let listMarginBottom: Int
-        let listMarginLeft: Int
-
-        let linkColor: String
-        let linkUnderline: Bool
-
-        let strongColor: String?
-        let emphasisColor: String?
-
-        let imageMarginBottom: Int
-        let imageBorderRadius: Int
-
-        let headingFontSizes: [Int]
-        let headingFontWeights: [String]
-        let headingColors: [String]
-        let headingMarginBottoms: [Int]
-
-        init(config: MarkdownStyleConfig) {
-            let bodySize = Int(UIFont.preferredFont(forTextStyle: .body).pointSize)
-
-            paragraphColor = cssColor(config.paragraph.foregroundColor)
-            paragraphFontSize = config.paragraph.font.map { Int($0.pointSize) } ?? bodySize
-            paragraphMarginBottom = Int(config.paragraph.marginBottom ?? 0)
-
-            codeBlockColor = cssColor(config.codeBlock.foregroundColor)
-            codeBlockBgColor = cssColor(config.codeBlock.backgroundColor)
-            codeBlockFontSize = config.codeBlock.font.map { Int($0.pointSize) } ?? bodySize
-            codeBlockPadding = Int(config.codeBlock.padding ?? 0)
-            codeBlockBorderRadius = Int(config.codeBlock.borderRadius ?? 0)
-            codeBlockMarginBottom = Int(config.codeBlock.marginBottom ?? 0)
-
-            codeColor = cssColor(config.code.foregroundColor)
-            codeBgColor = cssColor(config.code.backgroundColor)
-
-            blockquoteColor = cssColor(config.blockquote.foregroundColor)
-            blockquoteBgColor = cssColor(config.blockquote.backgroundColor)
-            blockquoteBorderColor = cssColor(config.blockquote.borderColor)
-            blockquoteBorderWidth = Int(config.blockquote.borderWidth ?? 0)
-            blockquoteGapWidth = Int(config.blockquote.gapWidth ?? 0)
-            blockquoteMarginBottom = Int(config.blockquote.marginBottom ?? 0)
-            blockquoteFontSize = config.blockquote.font.map { Int($0.pointSize) } ?? bodySize
-
-            listColor = cssColor(config.list.foregroundColor)
-            listFontSize = config.list.font.map { Int($0.pointSize) } ?? bodySize
-            listMarginBottom = Int(config.list.marginBottom ?? 0)
-            listMarginLeft = Int(config.list.marginLeft ?? 24)
-
-            linkColor = cssColor(config.link.foregroundColor)
-            linkUnderline = config.link.underline ?? true
-
-            strongColor = config.strong.foregroundColor.map(cssColor)
-            emphasisColor = config.emphasis.foregroundColor.map(cssColor)
-
-            imageMarginBottom = Int(config.image.marginBottom ?? 0)
-            imageBorderRadius = Int(config.image.borderRadius ?? 0)
-
-            let headings = [
-                config.heading1, config.heading2, config.heading3,
-                config.heading4, config.heading5, config.heading6
-            ]
-            headingFontSizes = headings.map { $0.font.map { Int($0.pointSize) } ?? bodySize }
-            headingFontWeights = headings.map { heading in
-                let isBold = heading.font?.fontDescriptor.symbolicTraits.contains(.traitBold) ?? true
-                return isBold ? "700" : "normal"
-            }
-            headingColors = headings.map { cssColor($0.foregroundColor) }
-            headingMarginBottoms = headings.map { Int($0.marginBottom ?? 0) }
-        }
-    }
-
-    // MARK: - Helpers
-
-    private static func cssColor(_ color: UIColor?) -> String {
-        guard let color else { return "inherit" }
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return "inherit" }
-
-        let redByte = Int(round(min(max(red, 0), 1) * 255))
-        let greenByte = Int(round(min(max(green, 0), 1) * 255))
-        let blueByte = Int(round(min(max(blue, 0), 1) * 255))
-        if alpha < 1 {
-            let alphaString = String(format: "%.2f", alpha)
-            return "rgba(\(redByte), \(greenByte), \(blueByte), \(alphaString))"
-        }
-        return String(format: "#%02X%02X%02X", redByte, greenByte, blueByte)
-    }
-
 }

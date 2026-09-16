@@ -70,6 +70,10 @@ static const char *nodeTypeToString(NodeType type) {
       return "Highlight";
     case NodeType::BlankLine:
       return "BlankLine";
+    case NodeType::Admonition:
+      return "Admonition";
+    case NodeType::Video:
+      return "Video";
     default:
       assert(false && "unhandled NodeType in nodeTypeToString");
       return "";

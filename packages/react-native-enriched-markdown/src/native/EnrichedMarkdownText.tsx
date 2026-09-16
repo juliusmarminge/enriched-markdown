@@ -23,6 +23,8 @@ import type {
   ImagePressEvent,
   TaskListItemPressEvent,
   CopyPressEvent,
+  LatexErrorEvent,
+  CodeBlockPressEvent,
   OnContextMenuItemPressEvent,
 } from '../types/events';
 
@@ -40,6 +42,8 @@ export type {
   ImagePressEvent,
   TaskListItemPressEvent,
   CopyPressEvent,
+  LatexErrorEvent,
+  CodeBlockPressEvent,
 };
 
 // Default English labels for the built-in selection menu actions. Defaults are
@@ -111,6 +115,7 @@ const defaultMd4cFlags: Md4cFlags = {
   highlight: false,
   hardSoftBreaks: false,
   preserveBlankLines: false,
+  admonitions: true,
 };
 
 export const EnrichedMarkdownText = ({
@@ -123,6 +128,8 @@ export const EnrichedMarkdownText = ({
   onTaskListItemPress,
   enableTaskListItemToggle = true,
   onCopyPress,
+  onLatexError,
+  onCodeBlockPress,
   enableBlockContextMenu = true,
   enableLinkPreview,
   selectable = true,
@@ -143,6 +150,8 @@ export const EnrichedMarkdownText = ({
   textBreakStrategy,
   lineBreakStrategyIOS,
   writingDirection = 'first-strong',
+  numberOfLines,
+  ellipsizeMode,
   ...rest
 }: EnrichedMarkdownTextProps) => {
   const normalizedStyleRef = useRef<MarkdownStyleInternal | null>(null);
@@ -163,8 +172,12 @@ export const EnrichedMarkdownText = ({
       highlight: md4cFlags.highlight ?? false,
       hardSoftBreaks: md4cFlags.hardSoftBreaks ?? false,
       preserveBlankLines: md4cFlags.preserveBlankLines ?? false,
+      // Admonitions are a GitHub-flavor feature; force them off in commonmark so
+      // `> [!NOTE]` renders as a plain blockquote.
+      admonitions:
+        flavor === 'github' ? (md4cFlags.admonitions ?? true) : false,
     }),
-    [md4cFlags]
+    [md4cFlags, flavor]
   );
 
   const contextMenuCallbacksRef = useRef<
@@ -252,6 +265,22 @@ export const EnrichedMarkdownText = ({
     [onCopyPress]
   );
 
+  const handleLatexError = useCallback(
+    (e: NativeSyntheticEvent<LatexErrorEvent>) => {
+      const { source, message, displayMode } = e.nativeEvent;
+      onLatexError?.({ source, message: message || undefined, displayMode });
+    },
+    [onLatexError]
+  );
+
+  const handleCodeBlockPress = useCallback(
+    (e: NativeSyntheticEvent<CodeBlockPressEvent>) => {
+      const { code, language } = e.nativeEvent;
+      onCodeBlockPress?.({ code, language });
+    },
+    [onCodeBlockPress]
+  );
+
   const tableMode = streamingConfig?.tableMode ?? 'progressive';
   const codeBlockMode = streamingConfig?.codeBlockMode ?? 'progressive';
   const normalizedStreamingConfig = useMemo(
@@ -320,6 +349,9 @@ export const EnrichedMarkdownText = ({
     onTaskListItemPress: handleTaskListItemPress,
     enableTaskListItemToggle,
     onCopyPress: handleCopyPress,
+    onLatexError: handleLatexError,
+    onCodeBlockPress: handleCodeBlockPress,
+    enableCodeBlockPress: onCodeBlockPress != null,
     enableBlockContextMenu,
     enableLinkPreview: onLinkLongPress == null && (enableLinkPreview ?? true),
     selectable,
@@ -342,6 +374,8 @@ export const EnrichedMarkdownText = ({
     textBreakStrategy,
     lineBreakStrategyIOS,
     writingDirection,
+    numberOfLines,
+    ellipsizeMode,
     ...rest,
   };
 

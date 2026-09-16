@@ -11,13 +11,14 @@ enum MarkdownParserBridge {
             guard let result = em_parse_markdown(
                 cString,
                 flags.underline ? 1 : 0,
-                flags.latexMath ? 1 : 0,
+                flags.latexMathEnabled ? 1 : 0,
                 flags.superscript ? 1 : 0,
                 flags.subscript ? 1 : 0,
                 flags.highlight ? 1 : 0,
                 flags.hardSoftBreaks ? 1 : 0,
                 flags.permissiveAutolinks ? 1 : 0,
-                flags.preserveBlankLines ? 1 : 0
+                flags.preserveBlankLines ? 1 : 0,
+                flags.admonitions ? 1 : 0
             ) else {
                 return MarkdownASTNode(type: .document)
             }

@@ -91,6 +91,35 @@ export const blockquoteStyledDefaults: BlockquoteStyleControls = {
   padding: 0,
 };
 
+// Admonitions inherit the blockquote geometry controls and add a per-type color
+// pair. An empty background renders transparent (no fill).
+export type AdmonitionStyleControls = BlockquoteStyleControls & {
+  noteColor: string;
+  noteBackgroundColor: string;
+  tipColor: string;
+  tipBackgroundColor: string;
+  importantColor: string;
+  importantBackgroundColor: string;
+  warningColor: string;
+  warningBackgroundColor: string;
+  cautionColor: string;
+  cautionBackgroundColor: string;
+};
+
+export const admonitionStyledDefaults: AdmonitionStyleControls = {
+  ...blockquoteStyledDefaults,
+  noteColor: '#0969da',
+  noteBackgroundColor: '',
+  tipColor: '#1a7f37',
+  tipBackgroundColor: '',
+  importantColor: '#8250df',
+  importantBackgroundColor: '',
+  warningColor: '#9a6700',
+  warningBackgroundColor: '',
+  cautionColor: '#cf222e',
+  cautionBackgroundColor: '',
+};
+
 export type CodeBlockStyleControls = {
   fontSize: number;
   fontFamily: string;
@@ -162,6 +191,22 @@ export const imageStyledDefaults: ImageStyleControls = {
   borderRadius: 12,
   marginTop: 8,
   marginBottom: 16,
+};
+
+export type VideoStyleControls = {
+  marginTop: number;
+  marginBottom: number;
+  borderRadius: number;
+  aspectRatio: number;
+  backgroundColor: string;
+};
+
+export const videoStyledDefaults: VideoStyleControls = {
+  marginTop: 0,
+  marginBottom: 16,
+  borderRadius: 8,
+  aspectRatio: 16 / 9,
+  backgroundColor: '#000000',
 };
 
 export type TableStyleControls = {
@@ -463,6 +508,12 @@ export const EXAMPLE_FONT_FAMILIES = [
   'Montserrat-Medium',
   'Montserrat-Italic',
   'CourierPrime-Regular',
+  // Poppins ships a nonzero lineGap, which surfaced the iOS descender clip in
+  // issue #770 - keep it selectable for regression checks.
+  'Poppins-Regular',
+  'Poppins-Medium',
+  'Poppins-SemiBold',
+  'Poppins-Italic',
 ] as const;
 
 const EXAMPLE_FONT_FAMILY_LABELS: Record<
@@ -476,6 +527,10 @@ const EXAMPLE_FONT_FAMILY_LABELS: Record<
   'Montserrat-Medium': 'Montserrat Medium',
   'Montserrat-Italic': 'Montserrat Italic',
   'CourierPrime-Regular': 'Courier Prime',
+  'Poppins-Regular': 'Poppins Regular',
+  'Poppins-Medium': 'Poppins Medium',
+  'Poppins-SemiBold': 'Poppins SemiBold',
+  'Poppins-Italic': 'Poppins Italic',
 };
 
 export function fontFamilyControl(description: string) {

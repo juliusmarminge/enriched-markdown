@@ -114,7 +114,7 @@ final class MarkdownExtractorTests: XCTestCase {
             config: MarkdownSelectionMenuConfig(),
             selectedRange: range,
             attributedText: rendered,
-            sourceMarkdown: nil
+            source: nil
         )
 
         let copyMarkdown = specs.first { $0.kind == .copyMarkdown }
@@ -248,6 +248,13 @@ final class MarkdownExtractorTests: XCTestCase {
         )
     }
 
+    func testExtractsHighlight() {
+        XCTAssertEqual(
+            extractSelecting("marked", in: "Some ==marked== text.", flags: Md4cFlags(highlight: true)),
+            "==marked=="
+        )
+    }
+
     func testLinkIsNotWrappedInUnderline() {
         XCTAssertEqual(
             extractSelecting("swmansion", in: "Visit [swmansion](https://swmansion.com) now."),
@@ -305,6 +312,42 @@ final class MarkdownExtractorTests: XCTestCase {
         XCTAssertEqual(
             extractSelecting("Quote with bold text.", in: "> Quote with **bold** text."),
             "> Quote with **bold** text."
+        )
+    }
+
+    // MARK: - Admonitions
+
+    func testExtractsAdmonitionWithItsMarkerInsteadOfTheTitle() {
+        XCTAssertEqual(
+            extractSelecting("Note\nbody text", in: "> [!NOTE]\n> body text", flags: Md4cFlags(admonitions: true)),
+            "> [!NOTE]\n> body text"
+        )
+    }
+
+    func testExtractsAdmonitionAfterParagraph() {
+        // The trailing newlines are the quote's bottom-margin spacer.
+        XCTAssertEqual(
+            extractFullRange("intro\n\n> [!TIP]\n> body", flags: Md4cFlags(admonitions: true))?
+                .trimmingCharacters(in: .newlines),
+            "intro\n\n> [!TIP]\n> body"
+        )
+    }
+
+    func testExtractsNestedAdmonition() {
+        XCTAssertEqual(
+            extractSelecting(
+                "Tip\ninner",
+                in: "> [!WARNING]\n> outer\n>\n> > [!TIP]\n> > inner",
+                flags: Md4cFlags(admonitions: true)
+            ),
+            "> > [!TIP]\n> > inner"
+        )
+    }
+
+    func testExtractsAdmonitionBodyWithoutTitleAsPlainQuote() {
+        XCTAssertEqual(
+            extractSelecting("body", in: "> [!NOTE]\n> body", flags: Md4cFlags(admonitions: true)),
+            "> body"
         )
     }
 

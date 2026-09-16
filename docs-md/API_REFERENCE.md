@@ -143,9 +143,60 @@ Only fires when `flavor="github"` — the copy button is part of the GitHub flav
 />
 ```
 
+### `onLatexError`
+
+Callback when a math expression cannot be parsed or rendered by the LaTeX engine. Receives `source` (the raw LaTeX of the failing expression, without `$`/`$$` delimiters), `message` (the engine's error message, or `undefined` when the engine provides none), and `displayMode` (`false` for inline `$...$`, `true` for block `$$...$$`).
+
+The whole expression is the unit of failure - the engine either renders an expression in full or rejects it, so there is no single offending command and therefore no `command` field. Use `source` to report the failing formula to your own error tracker without maintaining an allowlist that goes stale on engine upgrades.
+
+Fires **at most once per distinct failing expression** per component instance - the callback is de-duplicated (keyed by `displayMode` + `source`) and the cache is kept across `markdown` changes, so streaming content does not re-report the same failure on every update. Requires `md4cFlags.latexMath` (on by default).
+
+> [!CAUTION]
+> De-duplication is per component **instance**. If the component unmounts and remounts (new instance - navigation, a changed React `key`, or list recycling), it reports the same failures again. De-duplicate on your side (e.g. by `source`) if you aggregate these app-wide. See [LaTeX Math - De-duplication and re-mounts](LATEX_MATH.md#de-duplication-and-re-mounts).
+
+| Type                                  | Default Value | Platform     |
+| ------------------------------------- | ------------- | ------------ |
+| `(event: LatexErrorEvent) => void`    | -             | iOS, Android |
+
+**Example:**
+
+```tsx
+<EnrichedMarkdownText
+  markdown={"Inline $\\foo$ and block:\n\n$$\\bar$$"}
+  onLatexError={({ source, message, displayMode }) => {
+    reportToErrorTracker('latex-render-failed', { source, message, displayMode });
+  }}
+/>
+```
+
+### `onCodeBlockPress`
+
+Callback fired when a fenced code block is tapped anywhere in its body. Receives `code` (the block's source) and `language` (the fence language, or `""` if none). Useful for building custom actions such as copy-to-clipboard or opening the code in a viewer.
+
+Setting this prop arms the code block for taps. When it is unset the block stays inert - text selection, the header copy button, and the long-press context menu behave exactly as before. A tap never fires while text is being selected; selection still happens via long-press.
+
+Works in both flavors: `flavor="github"` fires on the container-based code block renderer, and `flavor="commonmark"` fires on the inline code-block region drawn inside the single text view. On web the code block is rendered as a clickable, keyboard-activatable element (the `flavor` prop is ignored on web).
+
+| Type                                   | Default Value | Platform          |
+| -------------------------------------- | ------------- | ----------------- |
+| `(event: CodeBlockPressEvent) => void` | -             | iOS, Android, Web |
+
+**Example:**
+
+```tsx
+<EnrichedMarkdownText
+  flavor="github"
+  markdown={"```ts\nconst x = 1;\n```"}
+  onCodeBlockPress={({ code, language }) => {
+    Clipboard.setString(code);
+    console.log(`Copied ${language} code`);
+  }}
+/>
+```
+
 ### `enableBlockContextMenu`
 
-Controls the long-press copy popup on code blocks, tables, and block math.
+Controls the long-press copy popup on code blocks, tables, block math, and blockquotes/admonitions.
 Setting it to `false` leaves the code-block header copy button, accessibility
 copy action, and system text-selection menu unchanged.
 
@@ -268,6 +319,35 @@ Whether to preserve the bottom margin of the last block element.
 | --------- | ------------- | -------- |
 | `boolean` | `false`        | Both     |
 
+### `numberOfLines`
+
+Clamps the rendered markdown to a maximum number of lines, truncating with an ellipsis (see [`ellipsizeMode`](#ellipsizemode)) when it overflows. `0` (the default) means unlimited. Mirrors the prop of the same name on React Native's core `Text`, and is handy for previews such as chat-list rows or reply quotes. The clamp is applied to both the measurement pass and the rendered view, so the measured and rendered heights stay in sync.
+
+Only applies to CommonMark (the default flavor). When [`flavor`](#flavor) is `'github'` the content is laid out as independent block segments that cannot honor a document-wide line cap, so the prop is ignored - see [issue #786](https://github.com/software-mansion/enriched-markdown/issues/786).
+
+> **Android note:** while a view is clamped (`numberOfLines > 0`) it is not selectable and its links are not tappable, regardless of [`selectable`](#selectable). This is a platform constraint, not a choice: Android draws the truncation ellipsis only through `StaticLayout`, but enabling text selection or a link movement method promotes the text to a `Spannable`, which forces `TextView` onto `DynamicLayout` - and `DynamicLayout` has no `maxLines` support, so the clamp and its ellipsis are silently dropped (confirmed against AOSP `TextView`/`DynamicLayout` on API 35/36; React Native's own `Text` hits the same limitation). Selection and links are restored automatically once the clamp is removed. iOS keeps selection and links while clamped.
+
+| Type     | Default Value | Platform |
+| -------- | ------------- | -------- |
+| `number` | `0`           | Both     |
+
+### `ellipsizeMode`
+
+Controls where the ellipsis is placed when the text is truncated by [`numberOfLines`](#numberoflines). Only takes effect when `numberOfLines` is set. Mirrors the prop of the same name on React Native's core `Text`.
+
+| Type                                        | Default Value | Platform |
+| ------------------------------------------- | ------------- | -------- |
+| `'head' \| 'middle' \| 'tail' \| 'clip'`    | `'tail'`      | Both     |
+
+- **`'head'`**: ellipsis at the start (`...d of the text`).
+- **`'middle'`**: ellipsis in the middle (`start...end`).
+- **`'tail'`** (default): ellipsis at the end (`start of the...`).
+- **`'clip'`**: truncate at the line boundary with no ellipsis glyph.
+
+> **Multi-line note:** `'head'` and `'middle'` are single-line truncation modes. They only place the ellipsis as described when [`numberOfLines`](#numberoflines) is `1`. With `numberOfLines > 1`, Android only truncates through `StaticLayout`'s `TruncateAt.END`, so `'head'` and `'middle'` fall back to tail-style behavior; iOS multi-line truncation with these modes is likewise unreliable. This mirrors React Native's core `Text`, where only `'tail'` is documented to work correctly past one line. Use `'tail'` (or `'clip'`) for multi-line clamps.
+
+Ignored when [`flavor`](#flavor) is `'github'` (see [`numberOfLines`](#numberoflines)).
+
 ### `textBreakStrategy`
 
 Controls how Android breaks lines within paragraphs. Mirrors the prop of the same name on React Native's core `Text`. The same value is used for both the measurement pass (`StaticLayout.Builder`) and the rendered `TextView`, so measured and rendered line counts stay in sync. Requires API 23+; ignored on older Android versions.
@@ -325,7 +405,7 @@ Code blocks are always rendered left-to-right regardless of this prop. Per-parag
 
 ### `flavor`
 
-Markdown flavor. Set to `'github'` to enable GitHub Flavored Markdown features: tables and block-style code blocks.
+Markdown flavor. Set to `'github'` to enable GitHub Flavored Markdown features: tables, block-style code blocks, and block-style blockquotes.
 
 | Type                              | Default Value   | Platform |
 | --------------------------------- | --------------- | -------- |
@@ -333,9 +413,11 @@ Markdown flavor. Set to `'github'` to enable GitHub Flavored Markdown features: 
 
 > **Note:** 
 > - **`'commonmark'`**: All Markdown content is rendered as a single TextView. Selecting text will select all content in the view.
-> - **`'github'`**: The Markdown AST is split into segments. Consecutive text blocks (paragraphs, headings, lists, etc.) are grouped into separate TextView segments, while tables, fenced code blocks, and math blocks are rendered as separate block views. This allows for granular text selection within each segment and enables interactive block features (horizontal table scrolling, context menus, the code block header). Text selection cannot span across segments.
+> - **`'github'`**: The Markdown AST is split into segments. Consecutive text blocks (paragraphs, headings, lists, etc.) are grouped into separate TextView segments, while tables, fenced code blocks, math blocks, and blockquotes are rendered as separate block views. This allows for granular text selection within each segment and enables interactive block features (horizontal table scrolling, context menus, the code block header). Text selection cannot span across segments.
 >
 > With `'github'`, a fenced code block renders as a dedicated component: a header bar with the language display name (` ```python ` shows "Python") and a copy-code button, a divider, and the code below. Long lines do not wrap — the code pane scrolls horizontally while the header stays fixed. Long-pressing the block opens the Copy / Copy as Markdown menu. With `'commonmark'`, code blocks stay inside the single TextView, styled via spans, and long lines wrap.
+>
+> With `'github'`, a blockquote also renders as a dedicated component — a recursive container that draws its own box (padding, `backgroundColor`, and accent border with `borderRadius`) and splits its own content into segments. A code block, table, or math block quoted inside therefore becomes a real nested block component, and each nesting level is its own box. Long-pressing a blockquote or admonition opens the Copy / Copy as Markdown menu. With `'commonmark'`, blockquotes stay inside the single TextView, styled via spans.
 
 ### `streamingAnimation`
 

@@ -3,6 +3,7 @@ package com.swmansion.enriched.markdown.renderer
 import android.content.Context
 import android.text.SpannableStringBuilder
 import android.text.style.MetricAffectingSpan
+import com.swmansion.enriched.markdown.math.LatexErrorReporter
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.spans.ImageSpan
 import com.swmansion.enriched.markdown.styles.StyleConfig
@@ -21,6 +22,7 @@ interface NodeRenderer {
 
 data class RendererConfig(
   val style: StyleConfig,
+  val onLatexError: LatexErrorReporter? = null,
 )
 
 class RendererFactory(
@@ -84,10 +86,12 @@ class RendererFactory(
 
   private val renderers: Map<MarkdownASTNode.NodeType, NodeRenderer> by lazy {
     buildMap {
-      put(MarkdownASTNode.NodeType.Document, DocumentRenderer())
       put(MarkdownASTNode.NodeType.Paragraph, ParagraphRenderer(config))
       put(MarkdownASTNode.NodeType.Heading, HeadingRenderer(config))
       put(MarkdownASTNode.NodeType.Blockquote, BlockquoteRenderer(config))
+      // A list-nested admonition falls back to the inline blockquote renderer
+      // (no themed header); top-level admonitions use the segment container path.
+      put(MarkdownASTNode.NodeType.Admonition, BlockquoteRenderer(config))
       put(MarkdownASTNode.NodeType.CodeBlock, CodeBlockRenderer(config))
       put(MarkdownASTNode.NodeType.UnorderedList, ListRenderer(config, isOrdered = false))
       put(MarkdownASTNode.NodeType.OrderedList, ListRenderer(config, isOrdered = true))
@@ -145,8 +149,23 @@ class RendererFactory(
     onLinkPress: ((String) -> Unit)?,
     onLinkLongPress: ((String) -> Unit)?,
   ) {
-    node.children.forEach { child ->
-      getRenderer(child).render(child, builder, onLinkPress, onLinkLongPress, this)
+    renderNodes(node.children, builder, onLinkPress, onLinkLongPress)
+  }
+
+  /**
+   * Renders a flat list of sibling nodes in order, dispatching each to its
+   * NodeRenderer. Renders a block's own child content directly - e.g. a GFM
+   * blockquote's content once its nested block segments have been split out -
+   * without wrapping it in a synthetic root node.
+   */
+  fun renderNodes(
+    nodes: List<MarkdownASTNode>,
+    builder: SpannableStringBuilder,
+    onLinkPress: ((String) -> Unit)?,
+    onLinkLongPress: ((String) -> Unit)?,
+  ) {
+    nodes.forEach { node ->
+      getRenderer(node).render(node, builder, onLinkPress, onLinkLongPress, this)
     }
   }
 

@@ -222,6 +222,17 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setImageMarginBottom:(CGFloat)newValue;
 - (nullable NSDictionary<NSString *, NSString *> *)imageRequestHeaders;
 - (void)setImageRequestHeaders:(nullable NSDictionary<NSString *, NSString *> *)newValue;
+// Video properties
+- (CGFloat)videoMarginTop;
+- (void)setVideoMarginTop:(CGFloat)newValue;
+- (CGFloat)videoMarginBottom;
+- (void)setVideoMarginBottom:(CGFloat)newValue;
+- (CGFloat)videoBorderRadius;
+- (void)setVideoBorderRadius:(CGFloat)newValue;
+- (CGFloat)videoAspectRatio;
+- (void)setVideoAspectRatio:(CGFloat)newValue;
+- (RCTUIColor *)videoBackgroundColor;
+- (void)setVideoBackgroundColor:(RCTUIColor *)newValue;
 // Inline image properties
 - (CGFloat)inlineImageSize;
 - (void)setInlineImageSize:(CGFloat)newValue;
@@ -253,6 +264,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setBlockquoteBorderRadius:(CGFloat)newValue;
 - (CGFloat)blockquotePadding;
 - (void)setBlockquotePadding:(CGFloat)newValue;
+// Per-admonition-type colors (keyed by "note"/"tip"/"important"/"warning"/"caution").
+- (void)setAdmonitionColors:(NSDictionary<NSString *, RCTUIColor *> *)colors
+           backgroundColors:(NSDictionary<NSString *, RCTUIColor *> *)backgroundColors;
+- (RCTUIColor *)admonitionColorForType:(NSString *)type;
+- (RCTUIColor *)admonitionBackgroundColorForType:(NSString *)type;
 // List style properties (combined for both ordered and unordered lists)
 - (CGFloat)listStyleFontSize;
 - (void)setListStyleFontSize:(CGFloat)newValue;

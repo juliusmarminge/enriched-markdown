@@ -59,6 +59,7 @@ export function zeroTrailingMargins(
     codeBlock: { ...style.codeBlock, marginBottom: 0 },
     thematicBreak: { ...style.thematicBreak, marginBottom: 0 },
     image: { ...style.image, marginBottom: 0 },
+    video: { ...style.video, marginBottom: 0 },
     math: { ...style.math, marginBottom: 0 },
     table: { ...style.table, marginBottom: 0 },
   };
@@ -103,7 +104,12 @@ function paragraphStyle(style: MarkdownStyleInternal): CSSProperties {
 function paragraphInBlockquoteStyle(
   style: MarkdownStyleInternal
 ): CSSProperties {
-  return { ...baseBlock(style.paragraph), marginTop: 0, marginBottom: 0 };
+  // Keep the paragraph's block margins so spacing between blocks inside a quote
+  // matches the top-level document (e.g. the gap before a heading). The last
+  // child's trailing margin is zeroed by a global blockquote :last-child rule
+  // (see globalStyles), mirroring native's trailing-margin trim - the quote is a
+  // flex-item BFC, so that margin would otherwise not collapse out of the box.
+  return baseBlock(style.paragraph);
 }
 
 function headingStyle(
@@ -125,7 +131,7 @@ function blockquoteStyle(style: MarkdownStyleInternal): CSSProperties {
     marginBottom: blockquote.marginBottom,
     marginInlineStart: 0, // reset UA default (40px in LTR, auto in RTL)
     marginInlineEnd: 0,
-    paddingInlineStart: blockquote.gapWidth,
+    paddingInlineStart: blockquote.gapWidth + blockquote.padding,
     paddingInlineEnd: blockquote.padding,
     paddingTop: blockquote.padding,
     paddingBottom: blockquote.padding,
@@ -233,6 +239,23 @@ function imageStyle(style: MarkdownStyleInternal): CSSProperties {
   }
 
   return { ...base, width: '100%', height: image.height, objectFit };
+}
+
+function videoStyle(style: MarkdownStyleInternal): CSSProperties {
+  const video = style.video;
+  const base: CSSProperties = {
+    width: '100%',
+    maxWidth: '100%',
+    display: 'block',
+    borderRadius: video.borderRadius,
+    backgroundColor: video.backgroundColor,
+    marginTop: video.marginTop,
+    marginBottom: video.marginBottom,
+  };
+  if (video.aspectRatio > 0) {
+    base.aspectRatio = video.aspectRatio;
+  }
+  return base;
 }
 
 function inlineImageStyle(style: MarkdownStyleInternal): CSSProperties {
@@ -564,6 +587,7 @@ export interface Styles {
   tableCell: Record<ColumnAlign, CSSProperties>;
   taskCheckbox: CSSProperties;
   taskCheckboxDisabled: CSSProperties;
+  video: CSSProperties;
 }
 
 type ColumnAlign = 'left' | 'center' | 'right' | 'default';
@@ -626,6 +650,7 @@ export function buildStyles(style: MarkdownStyleInternal): Styles {
     },
     taskCheckbox: taskCheckboxStyle(style),
     taskCheckboxDisabled: taskCheckboxDisabledStyle(style),
+    video: videoStyle(style),
   };
 
   stylesStore.set(style, result);
