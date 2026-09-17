@@ -422,7 +422,16 @@ void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
   }
   text_.insert(position, closer);
   closers_.insert(closers_.begin() + static_cast<std::ptrdiff_t>(slot), Closer{openerIndex, closer.size()});
-  dropLookups();
+  // The lookups are prefix-based and clamp past their end, so inserting into
+  // the tail leaves them exact unless the closer itself is a delimiter they
+  // track. Rebuilding only then keeps a run with several closers linear.
+  if (closer.find('`') != std::string_view::npos) {
+    code_.reset();
+    completeInline_.reset();
+  }
+  if (closer.find('$') != std::string_view::npos) {
+    math_.reset();
+  }
 }
 
 void RepairContext::dropLookups() {
