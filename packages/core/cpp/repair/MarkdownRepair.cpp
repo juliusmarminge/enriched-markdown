@@ -97,11 +97,11 @@ void repairInlineMarkdownInPlace(std::string &text, const RepairOptions &options
     RepairHandlers::setextHeadings(ctx);
   }
   if (options.links || options.images) {
+    // The reference stops here once a placeholder link was appended; we keep
+    // going so constructs opened before the link still get their closers,
+    // which closeAt() places after the link. The placeholder URL contains no
+    // marker characters, so no later handler can damage it.
     RepairHandlers::links(ctx, options.linkMode);
-    // Once a placeholder link is appended nothing after it can be repaired.
-    if (options.linkMode == LinkMode::Protocol && endsWith(text, kIncompleteLinkSuffix)) {
-      return;
-    }
   }
   if (options.boldItalic) {
     RepairHandlers::boldItalic(ctx);

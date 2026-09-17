@@ -403,10 +403,35 @@ void RepairContext::assign(std::string &&replacement) {
   invalidate();
 }
 
-void RepairContext::invalidate() {
+void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
+  if (closers_.empty()) {
+    closersStart_ = text_.size();
+    while (closersStart_ > 0 && text_[closersStart_ - 1] == '\n') {
+      --closersStart_;
+    }
+  }
+  // Skip the closers of constructs opened later than ours; ours goes after them.
+  size_t position = closersStart_;
+  size_t slot = 0;
+  while (slot < closers_.size() && closers_[slot].openerIndex >= openerIndex) {
+    position += closers_[slot].length;
+    ++slot;
+  }
+  text_.insert(position, closer);
+  closers_.insert(closers_.begin() + static_cast<std::ptrdiff_t>(slot), Closer{openerIndex, closer.size()});
+  dropLookups();
+}
+
+void RepairContext::dropLookups() {
   code_.reset();
   math_.reset();
   completeInline_.reset();
+}
+
+// Any edit other than closeAt() may move the closer tail, so forget it too.
+void RepairContext::invalidate() {
+  dropLookups();
+  closers_.clear();
 }
 
 bool isWithinHtmlTag(std::string_view text, size_t position) {

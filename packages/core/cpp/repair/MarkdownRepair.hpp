@@ -15,16 +15,23 @@
 //   RepairHandlers.cpp   every other handler                (*-handler.ts)
 //   RepairInternal.*     UTF-8, JS character classes, scans (utils.ts, code-block-utils.ts)
 //
-// The block-level streaming filter (table / code block / block math modes,
-// today in the platform-specific StreamingMarkdownFilter implementations) is
-// not part of this module yet and follows in a separate change.
+// Deliberate divergences from the reference:
+// - Closers for constructs that are open at the same time are inserted in
+//   reverse opening order, before any trailing newlines, so the result nests
+//   correctly (`**bold `code` becomes `**bold `code`**`). The reference appends
+//   each closer as its handler runs.
+// - `**` and `__` close on parity even when a single marker follows the
+//   opener, so a nested italic no longer keeps them open (`**bold *ital`
+//   becomes `**bold *ital***`).
+// - The pipeline does not stop after a placeholder link, and the placeholder
+//   is itself a closer anchored at `[`, so `**bold [link` gets its `**` after
+//   the link and `[**bold link` gets it inside.
+// - The htmlTags handler only strips a tag that starts a line. Inline HTML is
+//   disabled in our parser, so `<` inside a line is prose.
+// The affected recorded cases in the test data are marked as ours.
 //
-// Known limitation inherited from the reference: when several constructs are
-// open at once, closers are appended in handler priority order (bold before
-// inline code before strikethrough), not in reverse opening order, so
-// `**bold `code` becomes `**bold `code**``. The parser still renders the
-// prefix without flicker, which is the goal; correct nesting is a possible
-// deliberate divergence for later.
+// When wiring this into a renderer, default `inlineKatex` to the parser's
+// latexMath flag: with `$…$` math enabled an open `$x` should be closed too.
 //
 // All text is UTF-8. Positions are byte offsets.
 #pragma once

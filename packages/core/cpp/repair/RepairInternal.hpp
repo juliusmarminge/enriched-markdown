@@ -168,6 +168,9 @@ class RepairContext {
   explicit RepairContext(std::string &text) : text_(text) {}
 
   std::string_view text() const { return text_; }
+  // The text without the closers placed so far, for handlers whose counting
+  // would be confused by a closer glued onto the user's last delimiter.
+  std::string_view textBeforeClosers() const { return closers_.empty() ? text() : text().substr(0, closersStart_); }
   const CodeLookup &code();
   const MathLookup &math();
   // isInsideCodeBlock() || isWithinCompleteInlineCode()
@@ -179,13 +182,28 @@ class RepairContext {
   void erase(size_t position, size_t count = std::string::npos);
   void assign(std::string &&replacement);
 
+  // Inserts the closer for a construct opened at openerIndex. Closers form a
+  // contiguous tail just before any trailing newlines, ordered so that a
+  // later opener closes first: `**bold `code` becomes `**bold `code`**`.
+  // Insertion is immediate, as in the reference, so later handlers see the
+  // closers already placed and do not close the same construct twice.
+  void closeAt(size_t openerIndex, std::string_view closer);
+
  private:
+  struct Closer {
+    size_t openerIndex;
+    size_t length;
+  };
+
+  void dropLookups();
   void invalidate();
 
   std::string &text_;
   std::optional<CodeLookup> code_;
   std::optional<MathLookup> math_;
   std::optional<CompleteInlineCodeLookup> completeInline_;
+  std::vector<Closer> closers_;  // in text order, contiguous from closersStart_
+  size_t closersStart_ = 0;
 };
 
 // Visits every byte index outside ``` fences, in order. The visitor returns

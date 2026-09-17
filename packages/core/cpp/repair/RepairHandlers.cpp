@@ -143,14 +143,21 @@ void comparisonOperators(RepairContext &ctx) {
   ctx.assign(std::move(out));
 }
 
-// /<[a-zA-Z/][^>]*$/  ->  strip it and trimEnd
-// An unterminated tag at the end would otherwise swallow following text.
+// Reference: /<[a-zA-Z/][^>]*$/  ->  strip it and trimEnd, anywhere in the text.
+// Ours: only when the tag starts a line. Our parser disables inline HTML
+// (MD_FLAG_NOHTMLSPANS) and honours block-level HTML only for the allowlisted
+// <video> tag, so a `<` inside a line is prose (`if x<y then`) and must stay,
+// while a half-streamed `<video src="...` line is hidden until it completes.
 void htmlTags(RepairContext &ctx) {
   const std::string_view text = ctx.text();
   const size_t lastGt = text.rfind('>');
   for (size_t p = lastGt == npos ? 0 : lastGt + 1; p + 1 < text.size(); ++p) {
     if (text[p] != '<' || !isAsciiLetterOrSlash(text[p + 1])) {
       continue;
+    }
+    const bool atLineStart = p == 0 || text[p - 1] == '\n';
+    if (!atLineStart) {
+      continue; // prose; a later line may still start a tag
     }
     if (!ctx.code().inside(p)) {
       ctx.erase(jsTrimEnd(text.substr(0, p)).size());
@@ -262,7 +269,9 @@ void links(RepairContext &ctx, LinkMode mode) {
     } else if (mode == LinkMode::TextOnly) {
       ctx.erase(findFirstIncompleteBracket(text, idx, ctx.code()), 1);
     } else {
-      ctx.append(kIncompleteLinkSuffix);
+      // A closer anchored at the bracket, so emphasis opened inside the link
+      // text closes inside it: [**bold link -> [**bold link**](...)
+      ctx.closeAt(idx, kIncompleteLinkSuffix);
     }
     return;
   }
@@ -276,7 +285,7 @@ void inlineCode(RepairContext &ctx) {
     const size_t closerLength = endsWith(text, "```") ? 3 : 2;
     if (text.substr(3, text.size() - 3 - closerLength).find('`') == npos) {
       if (closerLength == 2) {
-        ctx.append('`');
+        ctx.closeAt(0, "`");
       }
       return;
     }
@@ -290,26 +299,27 @@ void inlineCode(RepairContext &ctx) {
     return;
   }
   if (countSingleBackticks(text) % 2 == 1) {
-    ctx.append('`');
+    ctx.closeAt(lastTick, "`");
   }
 }
 
 // /(~~)([^~]*?)$/ plus the half-closed /(~~)([^~]+)~$/ case
 void strikethrough(RepairContext &ctx) {
   const std::string_view text = ctx.text();
+  const size_t markerIndex = text.rfind("~~");
   if (const auto content = matchTrailingMarker(text, "~~", '~', false)) {
-    if (content->empty() || isWhitespaceOrMarkersOnly(*content) || ctx.insideAnyCode(text.rfind("~~"))) {
+    if (content->empty() || isWhitespaceOrMarkersOnly(*content) || ctx.insideAnyCode(markerIndex)) {
       return;
     }
     if (countNonOverlapping(text, "~~") % 2 == 1) {
-      ctx.append("~~");
+      ctx.closeAt(markerIndex, "~~");
     }
     return;
   }
   // ~~content~ -> ~~content~~
-  if (matchHalfCompleteMarker(text, "~~", '~') && !ctx.insideAnyCode(text.rfind("~~")) &&
+  if (matchHalfCompleteMarker(text, "~~", '~') && !ctx.insideAnyCode(markerIndex) &&
       countNonOverlapping(text, "~~") % 2 == 1) {
-    ctx.append('~');
+    ctx.closeAt(markerIndex, "~");
   }
 }
 
@@ -332,13 +342,15 @@ void katex(RepairContext &ctx) {
     return;
   }
   // addClosingKatex()
+  const size_t opener = text.rfind("$$");
   if (endsWith(text, "$") && !endsWith(text, "$$")) { // half of the closer already streamed
-    ctx.append('$');
+    ctx.closeAt(opener, "$");
     return;
   }
-  const size_t firstDollar = text.find("$$");
-  const bool multiLine = firstDollar != npos && text.find('\n', firstDollar) != npos;
-  ctx.append(multiLine && !endsWith(text, "\n") ? "\n$$" : "$$");
+  // A multi-line block gets its closer on its own line. Closers are inserted
+  // before trailing newlines, so the newline is always ours to add.
+  const bool multiLine = text.find('\n', opener) != npos;
+  ctx.closeAt(opener, multiLine ? "\n$$" : "$$");
 }
 
 // Closes an open $…$ span. Opt-in, because `$5 and $6` is not math.
@@ -365,7 +377,7 @@ void inlineKatex(RepairContext &ctx) {
     }
   }
   if (count % 2 == 1) {
-    ctx.append('$');
+    ctx.closeAt(text.rfind('$'), "$");
   }
 }
 

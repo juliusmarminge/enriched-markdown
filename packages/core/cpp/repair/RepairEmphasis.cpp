@@ -69,7 +69,9 @@ size_t countSingleAsterisks(std::string_view text, const MathLookup &math) {
 }
 
 // countSingleUnderscores(): parity of single _ delimiters outside fences,
-// math, URLs, HTML tags and words.
+// math, URLs, HTML tags and words. The reference counts every such _; ours
+// also applies the open/close flanking rule the asterisk counter uses, so a
+// trailing `_` after a closed italic (`_a_ b_`) is not taken for an opener.
 size_t countSingleUnderscores(std::string_view text, const MathLookup &math) {
   size_t count = 0;
   scanOutsideFences(text, [&](size_t &i) {
@@ -81,7 +83,12 @@ size_t countSingleUnderscores(std::string_view text, const MathLookup &math) {
     // shouldSkipUnderscore()
     const bool skip = prev == '\\' || math.inside(i) || isWithinLinkOrImageUrl(text, i) || isWithinHtmlTag(text, i) ||
                       prev == '_' || next == '_' || (isWordCharUnit(prev) && isWordCharUnit(next));
-    if (!skip) {
+    if (skip) {
+      return false;
+    }
+    const bool canOpen = next != kNoCodePoint && !isSpaceTabNewline(next);
+    const bool canClose = prev != kNoCodePoint && !isSpaceTabNewline(prev);
+    if ((canClose && count % 2 == 1) || canOpen) {
       ++count;
     }
     return false;
@@ -217,50 +224,60 @@ void boldItalic(RepairContext &ctx) {
     if (countDoubleMarkers(text, '*') % 2 == 0 && countSingleAsterisks(text, ctx.math()) % 2 == 0) {
       return;
     }
-    ctx.append("***");
+    ctx.closeAt(markerIndex, "***");
   }
 }
 
-// /(\*\*)([^*]*\*?)$/
+// Reference: /(\*\*)([^*]*\*?)$/ , which gives up as soon as any `*` follows
+// the opener, so a nested italic keeps the bold open until the stream ends.
+// Ours: close on odd `**` parity whatever the content; closeAt() nests the
+// closers, so `**bold *ital` becomes `**bold *ital***`.
 void bold(RepairContext &ctx) {
   const std::string_view text = ctx.text();
-  const auto content = matchTrailingMarker(text, "**", '*', true);
-  if (!content) {
-    return;
-  }
   const size_t markerIndex = text.rfind("**");
-  if (ctx.insideAnyCode(markerIndex) || shouldSkipDoubleMarkerCompletion(text, *content, markerIndex, '*')) {
+  if (markerIndex == npos) {
     return;
   }
-  if (countDoubleMarkers(text, '*') % 2 == 1) {
-    // **content* : the trailing * is the first half of the closer
-    ctx.append(endsWith(*content, "*") ? "*" : "**");
+  const std::string_view content = text.substr(markerIndex + 2);
+  if (ctx.insideAnyCode(markerIndex) || shouldSkipDoubleMarkerCompletion(text, content, markerIndex, '*')) {
+    return;
   }
+  if (countDoubleMarkers(text, '*') % 2 != 1) {
+    return;
+  }
+  // **content* : the trailing * is half of the closer unless an italic is
+  // still open before it, in which case it closes that italic. (The math
+  // lookup is prefix-based, so the full text's lookup is exact here.)
+  const bool halfCloser =
+      endsWith(content, "*") && countSingleAsterisks(text.substr(0, text.size() - 1), ctx.math()) % 2 == 0;
+  ctx.closeAt(markerIndex, halfCloser ? "*" : "**");
 }
 
-// /(__)([^_]*?)$/ plus the half-closed /(__)([^_]+)_$/ case
+// Reference: /(__)([^_]*?)$/ plus the half-closed /(__)([^_]+)_$/ case,
+// which like bold gives up as soon as a `_` follows the opener. Ours: parity.
 void italicDoubleUnderscore(RepairContext &ctx) {
   const std::string_view text = ctx.text();
-  const auto content = matchTrailingMarker(text, "__", '_', false);
-  if (!content) {
-    // __content_ -> __content__
-    if (matchHalfCompleteMarker(text, "__", '_') && !ctx.insideAnyCode(text.rfind("__")) &&
-        countDoubleMarkers(text, '_') % 2 == 1) {
-      ctx.append('_');
-    }
-    return;
-  }
   const size_t markerIndex = text.rfind("__");
-  if (ctx.insideAnyCode(markerIndex) || shouldSkipDoubleMarkerCompletion(text, *content, markerIndex, '_')) {
+  if (markerIndex == npos) {
     return;
   }
-  if (countDoubleMarkers(text, '_') % 2 == 1) {
-    ctx.append("__");
+  const std::string_view content = text.substr(markerIndex + 2);
+  if (ctx.insideAnyCode(markerIndex) || shouldSkipDoubleMarkerCompletion(text, content, markerIndex, '_')) {
+    return;
   }
+  if (countDoubleMarkers(text, '_') % 2 != 1) {
+    return;
+  }
+  // __content_ : same half-closer rule as bold.
+  const bool halfCloser =
+      endsWith(content, "_") && countSingleUnderscores(text.substr(0, text.size() - 1), ctx.math()) % 2 == 0;
+  ctx.closeAt(markerIndex, halfCloser ? "_" : "__");
 }
 
 // /(\*)([^*]*?)$/ , which matches any text containing *
 void italicSingleAsterisk(RepairContext &ctx) {
+  // Full text on purpose: the *** rule in countSingleAsterisks() needs to see
+  // a `***` closer already placed to pair the italic it also closes.
   const std::string_view text = ctx.text();
   if (text.find('*') == npos) {
     return;
@@ -274,13 +291,15 @@ void italicSingleAsterisk(RepairContext &ctx) {
     return;
   }
   if (countSingleAsterisks(text, ctx.math()) % 2 == 1) {
-    ctx.append('*');
+    ctx.closeAt(first, "*");
   }
 }
 
 // /(_)([^_]*?)$/ , which matches any text containing _
 void italicSingleUnderscore(RepairContext &ctx) {
-  const std::string_view text = ctx.text();
+  // Text before the closer tail: a `__` closer placed right after the user's
+  // closing `_` would otherwise read as `___` and hide that delimiter.
+  const std::string_view text = ctx.textBeforeClosers();
   if (text.find('_') == npos) {
     return;
   }
@@ -295,25 +314,7 @@ void italicSingleUnderscore(RepairContext &ctx) {
   if (countSingleUnderscores(text, ctx.math()) % 2 != 1) {
     return;
   }
-  // handleTrailingAsterisksForUnderscore(): **bold _und** -> **bold _und_**
-  if (endsWith(text, "**")) {
-    const std::string_view without = text.substr(0, text.size() - 2);
-    if (countDoubleMarkers(without, '*') % 2 == 1) {
-      const size_t firstDouble = without.find("**");
-      // The math lookup is prefix-based, so the full text's lookup is exact for `without`.
-      const size_t underscore = findFirstSingleUnderscoreIndex(without, ctx.math());
-      if (firstDouble != npos && underscore != npos && firstDouble < underscore) {
-        ctx.insert(text.size() - 2, '_');
-        return;
-      }
-    }
-  }
-  // insertClosingUnderscore(): before any trailing newlines
-  size_t end = text.size();
-  while (end > 0 && text[end - 1] == '\n') {
-    --end;
-  }
-  ctx.insert(end, '_');
+  ctx.closeAt(first, "_");
 }
 
 } // namespace Markdown::RepairHandlers

@@ -46,7 +46,13 @@ TEST_CASE("bold") {
   CHECK(bold("` **bold`") == "` **bold`");
   CHECK(bold("```\n**bold\n") == "```\n**bold\n");
   CHECK(bold("- item\n**bold\nmore") == "- item\n**bold\nmore**");
-  CHECK(bold("***") == "***"); // horizontal rule, not bold
+  CHECK(bold("**bold\n\n") == "**bold**\n\n"); // closers go before trailing newlines
+  // Bold closes even when an italic is nested inside (our divergence).
+  CHECK(repair("**bold *ital") == "**bold *ital***");
+  CHECK(repair("**a *b* c") == "**a *b* c**");
+  CHECK(repair("**a *b* c*") == "**a *b* c**"); // trailing * is half of the closer
+  CHECK(repair("2**3 = 8") == "2**3 = 8**");    // same as the reference: ** between digits can open
+  CHECK(bold("***") == "***");                  // horizontal rule, not bold
 }
 
 TEST_CASE("italic") {
@@ -60,13 +66,13 @@ TEST_CASE("italic") {
   CHECK(underscore("_it") == "_it_");
   CHECK(underscore("snake_case") == "snake_case");
   CHECK(underscore("_it\n\n") == "_it_\n\n");
-  // The trailing ** here is the closer the bold handler appended one step
-  // earlier while streaming "**bold _und"; the underscore opened inside the
-  // bold, so its closer goes inside too. Full pipeline for the same input:
-  CHECK(underscore("**bold _und**") == "**bold _und_**");
   CHECK(repair("**bold _und") == "**bold _und_**");
+  CHECK(underscore("**bold _und**") == "**bold _und**_"); // literal: nothing to nest into
   CHECK(doubleUnderscore("__it") == "__it__");
   CHECK(doubleUnderscore("__it_") == "__it__");
+  CHECK(repair("__bold _ital") == "__bold _ital___"); // parity, like bold (our divergence)
+  CHECK(repair("__b _i_") == "__b _i___");            // trailing _ closed the italic, so bold still needs __
+  CHECK(repair("__b _i_ c_") == "__b _i_ c__");       // trailing _ is half of the closer
 }
 
 TEST_CASE("bold italic") {
@@ -108,8 +114,13 @@ TEST_CASE("links and images") {
   CHECK(linksProtocol("`[not a link`") == "`[not a link`");
 }
 
-TEST_CASE("pipeline stops after a placeholder link in protocol mode") {
-  CHECK(repair("**bold [link") == "**bold [link](streamdown:incomplete-link)");
+TEST_CASE("constructs opened before a placeholder link are still closed") {
+  // The reference stops the pipeline after the placeholder (our divergence).
+  CHECK(repair("**bold [link") == "**bold [link](streamdown:incomplete-link)**");
+  CHECK(repair("*a [b](http://x") == "*a [b](streamdown:incomplete-link)*");
+  CHECK(repair("[**bold link") == "[**bold link**](streamdown:incomplete-link)");
+  CHECK(repair("see [a *b") == "see [a *b*](streamdown:incomplete-link)");
+  CHECK(repair("`code [not a link") == "`code [not a link`");
   RepairOptions o;
   o.linkMode = LinkMode::TextOnly;
   CHECK(repair("**bold [link", o) == "**bold link**");
@@ -130,12 +141,14 @@ TEST_CASE("math") {
 TEST_CASE("html tags and comparison operators") {
   auto htmlTags = handler(RepairHandlers::htmlTags);
   auto comparison = handler(RepairHandlers::comparisonOperators);
-  // An unterminated tag at the end is stripped, never completed: rendering
-  // "</b" as literal text and then removing it when ">" arrives would flicker.
-  CHECK(htmlTags("text <cus") == "text");
-  CHECK(htmlTags("text <b>bold</b") == "text <b>bold");
+  // Only a tag that starts a line is stripped; inline `<` is prose for our parser.
+  CHECK(htmlTags("text <cus") == "text <cus");
+  CHECK(htmlTags("if x<y then") == "if x<y then");
+  CHECK(htmlTags("text\n<video src=\"http://x") == "text");
+  CHECK(htmlTags("<div") == "");
+  CHECK(htmlTags("a<b\n<video src=\"x") == "a<b"); // mid-line `<` must not hide a later line-start tag
   CHECK(htmlTags("a < b") == "a < b");
-  CHECK(htmlTags("`<cus") == "`<cus");
+  CHECK(htmlTags("```\n<cus") == "```\n<cus");
   CHECK(comparison("- > 25: costly") == "- \\> 25: costly");
   CHECK(comparison("1. >= $5") == "1. \\>= $5");
   CHECK(comparison("- > quote") == "- > quote");
@@ -201,10 +214,16 @@ TEST_CASE("in-place entry point matches the copying one") {
 }
 
 TEST_CASE("full pipeline: mixed") {
-  CHECK(repair("This is **bold with *ital") == "This is **bold with *ital*");
-  // Closers are appended in handler priority order (bold, then inline code),
-  // not in reverse opening order. This mirrors the reference; see the known
-  // limitation in MarkdownRepair.hpp.
-  CHECK(repair("Text **bold `code") == "Text **bold `code**`");
+  CHECK(repair("This is **bold with *ital") == "This is **bold with *ital***");
+  // Closers nest in reverse opening order (our divergence from the reference).
+  CHECK(repair("Text **bold `code") == "Text **bold `code`**");
+  CHECK(repair("**bold ~~strike") == "**bold ~~strike~~**");
+  CHECK(repair("~~strike with **bold") == "~~strike with **bold**~~");
+  CHECK(repair("$$\nx\n") == "$$\nx\n$$\n");
+  CHECK(repair("$$a\nb$$ $$c") == "$$a\nb$$ $$c$$"); // only the open block decides single- vs multi-line
+  CHECK(repair("**bold\n") == "**bold**\n");
+  CHECK(repair("**a `b\n\n") == "**a `b`**\n\n");
+  CHECK(repair("~~s **b *i\n") == "~~s **b *i***~~\n");
+  CHECK(repair("`g **c") == "`g **c`"); // ** inside an open code span is code, not emphasis
   CHECK(repair("| a | b |\n|---|---|\n| **x") == "| a | b |\n|---|---|\n| **x**");
 }
