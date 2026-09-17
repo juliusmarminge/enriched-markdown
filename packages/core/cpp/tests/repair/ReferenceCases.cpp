@@ -598,7 +598,7 @@ const Case
             {"| Col1 | Col2 |\n|------|------|\n| **dat"sv, opts(), "| Col1 | Col2 |\n|------|------|\n| **dat**"sv},
             {"**text"sv, opts(), "**text**"sv},
             {"1. First item\n   - Nested with `code\n2. Second"sv, opts(),
-             "1. First item\n   - Nested with `code\n2. Second`"sv},
+             "1. First item\n   - Nested with `code\n2. Second"sv}, // ours
             {"__text"sv, opts(), "__text__"sv},
             {"Text ![outer [inner]"sv, opts(), "Text "sv},
             {"<a target=\"_blank\" href=\"https://link.com\">word</a>"sv, opts(),
@@ -654,7 +654,7 @@ const Case
             {"3 + 2 - 5 * 0 = ?"sv, opts(), "3 + 2 - 5 * 0 = ?"sv},
             {"Text with `code"sv, opts(), "Text with `code`"sv},
             {"* Item with *incomplete italic\n* Another item"sv, opts(),
-             "* Item with *incomplete italic\n* Another item*"sv},
+             "* Item with *incomplete italic\n* Another item"sv}, // ours
             {"5 * 0"sv, opts(), "5 * 0"sv},
             {"Text with ***bold and italic text***"sv, opts(), "Text with ***bold and italic text***"sv},
             {"x * y"sv, opts(), "x * y"sv},
@@ -811,7 +811,7 @@ const Case
             {"$$\n\\frac{a}{b}"sv, opts(), "$$\n\\frac{a}{b}\n$$"sv},
             {"$a$ and $b"sv, opts(), "$a$ and $b"sv},
             {"\\(a_b"sv, opts(), "\\(a_b"sv},
-            {"\\[a*b"sv, opts(), "\\[a*b](streamdown:incomplete-link)"sv},
+            {"\\[a*b"sv, opts(), "\\[a*b"sv}, // ours
             {"$\\alpha * \\beta$ *x"sv, opts(), "$\\alpha * \\beta$ *x*"sv},
             {"- **a\n- b"sv, opts(), "- **a\n- b"sv},
             {"* a\n* **b"sv, opts(), "* a\n* **b**"sv},

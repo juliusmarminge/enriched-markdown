@@ -36,7 +36,7 @@ bool shouldSkipAsterisk(std::string_view text, size_t index, uint32_t prev, uint
 // countSingleAsterisks(): parity of single * delimiters outside fences.
 // Intraword asterisks only count while an emphasis run is open (hello*world
 // stays literal, *foo*bar* does not reopen).
-size_t countSingleAsterisks(std::string_view text, const MathLookup &math) {
+size_t countSingleAsterisks(std::string_view text, const MathLookup &math, size_t *opener = nullptr) {
   size_t count = 0;
   bool inWordChain = false;
   scanOutsideFences(text, [&](size_t &i) {
@@ -63,6 +63,9 @@ size_t countSingleAsterisks(std::string_view text, const MathLookup &math) {
     if ((canClose && count % 2 == 1) || canOpen) {
       ++count;
       inWordChain = wordInternal;
+      if (opener) {
+        *opener = i; // the last delimiter counted is the open one when the count ends odd
+      }
     }
     return false;
   });
@@ -73,7 +76,7 @@ size_t countSingleAsterisks(std::string_view text, const MathLookup &math) {
 // math, URLs, HTML tags and words. The reference counts every such _; ours
 // also applies the open/close flanking rule the asterisk counter uses, so a
 // trailing `_` after a closed italic (`_a_ b_`) is not taken for an opener.
-size_t countSingleUnderscores(std::string_view text, const MathLookup &math) {
+size_t countSingleUnderscores(std::string_view text, const MathLookup &math, size_t *opener = nullptr) {
   size_t count = 0;
   scanOutsideFences(text, [&](size_t &i) {
     if (text[i] != '_') {
@@ -91,6 +94,9 @@ size_t countSingleUnderscores(std::string_view text, const MathLookup &math) {
     const bool canClose = prev != kNoCodePoint && !isSpaceTabNewline(prev);
     if ((canClose && count % 2 == 1) || canOpen) {
       ++count;
+      if (opener) {
+        *opener = i;
+      }
     }
     return false;
   });
@@ -291,8 +297,9 @@ void italicSingleAsterisk(RepairContext &ctx) {
   if (content.empty() || isWhitespaceOrMarkersOnly(content)) {
     return;
   }
-  if (countSingleAsterisks(text, ctx.math()) % 2 == 1) {
-    ctx.closeAt(first, "*");
+  size_t opener = first;
+  if (countSingleAsterisks(text, ctx.math(), &opener) % 2 == 1) {
+    ctx.closeAt(opener, "*");
   }
 }
 
@@ -312,10 +319,11 @@ void italicSingleUnderscore(RepairContext &ctx) {
   if (content.empty() || isWhitespaceOrMarkersOnly(content) || ctx.insideAnyCode(first)) {
     return;
   }
-  if (countSingleUnderscores(text, ctx.math()) % 2 != 1) {
+  size_t opener = first;
+  if (countSingleUnderscores(text, ctx.math(), &opener) % 2 != 1) {
     return;
   }
-  ctx.closeAt(first, "_");
+  ctx.closeAt(opener, "_");
 }
 
 } // namespace Markdown::RepairHandlers

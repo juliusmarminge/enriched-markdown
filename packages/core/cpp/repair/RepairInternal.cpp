@@ -162,6 +162,14 @@ bool endsWith(std::string_view text, std::string_view suffix) {
   return text.size() >= suffix.size() && text.substr(text.size() - suffix.size()) == suffix;
 }
 
+bool isEscaped(std::string_view text, size_t i) {
+  size_t backslashes = 0;
+  while (i > backslashes && text[i - backslashes - 1] == '\\') {
+    ++backslashes;
+  }
+  return backslashes % 2 == 1;
+}
+
 bool isTripleAt(std::string_view text, size_t i) {
   return i + 3 <= text.size() && text[i] == '`' && text[i + 1] == '`' && text[i + 2] == '`';
 }
@@ -435,6 +443,9 @@ size_t trailingParagraphStart(std::string_view text) {
     while (i < text.size() && (text[i] == ' ' || text[i] == '\t')) {
       ++i;
     }
+    if (i < text.size() && text[i] == '\r') { // CRLF blank line
+      ++i;
+    }
     if (i < text.size() && text[i] == '\n') {
       start = i + 1;
     }
@@ -456,6 +467,37 @@ bool isAtxHeadingLine(std::string_view line) {
   return hashes >= 1 && hashes <= 6 && i < line.size() && (line[i] == ' ' || line[i] == '\t');
 }
 
+// True when `line` begins a block that interrupts a paragraph: a fence, an
+// ATX heading, a list item, or a blank line inside a blockquote. Blockquote
+// markers and up to three spaces of indentation are skipped first.
+bool interruptsParagraph(std::string_view line) {
+  bool quoted = false;
+  for (;;) {
+    size_t i = 0;
+    while (i < line.size() && i < 3 && line[i] == ' ') {
+      ++i;
+    }
+    if (i < line.size() && line[i] == '>') {
+      quoted = true;
+      line = line.substr(i + 1);
+      if (!line.empty() && line[0] == ' ') {
+        line.remove_prefix(1);
+      }
+      continue;
+    }
+    line = line.substr(i);
+    break;
+  }
+  if (line.find_first_not_of(" \t\r") == npos) {
+    return quoted; // a blank line inside a blockquote ends its paragraph
+  }
+  if (startsWith(line, "```") || startsWith(line, "~~~") || isAtxHeadingLine(line)) {
+    return true;
+  }
+  const size_t marker = skipListMarker(line);
+  return marker != npos && marker < line.size() && (line[marker] == ' ' || line[marker] == '\t');
+}
+
 } // namespace
 
 bool RepairContext::openerCanStillClose(size_t openerIndex) {
@@ -466,8 +508,20 @@ bool RepairContext::openerCanStillClose(size_t openerIndex) {
   if (openerIndex < *trailingParagraphStart_) {
     return false;
   }
-  const bool lineHasEnded = text.find('\n', openerIndex) != npos;
-  return !(lineHasEnded && isAtxHeadingLine(lineAt(text, openerIndex)));
+  const size_t lineEnd = text.find('\n', openerIndex);
+  if (lineEnd == npos) {
+    return true;
+  }
+  if (isAtxHeadingLine(lineAt(text, openerIndex))) {
+    return false;
+  }
+  // A later line that starts a new block ends the opener's paragraph too.
+  for (size_t nl = lineEnd; nl != npos; nl = text.find('\n', nl + 1)) {
+    if (interruptsParagraph(lineAt(text, nl + 1))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
@@ -564,9 +618,12 @@ size_t findMatchingOpeningBracket(std::string_view text, size_t closeIndex) {
   size_t depth = 1;
   for (size_t i = closeIndex; i > 0; --i) {
     const char c = text[i - 1];
+    if ((c != ']' && c != '[') || isEscaped(text, i - 1)) {
+      continue;
+    }
     if (c == ']') {
       ++depth;
-    } else if (c == '[' && --depth == 0) {
+    } else if (--depth == 0) {
       return i - 1;
     }
   }
@@ -576,9 +633,12 @@ size_t findMatchingOpeningBracket(std::string_view text, size_t closeIndex) {
 size_t findMatchingClosingBracket(std::string_view text, size_t openIndex) {
   size_t depth = 1;
   for (size_t i = openIndex + 1; i < text.size(); ++i) {
+    if ((text[i] != '[' && text[i] != ']') || isEscaped(text, i)) {
+      continue;
+    }
     if (text[i] == '[') {
       ++depth;
-    } else if (text[i] == ']' && --depth == 0) {
+    } else if (--depth == 0) {
       return i;
     }
   }
