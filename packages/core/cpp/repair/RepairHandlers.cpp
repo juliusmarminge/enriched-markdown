@@ -79,19 +79,11 @@ void comparisonOperators(RepairContext &ctx) {
     if (i >= n) {
       return npos;
     }
-    if (text[i] == '-' || text[i] == '*' || text[i] == '+') {
-      ++i;
-    } else if (isAsciiDigit(text[i])) {
-      while (i < n && isAsciiDigit(text[i])) {
-        ++i;
-      }
-      if (i >= n || (text[i] != '.' && text[i] != ')')) {
-        return npos;
-      }
-      ++i;
-    } else {
+    const size_t marker = skipListMarker(text.substr(i));
+    if (marker == npos) {
       return npos;
     }
+    i += marker;
     if (i >= n || text[i] != ' ') {
       return npos;
     }
@@ -216,31 +208,21 @@ bool isBracketNotALink(std::string_view text, size_t idx) {
   if (next == '^' || prev == ']') {
     return true;
   }
+  // What precedes the [ on its line: blockquote markers, then maybe a list marker.
   std::string_view line = jsTrimStart(lineBefore(text, idx));
-  // blockquote markers, then optionally a list marker
+  bool inBlockquote = false;
   while (!line.empty() && line[0] == '>') {
     line = jsTrimStart(line.substr(1));
+    inBlockquote = true;
   }
-  const bool afterBlockquote = line.size() < lineBefore(text, idx).size();
-  if (afterBlockquote && line.empty() && next == '!') {
+  if (inBlockquote && line.empty() && next == '!') {
     return true; // > [!NOTE]
   }
-  size_t i = 0;
-  if (i < line.size() && (line[i] == '-' || line[i] == '*' || line[i] == '+')) {
-    ++i;
-  } else {
-    while (i < line.size() && isAsciiDigit(line[i])) {
-      ++i;
-    }
-    if (i == 0 || i >= line.size() || (line[i] != '.' && line[i] != ')')) {
-      return false;
-    }
-    ++i;
-  }
-  if (i >= line.size() || !jsTrimStart(line.substr(i)).empty()) {
+  const size_t marker = skipListMarker(line);
+  if (marker == npos || marker >= line.size() || !jsTrimStart(line.substr(marker)).empty()) {
     return false; // no list marker, or text between the marker and the [
   }
-  return next == '\0' || next == ' ' || next == ']' || next == 'x' || next == 'X';
+  return next == '\0' || next == ' ' || next == ']' || next == 'x' || next == 'X'; // task-list checkbox
 }
 
 // findFirstIncompleteBracket(): in text-only mode the bracket to drop is the

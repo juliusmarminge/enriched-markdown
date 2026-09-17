@@ -1,9 +1,10 @@
 // Counterpart of the reference's emphasis-handlers.ts: bold, italic and
 // bold-italic. Attribution is in MarkdownRepair.hpp.
 //
-// Every handler follows the same shape as the reference: find the trailing
-// marker with a regex stand-in, bail out if it sits in code or has no real
-// content after it, then count openers outside fences and close if odd.
+// Every handler has the same shape: locate the last opener (a regex stand-in
+// for `***`, the last occurrence for `**` and `__`, the first valid single
+// marker for `*` and `_`), bail out if it sits in code or has no real content
+// after it, then count delimiters outside fences and close on odd parity.
 #include "RepairInternal.hpp"
 
 namespace Markdown::RepairHandlers {

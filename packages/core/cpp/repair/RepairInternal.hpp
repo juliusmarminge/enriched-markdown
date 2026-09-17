@@ -87,6 +87,13 @@ size_t countNonOverlapping(std::string_view text, std::string_view needle);
 // The line containing `index`, up to (not including) `index`.
 std::string_view lineBefore(std::string_view text, size_t index);
 
+// The whole line containing `index`, without its newline.
+std::string_view lineAt(std::string_view text, size_t index);
+
+// Length of a list marker at the start of `line` (`-`, `*`, `+`, or digits
+// followed by `.` or `)`), or npos if the line does not start with one.
+size_t skipListMarker(std::string_view line);
+
 // --- Regex stand-ins -------------------------------------------------------
 
 // /(MARKER)([^c]*)$/ (and, with allowTrailingSingle, /(MARKER)([^c]*c?)$/):
@@ -155,43 +162,47 @@ class CompleteInlineCodeLookup {
   std::vector<uint8_t> insideAt_;
 };
 
-// State for one pipeline run: the text being repaired plus the lookups the
-// handlers share. Each lookup is built on first use and dropped when the text
-// changes, so a run pays for it once instead of once per handler. Mutations
-// go through the context so that invalidation cannot be forgotten.
+// State for one pipeline run. Three responsibilities, kept together because
+// every one of them has to know when the text changed:
+//
+// 1. The text. Handlers read it through text() and edit it only through the
+//    methods below, so nothing here can go stale unnoticed.
+// 2. Lookups shared by the handlers (code, math, complete inline code), built
+//    on first use and rebuilt only when an edit could have changed them.
+// 3. The closer tail: closers placed so far sit in one contiguous run just
+//    before any trailing newlines, ordered so that a later opener closes
+//    first (`**bold `code` becomes `**bold `code`**`). Insertion is immediate,
+//    as in the reference, so later handlers see earlier closers and never
+//    close the same construct twice.
 //
 // Aliasing rule: a string_view from text() and a lookup reference from code()
-// or math() are valid only until the next mutation. Handlers therefore do all
-// their reading first and mutate as their final step.
+// or math() are valid only until the next edit. Handlers therefore do all
+// their reading first and edit as their final step.
 class RepairContext {
  public:
   explicit RepairContext(std::string &text) : text_(text) {}
 
+  // --- reading
   std::string_view text() const { return text_; }
-  // The text without the closers placed so far, for handlers whose counting
-  // would be confused by a closer glued onto the user's last delimiter.
+  // The text without the closer tail, for handlers whose counting would be
+  // confused by a closer glued onto the user's last delimiter.
   std::string_view textBeforeClosers() const { return closers_.empty() ? text() : text().substr(0, closersStart_); }
   const CodeLookup &code();
   const MathLookup &math();
   // isInsideCodeBlock() || isWithinCompleteInlineCode()
   bool insideAnyCode(size_t position);
 
+  // --- editing (forgets the closer tail and the lookups)
   void append(std::string_view suffix);
   void append(char c);
-  void insert(size_t position, char c);
   void erase(size_t position, size_t count = std::string::npos);
   void assign(std::string &&replacement);
 
-  // Inserts the closer for a construct opened at openerIndex. Closers form a
-  // contiguous tail just before any trailing newlines, ordered so that a
-  // later opener closes first: `**bold `code` becomes `**bold `code`**`.
-  // Insertion is immediate, as in the reference, so later handlers see the
-  // closers already placed and do not close the same construct twice.
-  //
-  // An inline span cannot cross a blank line or leave a heading, so an opener
-  // before the last blank line, or on an ATX heading line that has already
-  // ended, is left alone: closing it would only add a stray marker to a later
-  // block. (The reference appends regardless.)
+  // --- closing
+  // Places the closer for a construct opened at openerIndex into the tail.
+  // Ignored when the opener sits in an earlier block: an inline span cannot
+  // cross a blank line or leave a heading, so the closer would only be a stray
+  // marker in a later block. (The reference appends regardless.)
   void closeAt(size_t openerIndex, std::string_view closer);
 
  private:
@@ -205,12 +216,14 @@ class RepairContext {
   void invalidate();
 
   std::string &text_;
+
   std::optional<CodeLookup> code_;
   std::optional<MathLookup> math_;
   std::optional<CompleteInlineCodeLookup> completeInline_;
+
   std::vector<Closer> closers_;  // in text order, contiguous from closersStart_
   size_t closersStart_ = 0;
-  std::optional<size_t> lastBlockStart_;  // start of the trailing paragraph, cached
+  std::optional<size_t> trailingParagraphStart_;  // cached for openerCanStillClose()
 };
 
 // Visits every byte index outside ``` fences, in order. The visitor returns

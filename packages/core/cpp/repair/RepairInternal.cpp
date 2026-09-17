@@ -180,6 +180,28 @@ std::string_view lineBefore(std::string_view text, size_t index) {
   return text.substr(lineStart, index - lineStart);
 }
 
+std::string_view lineAt(std::string_view text, size_t index) {
+  const size_t before = text.substr(0, index).rfind('\n');
+  const size_t lineStart = before == npos ? 0 : before + 1;
+  const size_t after = text.find('\n', index);
+  const size_t lineEnd = after == npos ? text.size() : after;
+  return text.substr(lineStart, lineEnd - lineStart);
+}
+
+size_t skipListMarker(std::string_view line) {
+  if (!line.empty() && (line[0] == '-' || line[0] == '*' || line[0] == '+')) {
+    return 1;
+  }
+  size_t i = 0;
+  while (i < line.size() && isAsciiDigit(line[i])) {
+    ++i;
+  }
+  if (i == 0 || i >= line.size() || (line[i] != '.' && line[i] != ')')) {
+    return npos;
+  }
+  return i + 1;
+}
+
 // --- Regex stand-ins -------------------------------------------------------
 
 // Every `c` before the marker's end must be inside the marker itself, so the
@@ -388,11 +410,6 @@ void RepairContext::append(char c) {
   invalidate();
 }
 
-void RepairContext::insert(size_t position, char c) {
-  text_.insert(position, 1, c);
-  invalidate();
-}
-
 void RepairContext::erase(size_t position, size_t count) {
   text_.erase(position, count);
   invalidate();
@@ -403,10 +420,12 @@ void RepairContext::assign(std::string &&replacement) {
   invalidate();
 }
 
+namespace {
+
 // Start of the text after the last blank line (a line holding only spaces
 // or tabs), or 0. Trailing whitespace is not a blank line: closers go in
 // front of it, so it never separates an opener from its closer.
-static size_t trailingParagraphStart(std::string_view text) {
+size_t trailingParagraphStart(std::string_view text) {
   while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ' || text.back() == '\t')) {
     text.remove_suffix(1);
   }
@@ -424,7 +443,7 @@ static size_t trailingParagraphStart(std::string_view text) {
 }
 
 // /^ {0,3}#{1,6}[ \t]/ : the line is an ATX heading
-static bool isAtxHeadingLine(std::string_view line) {
+bool isAtxHeadingLine(std::string_view line) {
   size_t i = 0;
   while (i < line.size() && i < 3 && line[i] == ' ') {
     ++i;
@@ -437,21 +456,18 @@ static bool isAtxHeadingLine(std::string_view line) {
   return hashes >= 1 && hashes <= 6 && i < line.size() && (line[i] == ' ' || line[i] == '\t');
 }
 
+} // namespace
+
 bool RepairContext::openerCanStillClose(size_t openerIndex) {
   const std::string_view text = textBeforeClosers();
-  if (!lastBlockStart_) {
-    lastBlockStart_ = trailingParagraphStart(text);
+  if (!trailingParagraphStart_) {
+    trailingParagraphStart_ = trailingParagraphStart(text);
   }
-  if (openerIndex < *lastBlockStart_) {
+  if (openerIndex < *trailingParagraphStart_) {
     return false;
   }
-  const size_t lineEnd = text.find('\n', openerIndex);
-  if (lineEnd == npos) {
-    return true; // still on the last line
-  }
-  const size_t before = text.substr(0, openerIndex).rfind('\n');
-  const size_t lineStart = before == npos ? 0 : before + 1;
-  return !isAtxHeadingLine(text.substr(lineStart, lineEnd - lineStart));
+  const bool lineHasEnded = text.find('\n', openerIndex) != npos;
+  return !(lineHasEnded && isAtxHeadingLine(lineAt(text, openerIndex)));
 }
 
 void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
@@ -498,7 +514,7 @@ void RepairContext::dropLookups() {
 void RepairContext::invalidate() {
   dropLookups();
   closers_.clear();
-  lastBlockStart_.reset();
+  trailingParagraphStart_.reset();
 }
 
 bool isWithinHtmlTag(std::string_view text, size_t position) {
@@ -515,13 +531,8 @@ bool isWithinHtmlTag(std::string_view text, size_t position) {
 }
 
 bool isHorizontalRule(std::string_view text, size_t markerIndex, char marker) {
-  const size_t before = text.substr(0, markerIndex).rfind('\n');
-  const size_t lineStart = before == npos ? 0 : before + 1;
-  const size_t after = text.find('\n', markerIndex);
-  const size_t lineEnd = after == npos ? text.size() : after;
   size_t markerCount = 0;
-  for (size_t i = lineStart; i < lineEnd; ++i) {
-    const char c = text[i];
+  for (const char c : lineAt(text, markerIndex)) {
     if (c == marker) {
       ++markerCount;
     } else if (c != ' ' && c != '\t') {
