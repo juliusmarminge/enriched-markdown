@@ -101,7 +101,7 @@ class DisplayBenchmark(
     }
   }
 
-  /** The AST to [SpannableString] step alone: no view, no measure, no draw. */
+  /** The AST to spannable buffer step alone: no view, no measure, no draw. */
   @Test
   fun render() {
     val harness = Harness()

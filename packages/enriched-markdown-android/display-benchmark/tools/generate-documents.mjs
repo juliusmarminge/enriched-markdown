@@ -19,7 +19,7 @@
  * Simple and complex documents share the same byte targets, so a difference in
  * cost comes from the markup rather than from the amount of text.
  *
- * Run: node scripts/generate-documents.mjs
+ * Run: node display-benchmark/tools/generate-documents.mjs
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
