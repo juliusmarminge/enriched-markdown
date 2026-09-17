@@ -243,6 +243,16 @@ TEST_CASE("md4c extensions") {
   CHECK(repair("`x^2`", o) == "`x^2`");
 }
 
+TEST_CASE("openers in an earlier block are left alone") {
+  CHECK(repair("**Note\n\nNext paragraph") == "**Note\n\nNext paragraph");
+  CHECK(repair("**a\n \n_b") == "**a\n \n_b_"); // a whitespace-only line is blank; only the last opener closes
+  CHECK(repair("## **Setup\nSome text") == "## **Setup\nSome text");
+  CHECK(repair("## **Setup") == "## **Setup**");
+  CHECK(repair("[link\n\nmore") == "[link\n\nmore");
+  CHECK(repair("$$\nx\n\ny") == "$$\nx\n\ny");
+  CHECK(repair("**a\nb") == "**a\nb**"); // a soft break stays inside the paragraph
+}
+
 TEST_CASE("line endings") {
   CHECK(repair("**b\r\n") == "**b**\r\n");
   CHECK(repair("**b\r\n\r\n") == "**b**\r\n\r\n");

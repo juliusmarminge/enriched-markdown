@@ -187,6 +187,11 @@ class RepairContext {
   // later opener closes first: `**bold `code` becomes `**bold `code`**`.
   // Insertion is immediate, as in the reference, so later handlers see the
   // closers already placed and do not close the same construct twice.
+  //
+  // An inline span cannot cross a blank line or leave a heading, so an opener
+  // before the last blank line, or on an ATX heading line that has already
+  // ended, is left alone: closing it would only add a stray marker to a later
+  // block. (The reference appends regardless.)
   void closeAt(size_t openerIndex, std::string_view closer);
 
  private:
@@ -195,6 +200,7 @@ class RepairContext {
     size_t length;
   };
 
+  bool openerCanStillClose(size_t openerIndex);
   void dropLookups();
   void invalidate();
 
@@ -204,6 +210,7 @@ class RepairContext {
   std::optional<CompleteInlineCodeLookup> completeInline_;
   std::vector<Closer> closers_;  // in text order, contiguous from closersStart_
   size_t closersStart_ = 0;
+  std::optional<size_t> lastBlockStart_;  // start of the trailing paragraph, cached
 };
 
 // Visits every byte index outside ``` fences, in order. The visitor returns

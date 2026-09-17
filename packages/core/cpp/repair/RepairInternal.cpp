@@ -403,7 +403,61 @@ void RepairContext::assign(std::string &&replacement) {
   invalidate();
 }
 
+// Start of the text after the last blank line (a line holding only spaces
+// or tabs), or 0. Trailing whitespace is not a blank line: closers go in
+// front of it, so it never separates an opener from its closer.
+static size_t trailingParagraphStart(std::string_view text) {
+  while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ' || text.back() == '\t')) {
+    text.remove_suffix(1);
+  }
+  size_t start = 0;
+  for (size_t nl = text.find('\n'); nl != npos; nl = text.find('\n', nl + 1)) {
+    size_t i = nl + 1;
+    while (i < text.size() && (text[i] == ' ' || text[i] == '\t')) {
+      ++i;
+    }
+    if (i < text.size() && text[i] == '\n') {
+      start = i + 1;
+    }
+  }
+  return start;
+}
+
+// /^ {0,3}#{1,6}[ \t]/ : the line is an ATX heading
+static bool isAtxHeadingLine(std::string_view line) {
+  size_t i = 0;
+  while (i < line.size() && i < 3 && line[i] == ' ') {
+    ++i;
+  }
+  size_t hashes = 0;
+  while (i < line.size() && line[i] == '#' && hashes < 7) {
+    ++i;
+    ++hashes;
+  }
+  return hashes >= 1 && hashes <= 6 && i < line.size() && (line[i] == ' ' || line[i] == '\t');
+}
+
+bool RepairContext::openerCanStillClose(size_t openerIndex) {
+  const std::string_view text = textBeforeClosers();
+  if (!lastBlockStart_) {
+    lastBlockStart_ = trailingParagraphStart(text);
+  }
+  if (openerIndex < *lastBlockStart_) {
+    return false;
+  }
+  const size_t lineEnd = text.find('\n', openerIndex);
+  if (lineEnd == npos) {
+    return true; // still on the last line
+  }
+  const size_t before = text.substr(0, openerIndex).rfind('\n');
+  const size_t lineStart = before == npos ? 0 : before + 1;
+  return !isAtxHeadingLine(text.substr(lineStart, lineEnd - lineStart));
+}
+
 void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
+  if (!openerCanStillClose(openerIndex)) {
+    return;
+  }
   if (closers_.empty()) {
     closersStart_ = text_.size();
     while (closersStart_ > 0 && text_[closersStart_ - 1] == '\n') { // trailing LF or CRLF
@@ -444,6 +498,7 @@ void RepairContext::dropLookups() {
 void RepairContext::invalidate() {
   dropLookups();
   closers_.clear();
+  lastBlockStart_.reset();
 }
 
 bool isWithinHtmlTag(std::string_view text, size_t position) {

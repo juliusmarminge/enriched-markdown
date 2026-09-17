@@ -32,6 +32,9 @@
 //   footnote (`[^`) or the second bracket of a reference link (`][`) is not
 //   an incomplete link.
 // - Trailing CRLF counts as a trailing newline when placing closers.
+// - An opener before the last blank line, or on a heading line that has
+//   ended, is not closed: an inline span cannot reach across a block
+//   boundary, so the closer would be a stray marker in a later block.
 // The affected recorded cases in the test data are marked as ours.
 //
 // Additions with no reference counterpart: closers for spoilers, highlight,
