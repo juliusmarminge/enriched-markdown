@@ -12,17 +12,8 @@ import androidx.core.view.ViewCompat
 import com.swmansion.enriched.markdown.accessibility.AccessibleMarkdownTextView
 
 /**
- * Hands the rendered buffer to [TextView][android.widget.TextView] without copying it.
- *
- * The default factory copies the text into a fresh `SpannableString` on every
- * `setText`, and `SpannableString.setSpan` scans the spans it already holds
- * before appending, so that copy costs O(spans^2) - tens of milliseconds of main
- * thread time for a long document. `Renderer` builds a private buffer per
- * segment and nothing else holds a reference to it, so the view can adopt it
- * without a defensive copy.
- *
- * A `SpannableStringBuilder` is wrapped in [InsertionOrderedSpannable] rather
- * than adopted directly, see there for why.
+ * Adopts the renderer's buffer instead of copying it: the default factory's copy is
+ * quadratic in span count. Safe because each segment's buffer is owned by one view.
  */
 private object NoCopySpannableFactory : Spannable.Factory() {
   override fun newSpannable(source: CharSequence): Spannable =
@@ -34,16 +25,9 @@ private object NoCopySpannableFactory : Spannable.Factory() {
 }
 
 /**
- * Exposes [buffer] as a plain [Spannable], hiding that it is a `SpannableStringBuilder`.
- *
- * `Layout.getParagraphSpans` special-cases `SpannableStringBuilder` and reads its
- * paragraph spans in position order instead of insertion order. Layout paints
- * `LeadingMarginSpan`s in that order, advancing x by each one's margin, and the
- * list spans place their markers assuming the innermost (first inserted) span
- * is painted first - in position order a nested checkbox lands an indent too far
- * right, over its own text and outside the tappable margin. `LineHeightSpan`s
- * are chained in that same order. Behind this wrapper Layout falls back to the
- * public `getSpans`, which keeps insertion order, as a `SpannableString` would.
+ * Hides that [buffer] is a `SpannableStringBuilder`. Layout reads a builder's paragraph
+ * spans in position order rather than insertion order, which paints nested list margins
+ * outer-first and pushes nested checkboxes an indent right.
  */
 private class InsertionOrderedSpannable(
   private val buffer: SpannableStringBuilder,
