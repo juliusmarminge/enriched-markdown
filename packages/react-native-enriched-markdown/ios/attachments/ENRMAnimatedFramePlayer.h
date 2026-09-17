@@ -35,7 +35,8 @@ typedef struct {
  *
  * Lifecycle:
  *  1. -resetForKey:geometry: whenever the attachment's box changes; drops any
- *     frames decoded for the old box and rewinds to the poster (frame 0).
+ *     frames decoded for the old box. The poster (frame 0) is shown until
+ *     playback resumes from the shared playhead.
  *  2. -addHost: and -startIfNeeded from the attachment's draw callback; the
  *     loop only runs while at least one host is on window.
  *  3. The loop pauses itself when every host is off window or nothing more

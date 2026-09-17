@@ -97,7 +97,7 @@ static inline CGFloat ENRMDisplayScale(void)
   dispatch_once(&onceToken, ^{
     _animatedImageCache = [[NSCache alloc] init];
     _animatedImageCache.countLimit = 20;
-    _animatedImageCache.totalCostLimit = 1024 * 1024 * 20; // 20 MB of encoded GIF bytes
+    _animatedImageCache.totalCostLimit = 1024 * 1024 * 20; // 20 MB, costed as GIF bytes + poster frame
   });
   return _animatedImageCache;
 }
@@ -215,7 +215,7 @@ static inline CGFloat ENRMDisplayScale(void)
   return self.loadedImage ?: self.placeholderImage;
 }
 
-- (void)handleLoadedImage:(RCTUIImage *)image animated:(ENRMAnimatedImage *)animated
+- (void)handleLoadedImage:(RCTUIImage *)image animated:(nullable ENRMAnimatedImage *)animated
 {
   if (!image)
     return;
