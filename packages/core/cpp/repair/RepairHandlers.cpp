@@ -206,11 +206,48 @@ void setextHeadings(RepairContext &ctx) {
 
 namespace {
 
+// True for a `[` that is markup of its own rather than the start of a link:
+// a task-list marker (`- [ `, `- [x]`, or `- [` still streaming), an
+// admonition marker (`> [!`), a footnote reference (`[^`) or the second
+// bracket of a reference-style link (`][`). The reference has none of these.
+bool isBracketNotALink(std::string_view text, size_t idx) {
+  const char next = idx + 1 < text.size() ? text[idx + 1] : '\0';
+  const char prev = idx > 0 ? text[idx - 1] : '\0';
+  if (next == '^' || prev == ']') {
+    return true;
+  }
+  std::string_view line = jsTrimStart(lineBefore(text, idx));
+  // blockquote markers, then optionally a list marker
+  while (!line.empty() && line[0] == '>') {
+    line = jsTrimStart(line.substr(1));
+  }
+  const bool afterBlockquote = line.size() < lineBefore(text, idx).size();
+  if (afterBlockquote && line.empty() && next == '!') {
+    return true; // > [!NOTE]
+  }
+  size_t i = 0;
+  if (i < line.size() && (line[i] == '-' || line[i] == '*' || line[i] == '+')) {
+    ++i;
+  } else {
+    while (i < line.size() && isAsciiDigit(line[i])) {
+      ++i;
+    }
+    if (i == 0 || i >= line.size() || (line[i] != '.' && line[i] != ')')) {
+      return false;
+    }
+    ++i;
+  }
+  if (i >= line.size() || !jsTrimStart(line.substr(i)).empty()) {
+    return false; // no list marker, or text between the marker and the [
+  }
+  return next == '\0' || next == ' ' || next == ']' || next == 'x' || next == 'X';
+}
+
 // findFirstIncompleteBracket(): in text-only mode the bracket to drop is the
 // first unmatched `[`, skipping complete links.
 size_t findFirstIncompleteBracket(std::string_view text, size_t maxPos, const CodeLookup &code) {
   for (size_t j = 0; j < maxPos; ++j) {
-    if (text[j] != '[' || code.inside(j) || (j > 0 && text[j - 1] == '!')) {
+    if (text[j] != '[' || code.inside(j) || (j > 0 && text[j - 1] == '!') || isBracketNotALink(text, j)) {
       continue;
     }
     const size_t closing = findMatchingClosingBracket(text, j);
@@ -261,7 +298,8 @@ void links(RepairContext &ctx, LinkMode mode) {
   // handleIncompleteText(): [partial-text without a closing ]
   for (size_t i = text.size(); i > 0; --i) {
     const size_t idx = i - 1;
-    if (text[idx] != '[' || ctx.code().inside(idx) || findMatchingClosingBracket(text, idx) != npos) {
+    if (text[idx] != '[' || ctx.code().inside(idx) || findMatchingClosingBracket(text, idx) != npos ||
+        isBracketNotALink(text, idx)) {
       continue;
     }
     if (idx > 0 && text[idx - 1] == '!') {

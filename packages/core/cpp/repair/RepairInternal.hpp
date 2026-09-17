@@ -244,4 +244,9 @@ void inlineCode(RepairContext &ctx);
 void strikethrough(RepairContext &ctx);
 void katex(RepairContext &ctx);
 void inlineKatex(RepairContext &ctx);
+// md4c extensions (RepairExtensions.cpp)
+void spoilers(RepairContext &ctx);
+void highlight(RepairContext &ctx);
+void superscript(RepairContext &ctx);
+void subscript(RepairContext &ctx);
 }  // namespace Markdown::RepairHandlers

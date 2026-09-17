@@ -84,7 +84,7 @@ void repairInlineMarkdownInPlace(std::string &text, const RepairOptions &options
   }
 
   RepairContext ctx(text);
-  if (options.singleTilde) {
+  if (options.singleTilde && !options.subscript) { // with subscripts, `~x~` is markup
     RepairHandlers::singleTilde(ctx);
   }
   if (options.comparisonOperators) {
@@ -125,6 +125,18 @@ void repairInlineMarkdownInPlace(std::string &text, const RepairOptions &options
   }
   if (options.inlineKatex) {
     RepairHandlers::inlineKatex(ctx);
+  }
+  if (options.spoilers) {
+    RepairHandlers::spoilers(ctx);
+  }
+  if (options.highlight) {
+    RepairHandlers::highlight(ctx);
+  }
+  if (options.superscript) {
+    RepairHandlers::superscript(ctx);
+  }
+  if (options.subscript) {
+    RepairHandlers::subscript(ctx);
   }
 }
 

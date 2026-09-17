@@ -462,7 +462,7 @@ const Case
             {"```\ncode\n```\n*italic"sv, opts(), "```\ncode\n```\n*italic*"sv},
             {"[text][ref]"sv, opts(), "[text][ref]"sv},
             {"[^1]"sv, opts(), "[^1]"sv},
-            {"[text]["sv, opts(), "[text][](streamdown:incomplete-link)"sv},
+            {"[text]["sv, opts(), "[text]["sv}, // ours
             {"[^1]: footnote text"sv, opts(), "[^1]: footnote text"sv},
             {"    *asterisks in indented"sv, opts(), "    *asterisks in indented*"sv},
             {"    **bold in indented"sv, opts(), "    **bold in indented**"sv},

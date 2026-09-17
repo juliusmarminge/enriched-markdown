@@ -28,7 +28,14 @@
 //   the link and `[**bold link` gets it inside.
 // - The htmlTags handler only strips a tag that starts a line. Inline HTML is
 //   disabled in our parser, so `<` inside a line is prose.
+// - A `[` that starts a task-list item (`- [ `), an admonition (`> [!`), a
+//   footnote (`[^`) or the second bracket of a reference link (`][`) is not
+//   an incomplete link.
+// - Trailing CRLF counts as a trailing newline when placing closers.
 // The affected recorded cases in the test data are marked as ours.
+//
+// Additions with no reference counterpart: closers for spoilers, highlight,
+// superscript and subscript (RepairExtensions.cpp).
 //
 // When wiring this into a renderer, default `inlineKatex` to the parser's
 // latexMath flag: with `$…$` math enabled an open `$x` should be closed too.
@@ -61,6 +68,14 @@ struct RepairOptions {
   bool singleTilde = true;
   bool strikethrough = true;
   LinkMode linkMode = LinkMode::Protocol;
+
+  // Closers for md4c extensions the reference does not have. Spoilers are
+  // always on in our parser; wire the others from the parser flags. With
+  // subscripts on, the single-tilde escape is skipped since `~x~` is markup.
+  bool spoilers = true;
+  bool highlight = false;
+  bool superscript = false;
+  bool subscript = false;
 };
 
 // Equivalent to the reference's top-level function.

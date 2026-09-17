@@ -149,6 +149,7 @@ TEST_CASE("html tags and comparison operators") {
   CHECK(htmlTags("a<b\n<video src=\"x") == "a<b"); // mid-line `<` must not hide a later line-start tag
   CHECK(htmlTags("a < b") == "a < b");
   CHECK(htmlTags("```\n<cus") == "```\n<cus");
+  CHECK(htmlTags("<https://exa") == ""); // a line-start autolink is hidden until its > arrives
   CHECK(comparison("- > 25: costly") == "- \\> 25: costly");
   CHECK(comparison("1. >= $5") == "1. \\>= $5");
   CHECK(comparison("- > quote") == "- > quote");
@@ -211,6 +212,40 @@ TEST_CASE("in-place entry point matches the copying one") {
   text = "";
   repairInlineMarkdownInPlace(text, RepairOptions());
   CHECK(text.empty());
+}
+
+TEST_CASE("brackets that are not links") {
+  CHECK(repair("- [") == "- [");
+  CHECK(repair("- [ ") == "- ["); // trailing space trimmed as usual
+  CHECK(repair("- [x") == "- [x");
+  CHECK(repair("1. [ ] todo **b") == "1. [ ] todo **b**");
+  CHECK(repair("- [link") == "- [link](streamdown:incomplete-link)");
+  CHECK(repair("> [!NO") == "> [!NO");
+  CHECK(repair("> [!NOTE]\n> text **b") == "> [!NOTE]\n> text **b**");
+  CHECK(repair("note[^1") == "note[^1");
+  CHECK(repair("[text][re") == "[text][re");
+  CHECK(repair("see [x") == "see [x](streamdown:incomplete-link)");
+}
+
+TEST_CASE("md4c extensions") {
+  CHECK(repair("||hidden") == "||hidden||");
+  CHECK(repair("||a|| and ||b") == "||a|| and ||b||");
+  CHECK(repair("| a | b") == "| a | b"); // single pipes are tables, not spoilers
+  RepairOptions o;
+  o.highlight = o.superscript = o.subscript = true;
+  CHECK(repair("==mark", o) == "==mark==");
+  CHECK(repair("x^2", o) == "x^2^");
+  CHECK(repair("x^ 2", o) == "x^ 2"); // an opener before whitespace is literal
+  CHECK(repair("H~2", o) == "H~2~");
+  CHECK(repair("H~2~O and ~~s", o) == "H~2~O and ~~s~~");
+  CHECK(repair("20~25", o) == "20~25~"); // subscript on: no single-tilde escape
+  CHECK(repair("20~25") == "20\\~25");   // subscript off: reference behaviour
+  CHECK(repair("`x^2`", o) == "`x^2`");
+}
+
+TEST_CASE("line endings") {
+  CHECK(repair("**b\r\n") == "**b**\r\n");
+  CHECK(repair("**b\r\n\r\n") == "**b**\r\n\r\n");
 }
 
 TEST_CASE("full pipeline: mixed") {

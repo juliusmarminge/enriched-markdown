@@ -406,8 +406,11 @@ void RepairContext::assign(std::string &&replacement) {
 void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
   if (closers_.empty()) {
     closersStart_ = text_.size();
-    while (closersStart_ > 0 && text_[closersStart_ - 1] == '\n') {
+    while (closersStart_ > 0 && text_[closersStart_ - 1] == '\n') { // trailing LF or CRLF
       --closersStart_;
+      if (closersStart_ > 0 && text_[closersStart_ - 1] == '\r') {
+        --closersStart_;
+      }
     }
   }
   // Skip the closers of constructs opened later than ours; ours goes after them.
