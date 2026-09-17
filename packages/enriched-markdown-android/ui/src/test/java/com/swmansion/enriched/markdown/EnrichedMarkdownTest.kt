@@ -97,8 +97,10 @@ class EnrichedMarkdownTest {
     val child = container.getChildAt(0) as EnrichedMarkdownInternalText
 
     // Freezing the buffer into a SpannableString costs a span copy quadratic in
-    // span count, so the view is set up to adopt the rendered one verbatim.
-    assertSame(rendered.styledText, child.text)
+    // span count, so the view is set up to write through to the rendered one.
+    val marker = Any()
+    (child.text as Spannable).setSpan(marker, 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+    assertEquals(0, rendered.styledText.getSpanStart(marker))
   }
 
   @Test

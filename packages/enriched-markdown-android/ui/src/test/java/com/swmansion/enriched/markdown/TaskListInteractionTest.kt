@@ -1,6 +1,10 @@
 package com.swmansion.enriched.markdown
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.text.SpanWatcher
 import android.text.Spannable
 import android.text.Spanned
@@ -374,6 +378,48 @@ class TaskListInteractionTest {
 
     assertEquals(TaskListItemPressEvent(index = 0, checked = true, text = "Open item"), event)
     assertTrue((view.text as Spannable).taskSpanCovering("Open item").isChecked)
+  }
+
+  @Test
+  fun paintsANestedCheckboxInsideItsOwnMargin() {
+    val nested =
+      document(
+        unorderedList(
+          taskListItem(
+            checked = true,
+            paragraph(text("Parent task")),
+            unorderedList(taskListItem(checked = false, paragraph(text("Nested task")))),
+          ),
+        ),
+      )
+    val markdown = "- [x] Parent task\n  - [ ] Nested task"
+    val container = createContainerWithStoredMarkdown(markdown, render(nested))
+    val view = laidOutTextView(container.getChildAt(0) as EnrichedMarkdownInternalText)
+    val boxes = mutableListOf<RectF>()
+    val canvas =
+      object : Canvas(Bitmap.createBitmap(VIEW_WIDTH, view.layout.height, Bitmap.Config.ARGB_8888)) {
+        override fun drawRoundRect(
+          rect: RectF,
+          rx: Float,
+          ry: Float,
+          paint: Paint,
+        ) {
+          boxes += RectF(rect)
+          super.drawRoundRect(rect, rx, ry, paint)
+        }
+      }
+
+    view.layout.draw(canvas)
+
+    // The view is handed the renderer's buffer uncopied; a SpannableStringBuilder
+    // makes Layout paint the leading margins outer-first, which pushed the nested
+    // checkbox an indent right, over its own text and out of the tappable margin.
+    val nestedLine = view.layout.getLineForOffset(view.text.indexOf("Nested task"))
+    val nestedBox = boxes.single { it.centerY() > view.layout.getLineTop(nestedLine) }
+    assertTrue(
+      "Nested checkbox at ${nestedBox.right} overlaps its text at ${leadingMarginOf(view, nestedLine)}",
+      nestedBox.right <= leadingMarginOf(view, nestedLine),
+    )
   }
 
   @Test
