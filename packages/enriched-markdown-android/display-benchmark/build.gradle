@@ -23,7 +23,10 @@ android {
 
   buildTypes {
     release {
-      minifyEnabled = false
+      // Measure the library as a release app ships it, after R8. The module's own
+      // sources are all androidTest, so it is the test APK that gets minified.
+      androidTest.enableMinification = true
+      testProguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "benchmark-proguard-rules.pro")
     }
   }
 
