@@ -17,7 +17,14 @@
 //
 // The block-level streaming filter (table / code block / block math modes,
 // today in the platform-specific StreamingMarkdownFilter implementations) is
-// not part of this module yet; see docs/MARKDOWN_REPAIR_PLAN.mdx, phase 2.
+// not part of this module yet and follows in a separate change.
+//
+// Known limitation inherited from the reference: when several constructs are
+// open at once, closers are appended in handler priority order (bold before
+// inline code before strikethrough), not in reverse opening order, so
+// `**bold `code` becomes `**bold `code**``. The parser still renders the
+// prefix without flicker, which is the goal; correct nesting is a possible
+// deliberate divergence for later.
 //
 // All text is UTF-8. Positions are byte offsets.
 #pragma once

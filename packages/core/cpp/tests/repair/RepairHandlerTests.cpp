@@ -60,7 +60,11 @@ TEST_CASE("italic") {
   CHECK(underscore("_it") == "_it_");
   CHECK(underscore("snake_case") == "snake_case");
   CHECK(underscore("_it\n\n") == "_it_\n\n");
+  // The trailing ** here is the closer the bold handler appended one step
+  // earlier while streaming "**bold _und"; the underscore opened inside the
+  // bold, so its closer goes inside too. Full pipeline for the same input:
   CHECK(underscore("**bold _und**") == "**bold _und_**");
+  CHECK(repair("**bold _und") == "**bold _und_**");
   CHECK(doubleUnderscore("__it") == "__it__");
   CHECK(doubleUnderscore("__it_") == "__it__");
 }
@@ -126,6 +130,8 @@ TEST_CASE("math") {
 TEST_CASE("html tags and comparison operators") {
   auto htmlTags = handler(RepairHandlers::htmlTags);
   auto comparison = handler(RepairHandlers::comparisonOperators);
+  // An unterminated tag at the end is stripped, never completed: rendering
+  // "</b" as literal text and then removing it when ">" arrives would flicker.
   CHECK(htmlTags("text <cus") == "text");
   CHECK(htmlTags("text <b>bold</b") == "text <b>bold");
   CHECK(htmlTags("a < b") == "a < b");
@@ -196,6 +202,9 @@ TEST_CASE("in-place entry point matches the copying one") {
 
 TEST_CASE("full pipeline: mixed") {
   CHECK(repair("This is **bold with *ital") == "This is **bold with *ital*");
+  // Closers are appended in handler priority order (bold, then inline code),
+  // not in reverse opening order. This mirrors the reference; see the known
+  // limitation in MarkdownRepair.hpp.
   CHECK(repair("Text **bold `code") == "Text **bold `code**`");
   CHECK(repair("| a | b |\n|---|---|\n| **x") == "| a | b |\n|---|---|\n| **x**");
 }
