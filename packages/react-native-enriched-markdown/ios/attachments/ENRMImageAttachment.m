@@ -20,7 +20,19 @@ static inline NSUInteger ENRMImageByteCost(RCTUIImage *image)
 static NSCache<NSString *, RCTUIImage *> *_originalImageCache;
 static NSCache<NSString *, RCTUIImage *> *_processedImageCache;
 static NSCache<NSString *, ENRMAnimatedImage *> *_animatedImageCache;
-static NSMapTable<NSString *, ENRMImageAttachment *> *_attachmentRegistry;
+
+@implementation RCTUIView (ENRMImageLayoutObserver)
+
+- (id<ENRMImageLayoutObserver>)enrm_imageLayoutObserver
+{
+  RCTUIView *view = self;
+  while (view && ![view conformsToProtocol:@protocol(ENRMImageLayoutObserver)]) {
+    view = view.superview;
+  }
+  return (id<ENRMImageLayoutObserver>)view;
+}
+
+@end
 
 static inline CGFloat ENRMDisplayScale(void)
 {
@@ -90,32 +102,14 @@ static inline CGFloat ENRMDisplayScale(void)
   return _animatedImageCache;
 }
 
-+ (NSMapTable<NSString *, ENRMImageAttachment *> *)attachmentRegistry
-{
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{ _attachmentRegistry = [NSMapTable strongToWeakObjectsMapTable]; });
-  return _attachmentRegistry;
-}
-
 + (instancetype)attachmentForURL:(NSString *)imageURL config:(StyleConfig *)config isInline:(BOOL)isInline
 {
-  NSString *key =
-      [NSString stringWithFormat:@"%@_%d", ENRMImageCacheKey(imageURL, [config imageRequestHeaders]), isInline];
-  ENRMImageAttachment *existing = [[self attachmentRegistry] objectForKey:key];
-  // Animated attachments are not shared: each host may draw at a different
-  // width, and one attachment can only hold frames for one box. The decoded
-  // GIF and its playhead are shared through ENRMAnimatedImage instead.
-  if (existing && existing.loadedImage && !existing.animatedImage) {
-    return existing;
-  }
-  ENRMImageAttachment *attachment = [[self alloc] initWithImageURL:imageURL config:config isInline:isInline];
-  [[self attachmentRegistry] setObject:attachment forKey:key];
-  return attachment;
-}
-
-+ (void)clearAttachmentRegistry
-{
-  [[self attachmentRegistry] removeAllObjects];
+  // Always a fresh instance, never shared across positions: the table renderer can draw
+  // the same image URL at a different width than a copy outside the table, and a shared
+  // NSTextAttachment would thrash its single last-processed width into a redraw loop. The
+  // image caches keep fresh instances cheap (no re-fetch or re-scale), and an animated
+  // GIF keeps its playhead on the shared ENRMAnimatedImage so playback continues.
+  return [[self alloc] initWithImageURL:imageURL config:config isInline:isInline];
 }
 
 - (instancetype)initWithImageURL:(NSString *)imageURL config:(StyleConfig *)config isInline:(BOOL)isInline
@@ -391,6 +385,12 @@ static inline CGFloat ENRMDisplayScale(void)
 
 - (void)refreshDisplay
 {
+  // Notify self-drawing hosts (e.g. a table grid) that rasterize us via
+  // -drawWithRect: and have no live text view for the invalidation below to reach.
+  if (self.onImageLoaded) {
+    self.onImageLoaded();
+  }
+
   UITextView *textView = [self fetchAssociatedTextView];
   if (!textView)
     return;
@@ -417,14 +417,10 @@ static inline CGFloat ENRMDisplayScale(void)
   if (self.cachedMaxHeight <= 0 && self.cachedAspectRatio <= 0)
     return;
 
-  RCTUIView *candidate = textView;
-  while (candidate && ![candidate conformsToProtocol:@protocol(ENRMImageLayoutObserver)]) {
-    candidate = candidate.superview;
-  }
-  if (!candidate)
+  id<ENRMImageLayoutObserver> observer = [textView enrm_imageLayoutObserver];
+  if (!observer)
     return;
 
-  id<ENRMImageLayoutObserver> observer = (id<ENRMImageLayoutObserver>)candidate;
   dispatch_async(dispatch_get_main_queue(), ^{ [observer imageAttachmentDidResolveLayout]; });
 }
 

@@ -1031,7 +1031,6 @@ static char kENRMSegmentFadeAnimatorKey;
   }
 
   if (applyMarkdownStyleToConfig(_config, newViewProps.markdownStyle, oldViewProps.markdownStyle)) {
-    [ENRMImageAttachment clearAttachmentRegistry];
     _dirtyFlags |= ENRMDirtyForceHeight | ENRMDirtyRender;
     if (!markdownChanged) {
       _dirtyFlags |= ENRMDirtyRecreateSegments;
