@@ -5,8 +5,9 @@ screen, plus a phase split that says which part of that time is spent where.
 
 This module is measurement scaffolding. It depends on `project(":ui")` directly, so an
 optimisation can be measured without publishing anything, and it is never published
-itself: the root `subprojects` block applies ktlint and the publish script only to
-`parser`, `ui` and `compose`, and `nmcpAggregation` does not list it.
+itself: the root `subprojects` block applies the publish script only to `parser`, `ui`
+and `compose`, and `nmcpAggregation` does not list it. ktlint does apply here, as it
+does to every module.
 
 ## What is measured
 

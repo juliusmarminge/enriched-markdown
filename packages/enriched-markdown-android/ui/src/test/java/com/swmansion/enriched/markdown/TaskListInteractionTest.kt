@@ -490,9 +490,12 @@ class TaskListInteractionTest {
     return view
   }
 
+  // EnrichedMarkdownInternalText rather than a plain TextView: a plain one's default
+  // spannable factory copies the builder into a SpannableString, so these tests would
+  // exercise the old copied path instead of the no-copy wrapper production installs.
   private fun laidOutTextView(spannable: Spannable): TextView =
     laidOutTextView(
-      TextView(context).apply { setText(spannable, TextView.BufferType.SPANNABLE) },
+      EnrichedMarkdownInternalText(context).apply { setText(spannable, TextView.BufferType.SPANNABLE) },
     )
 
   private fun lineCenterY(

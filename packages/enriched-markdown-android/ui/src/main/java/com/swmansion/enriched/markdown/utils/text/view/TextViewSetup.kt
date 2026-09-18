@@ -28,6 +28,13 @@ private object NoCopySpannableFactory : Spannable.Factory() {
  * Hides that [buffer] is a `SpannableStringBuilder`. Layout reads a builder's paragraph
  * spans in position order rather than insertion order, which paints nested list margins
  * outer-first and pushes nested checkboxes an indent right.
+ *
+ * Hiding the type has a price, and it is deliberate: every paragraph-span query from
+ * `Layout` now goes through the builder's sorted `getSpans` instead of the unsorted fast
+ * path the framework reserves for builders. The `layout` benchmark in `display-benchmark`
+ * covers that cost, so it is already accounted for. Do not "optimise" this wrapper away —
+ * `TaskListInteractionTest.paintsANestedCheckboxInsideItsOwnMargin` is what catches its
+ * removal.
  */
 private class InsertionOrderedSpannable(
   private val buffer: SpannableStringBuilder,
