@@ -500,28 +500,29 @@ bool interruptsParagraph(std::string_view line) {
 
 } // namespace
 
-bool RepairContext::openerCanStillClose(size_t openerIndex) {
-  const std::string_view text = textBeforeClosers();
-  if (!trailingParagraphStart_) {
-    trailingParagraphStart_ = trailingParagraphStart(text);
-  }
-  if (openerIndex < *trailingParagraphStart_) {
-    return false;
-  }
-  const size_t lineEnd = text.find('\n', openerIndex);
-  if (lineEnd == npos) {
-    return true;
-  }
-  if (isAtxHeadingLine(lineAt(text, openerIndex))) {
-    return false;
-  }
-  // A later line that starts a new block ends the opener's paragraph too.
-  for (size_t nl = lineEnd; nl != npos; nl = text.find('\n', nl + 1)) {
+// Start of the last block in `text`: the text after the last blank line, or
+// after the last later line that interrupts a paragraph, whichever is later.
+static size_t lastBlockStart(std::string_view text) {
+  size_t start = trailingParagraphStart(text);
+  for (size_t nl = text.find('\n', start); nl != npos; nl = text.find('\n', nl + 1)) {
     if (interruptsParagraph(lineAt(text, nl + 1))) {
-      return false;
+      start = nl + 1;
     }
   }
-  return true;
+  return start;
+}
+
+bool RepairContext::openerCanStillClose(size_t openerIndex) {
+  const std::string_view text = textBeforeClosers();
+  if (!blockStart_) {
+    blockStart_ = lastBlockStart(text);
+  }
+  if (openerIndex < *blockStart_) {
+    return false;
+  }
+  // An opener on a heading line can only close on that line.
+  const bool lineHasEnded = text.find('\n', openerIndex) != npos;
+  return !(lineHasEnded && isAtxHeadingLine(lineAt(text, openerIndex)));
 }
 
 void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
@@ -568,7 +569,7 @@ void RepairContext::dropLookups() {
 void RepairContext::invalidate() {
   dropLookups();
   closers_.clear();
-  trailingParagraphStart_.reset();
+  blockStart_.reset();
 }
 
 bool isWithinHtmlTag(std::string_view text, size_t position) {

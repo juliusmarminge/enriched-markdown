@@ -36,8 +36,16 @@ bool shouldSkipAsterisk(std::string_view text, size_t index, uint32_t prev, uint
 // countSingleAsterisks(): parity of single * delimiters outside fences.
 // Intraword asterisks only count while an emphasis run is open (hello*world
 // stays literal, *foo*bar* does not reopen).
-size_t countSingleAsterisks(std::string_view text, const MathLookup &math, size_t *opener = nullptr) {
+// Parity of single-marker delimiters. When `count` is odd, `lastCounted` is
+// the delimiter still open, which is where its closer belongs.
+struct DelimiterCount {
   size_t count = 0;
+  size_t lastCounted = npos;
+};
+
+DelimiterCount countSingleAsterisks(std::string_view text, const MathLookup &math) {
+  DelimiterCount result;
+  size_t &count = result.count;
   bool inWordChain = false;
   scanOutsideFences(text, [&](size_t &i) {
     if (text[i] != '*') {
@@ -62,22 +70,21 @@ size_t countSingleAsterisks(std::string_view text, const MathLookup &math, size_
     }
     if ((canClose && count % 2 == 1) || canOpen) {
       ++count;
+      result.lastCounted = i;
       inWordChain = wordInternal;
-      if (opener) {
-        *opener = i; // the last delimiter counted is the open one when the count ends odd
-      }
     }
     return false;
   });
-  return count;
+  return result;
 }
 
 // countSingleUnderscores(): parity of single _ delimiters outside fences,
 // math, URLs, HTML tags and words. The reference counts every such _; ours
 // also applies the open/close flanking rule the asterisk counter uses, so a
 // trailing `_` after a closed italic (`_a_ b_`) is not taken for an opener.
-size_t countSingleUnderscores(std::string_view text, const MathLookup &math, size_t *opener = nullptr) {
-  size_t count = 0;
+DelimiterCount countSingleUnderscores(std::string_view text, const MathLookup &math) {
+  DelimiterCount result;
+  size_t &count = result.count;
   scanOutsideFences(text, [&](size_t &i) {
     if (text[i] != '_') {
       return false;
@@ -94,13 +101,11 @@ size_t countSingleUnderscores(std::string_view text, const MathLookup &math, siz
     const bool canClose = prev != kNoCodePoint && !isSpaceTabNewline(prev);
     if ((canClose && count % 2 == 1) || canOpen) {
       ++count;
-      if (opener) {
-        *opener = i;
-      }
+      result.lastCounted = i;
     }
     return false;
   });
-  return count;
+  return result;
 }
 
 // countTripleAsterisks(): runs of *** outside fences (**** counts one).
@@ -228,7 +233,7 @@ void boldItalic(RepairContext &ctx) {
   }
   if (countTripleAsterisks(text) % 2 == 1) {
     // areBoldItalicMarkersBalanced(): `**bold and *italic***` is overlap, not an opener
-    if (countDoubleMarkers(text, '*') % 2 == 0 && countSingleAsterisks(text, ctx.math()) % 2 == 0) {
+    if (countDoubleMarkers(text, '*') % 2 == 0 && countSingleAsterisks(text, ctx.math()).count % 2 == 0) {
       return;
     }
     ctx.closeAt(markerIndex, "***");
@@ -256,7 +261,7 @@ void bold(RepairContext &ctx) {
   // still open before it, in which case it closes that italic. (The math
   // lookup is prefix-based, so the full text's lookup is exact here.)
   const bool halfCloser =
-      endsWith(content, "*") && countSingleAsterisks(text.substr(0, text.size() - 1), ctx.math()) % 2 == 0;
+      endsWith(content, "*") && countSingleAsterisks(text.substr(0, text.size() - 1), ctx.math()).count % 2 == 0;
   ctx.closeAt(markerIndex, halfCloser ? "*" : "**");
 }
 
@@ -277,7 +282,7 @@ void italicDoubleUnderscore(RepairContext &ctx) {
   }
   // __content_ : same half-closer rule as bold.
   const bool halfCloser =
-      endsWith(content, "_") && countSingleUnderscores(text.substr(0, text.size() - 1), ctx.math()) % 2 == 0;
+      endsWith(content, "_") && countSingleUnderscores(text.substr(0, text.size() - 1), ctx.math()).count % 2 == 0;
   ctx.closeAt(markerIndex, halfCloser ? "_" : "__");
 }
 
@@ -297,9 +302,9 @@ void italicSingleAsterisk(RepairContext &ctx) {
   if (content.empty() || isWhitespaceOrMarkersOnly(content)) {
     return;
   }
-  size_t opener = first;
-  if (countSingleAsterisks(text, ctx.math(), &opener) % 2 == 1) {
-    ctx.closeAt(opener, "*");
+  const DelimiterCount singles = countSingleAsterisks(text, ctx.math());
+  if (singles.count % 2 == 1) {
+    ctx.closeAt(singles.lastCounted, "*");
   }
 }
 
@@ -319,11 +324,11 @@ void italicSingleUnderscore(RepairContext &ctx) {
   if (content.empty() || isWhitespaceOrMarkersOnly(content) || ctx.insideAnyCode(first)) {
     return;
   }
-  size_t opener = first;
-  if (countSingleUnderscores(text, ctx.math(), &opener) % 2 != 1) {
+  const DelimiterCount singles = countSingleUnderscores(text, ctx.math());
+  if (singles.count % 2 != 1) {
     return;
   }
-  ctx.closeAt(opener, "_");
+  ctx.closeAt(singles.lastCounted, "_");
 }
 
 } // namespace Markdown::RepairHandlers

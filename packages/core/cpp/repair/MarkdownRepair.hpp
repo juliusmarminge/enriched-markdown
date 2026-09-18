@@ -32,9 +32,16 @@
 //   footnote (`[^`) or the second bracket of a reference link (`][`) is not
 //   an incomplete link.
 // - Trailing CRLF counts as a trailing newline when placing closers.
-// - An opener before the last blank line, or on a heading line that has
-//   ended, is not closed: an inline span cannot reach across a block
-//   boundary, so the closer would be a stray marker in a later block.
+// - An opener whose paragraph has already ended is not closed: after a blank
+//   line, a heading line, or a later line that starts a fence, heading or
+//   list item. An inline span cannot reach across a block boundary, so the
+//   closer would be a stray marker in a later block.
+// - Closers are anchored at the delimiter that is actually open, found while
+//   counting, rather than at the first marker in the text.
+// - An escaped `\[` or `\]` is never a link bracket; LLMs stream `\[ … \]`
+//   for display math.
+// - The single-underscore counter applies the same open/close flanking rule
+//   as the asterisk counter (`_a_ b_` does not reopen).
 // The affected recorded cases in the test data are marked as ours.
 //
 // Additions with no reference counterpart: closers for spoilers, highlight,

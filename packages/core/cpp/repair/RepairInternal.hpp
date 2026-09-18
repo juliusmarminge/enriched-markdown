@@ -226,7 +226,7 @@ class RepairContext {
 
   std::vector<Closer> closers_;  // in text order, contiguous from closersStart_
   size_t closersStart_ = 0;
-  std::optional<size_t> trailingParagraphStart_;  // cached for openerCanStillClose()
+  std::optional<size_t> blockStart_;  // start of the last block, cached for openerCanStillClose()
 };
 
 // Visits every byte index outside ``` fences, in order. The visitor returns

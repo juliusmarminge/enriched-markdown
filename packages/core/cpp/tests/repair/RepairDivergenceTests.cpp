@@ -85,3 +85,58 @@ TEST_CASE("full pipeline: mixed") {
   CHECK(repair("`g **c") == "`g **c`"); // ** inside an open code span is code, not emphasis
   CHECK(repair("| a | b |\n|---|---|\n| **x") == "| a | b |\n|---|---|\n| **x**");
 }
+
+// The italic closer is anchored at the open marker, not the first `*`/`_` in
+// the text, so an italic in an earlier paragraph does not disable repair later.
+TEST_CASE("italic closer is anchored at the open marker") {
+  CHECK(repair("This is *important*.\n\nNext *point") == "This is *important*.\n\nNext *point*");
+  CHECK(repair("This is _important_.\n\nNext _point") == "This is _important_.\n\nNext _point_");
+  CHECK(repair("# *Title*\nsome *text") == "# *Title*\nsome *text*");
+  CHECK(repair("_ x **y _z") == "_ x **y _z_**");
+}
+
+// An escaped `\[` is not a link opener. LLMs stream `\[ … \]` for display math.
+TEST_CASE("an escaped bracket is not a link") {
+  CHECK(repair("Solve \\[ x^2 + y^2") == "Solve \\[ x^2 + y^2");
+  CHECK(repair("see \\[a](http://x") == "see \\[a](http://x");
+  RepairOptions o;
+  o.linkMode = LinkMode::TextOnly;
+  CHECK(repair("Solve \\[ x^2", o) == "Solve \\[ x^2");
+}
+
+// Math closers are anchored at the counted opener, never at half of a `$$`,
+// an escaped `\$` or a `$$` inside inline code.
+TEST_CASE("math closers are anchored at their opener") {
+  RepairOptions o;
+  o.inlineKatex = true;
+  CHECK(repair("It costs $5.\n\nThe formula $$x^2$$", o) == "It costs $5.\n\nThe formula $$x^2$$");
+  CHECK(repair("$a **b \\$5", o) == "$a **b \\$5**$");
+  CHECK(repair("$$a\n\n`$$` b") == "$$a\n\n`$$` b");
+  CHECK(repair("$$a **b `$$`") == "$$a **b `$$`**$$");
+}
+
+// A CRLF blank line is a block boundary, like an LF one.
+TEST_CASE("a CRLF blank line is a block boundary") {
+  CHECK(repair("**a\r\n\r\nb") == "**a\r\n\r\nb");
+  CHECK(repair("[link\r\n\r\nmore") == "[link\r\n\r\nmore");
+}
+
+// The underscore counter applies the open/close flanking rule the reference
+// does not have.
+TEST_CASE("underscore flanking rule, pinned") {
+  CHECK(repair("_a_ b_") == "_a_ b_"); // reference: _a_ b__
+  CHECK(repair("_  b") == "_  b");     // reference: _  b_
+}
+
+// The task-list check matches a checkbox only, not any link text starting with x.
+TEST_CASE("task-list check only matches a checkbox") {
+  CHECK(repair("- [Xcode setup") == "- [Xcode setup](streamdown:incomplete-link)");
+  CHECK(repair("- [x") == "- [x");
+}
+
+// A fence, heading or list item after the opener ends its paragraph like a
+// blank line does. The reference has the same gap.
+TEST_CASE("a fence or heading after the opener is a block boundary") {
+  CHECK(repair("**a\n```\ncode") == "**a\n```\ncode");
+  CHECK(repair("**a\n# heading") == "**a\n# heading");
+}
