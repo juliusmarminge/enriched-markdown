@@ -256,3 +256,28 @@ no config plugin is needed (a dedicated plugin was removed; see
 :::caution
 Because it is a compile/link-time decision, it cannot be changed in Expo Go.
 :::
+
+## Optional native features {#optional-features}
+
+The same `enriched-markdown` block also gates features that ship no downloaded
+assets - they are compiled from source already in the package, so they are a
+pure build-time choice rather than part of the install-time download above.
+
+```json
+{
+  "enriched-markdown": {
+    "enableVideo": false
+  }
+}
+```
+
+`enableVideo` (default `true`) controls the native video players used to render
+the [`<video>` element](/react-native/api-reference/style-properties#video-specific).
+Turning it off drops `AVPlayerViewController` on iOS and the ExoPlayer
+dependency on Android - worth roughly 2-3 MB of Android binary. With it off a
+`<video />` tag renders nothing and `markdownStyle.video` has no effect.
+
+It is read from the **app's** `package.json` and applies the same way as the
+flags above: run `pod install` plus a clean build on iOS after changing it, and
+it cannot be changed in Expo Go.
+

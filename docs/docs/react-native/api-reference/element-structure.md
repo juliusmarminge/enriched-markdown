@@ -33,12 +33,14 @@ Every element falls into one of two categories, and the distinction drives how i
 | Headings | `# H1` to<br />`###### H6` | `h1` - `h6` | Six levels of headings |
 | Paragraphs | Plain text | `paragraph` | Default text container |
 | Blockquotes | `> Quote` | `blockquote` | Quoted content with accent bar, unlimited nesting |
+| Admonitions | `> [!NOTE]` | `blockquote.admonitions` | GitHub alert callouts with an icon and title header (requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor)) |
 | Code blocks | ` ``` code ``` ` | `codeBlock` | Multi-line code containers; with [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor) rendered as a block component with a language header and copy-code button |
 | Unordered lists | `- Item`,<br />`* Item`, or<br />`+ Item` | `list` | Bullet lists with unlimited nesting |
 | Ordered lists | `1. Item` | `list` | Numbered lists with unlimited nesting |
 | Task lists | `- [x] Done`,<br />`- [ ] Todo` | `taskList` | Interactive checkboxes (requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor)) |
 | Thematic break | `---`, `***`,<br />or `___` | `thematicBreak` | Horizontal rule separator |
 | Images | `![alt](url)` | `image` | Block-level images with spacing |
+| Videos | `<video src="url" />` | `video` | Native video player (requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor)) |
 | Tables | `\| col \| col \|` | `table` | GFM tables with alignment support (requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor)) |
 | Math block | `$$...$$` | `math` | Block-level LaTeX math (display equations) (requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor)) |
 
@@ -121,8 +123,8 @@ Add a `>` for each level of quoting. Every level draws its own accent bar, and a
 > > > Level 3 nested (unlimited depth!)
 ```
 
-:::important
-Blockquote rendering is changing for GitHub Flavored Markdown ([`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor)). GFM blockquotes are being reworked from inline spans into recursive **container blocks**: block content inside a quote (code blocks, tables, or nested quotes) becomes a real nested block rather than inline text, and the box gains full padding on all sides, `borderRadius`, and `backgroundColor`. The CommonMark rendering is largely unchanged. This section will be updated once it lands.
+:::note
+The two flavors render blockquotes differently. Under [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor) a blockquote is a recursive **container block**: it draws its own box (padding on all sides, `borderRadius`, `backgroundColor`, and the accent border) and splits its content into segments, so a code block, table, or math block inside becomes a real nested block and each nesting level is its own box. Long-pressing one opens the copy menu. Under `flavor="commonmark"` blockquotes stay inside the single text view and are drawn with spans.
 :::
 
 ### Superscript and subscript
@@ -143,6 +145,45 @@ H~3~O^+^  (mixed superscript and subscript)
 Superscript and subscript can be nested inside other inline elements such as bold, italic, and links. They cannot be nested inside each other.
 :::
 
+## Admonitions
+
+With [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor), a blockquote whose first line is an alert marker renders as a themed callout with an icon and a title header instead of a plain quote:
+
+```markdown
+> [!NOTE]
+> Useful information the reader should know.
+
+> [!TIP]
+> A helpful hint.
+
+> [!IMPORTANT]
+> Something essential to completing the task.
+
+> [!WARNING]
+> Urgent information needing immediate attention.
+
+> [!CAUTION]
+> Risks or negative outcomes of an action.
+```
+
+Those five markers are the whole set, and they are case-insensitive - `> [!note]` works the same as `> [!NOTE]`. A marker that is not one of the five is not an admonition: the block renders as an ordinary blockquote with the marker left in as literal text.
+
+An admonition is still a blockquote, so it holds any block content - more paragraphs, lists, code blocks, even a video:
+
+```markdown
+> [!WARNING]
+> Check these before upgrading:
+>
+> - the peer dependency range
+> - your `enriched-markdown` config block
+```
+
+Admonitions reuse the blockquote's geometry and override only its colors, so they are styled through [`markdownStyle.blockquote.admonitions`](/react-native/api-reference/style-properties#admonitions) - one color pair per type, on top of the `blockquote` box itself.
+
+:::note
+Requires both [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor) and the [`md4cFlags.admonitions`](/react-native/api-reference/enriched-markdown-text#admonitions) flag. The flag is on by default, but it is forced off under `flavor="commonmark"`, where `> [!NOTE]` renders as a plain blockquote with the marker as text.
+:::
+
 ## Images: block vs. inline
 
 Images are automatically detected as block or inline based on context:
@@ -152,6 +193,30 @@ Images are automatically detected as block or inline based on context:
 
 You don't need to specify which type - the renderer determines it from the image's position in the content. Note that a single newline does not split a paragraph, so an image on its own source line directly below text is still inline; separate it with a blank line to make it a block image.
 
+## Videos
+
+Videos are embedded with an HTML `<video>` tag - the tag is the one piece of HTML the parser allowlists, and it is recognized only as a block-level element:
+
+```markdown
+<video src="https://example.com/ocean.mp4" />
+```
+
+The paired form `<video src="url"></video>` works identically. Only `src` is read: `width`, `height`, `controls`, `autoplay` and every other attribute are ignored, so all appearance comes from [`markdownStyle.video`](/react-native/api-reference/style-properties#video-specific). Playback controls come from the platform player - `AVPlayerViewController` on iOS, ExoPlayer on Android.
+
+:::important
+Quote the URL. An unquoted `src` ends at the first `/`, so `<video src=https://example.com/a.mp4 />` parses as the URL `https:` and nothing loads.
+:::
+
+:::note
+Requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor) and the `enableVideo` build flag (on by default) - see [Optional native features](/react-native/guides/native-assets#optional-features). No other HTML is rendered: inline HTML is disabled and any other tag is ignored.
+:::
+
+A video inside a blockquote or an admonition renders normally. A video inside a **list item** is different: it is promoted out of the list and rendered as a standalone block above the remaining items, without a bullet or number. This may change in a future release.
+
+:::caution
+Videos are not supported on the web build yet - the tag renders as nothing there.
+:::
+
 ## Line breaks
 
 Newlines follow standard CommonMark semantics by default:
@@ -159,6 +224,7 @@ Newlines follow standard CommonMark semantics by default:
 - **Blank line** - starts a new paragraph.
 - **Single newline (soft break)** - renders as a space; consecutive lines flow together into one wrapped paragraph, matching how GitHub and other CommonMark renderers display Markdown.
 - **Hard break** - end a line with two spaces or a backslash to force a line break within the paragraph.
+- **`<br>`** - not supported. Raw HTML is disabled, so an inline `<br>` stays in the output as literal text and one on its own line is dropped. Use a hard break, or [`hardSoftBreaks`](/react-native/api-reference/enriched-markdown-text#hardsoftbreaks) below, instead.
 
 ```markdown
 This line and

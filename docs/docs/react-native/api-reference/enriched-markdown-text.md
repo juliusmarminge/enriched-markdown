@@ -19,6 +19,7 @@ import Md4cHighlightSrc from '!!raw-loader!@site/src/examples/react-native/api-r
 import Md4cLatexMathSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/Md4cLatexMath';
 import Md4cHardSoftBreaksSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/Md4cHardSoftBreaks';
 import Md4cPreserveBlankLinesSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/Md4cPreserveBlankLines';
+import Md4cAdmonitionsSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/Md4cAdmonitions';
 import OnLinkPressSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/OnLinkPress';
 import OnLinkLongPressSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/OnLinkLongPress';
 import OnImagePressSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/OnImagePress';
@@ -26,6 +27,8 @@ import OnTaskListItemPressSrc from '!!raw-loader!@site/src/examples/react-native
 import EnableTaskListItemToggleSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/EnableTaskListItemToggle';
 import EnableBlockContextMenuSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/EnableBlockContextMenu';
 import OnCopyPressSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/OnCopyPress';
+import OnCodeBlockPressSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/OnCodeBlockPress';
+import OnLatexErrorSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/OnLatexError';
 import EnableLinkPreviewSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/EnableLinkPreview';
 import SelectableSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/Selectable';
 import SelectionColorSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/SelectionColor';
@@ -40,6 +43,8 @@ import ImageRequestHeadersSrc from '!!raw-loader!@site/src/examples/react-native
 import ContextMenuItemsSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/ContextMenuItems';
 import SelectionMenuConfigSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/SelectionMenuConfig';
 import AccessibilityLabelsSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/AccessibilityLabels';
+import NumberOfLinesSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/NumberOfLines';
+import EllipsizeModeSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/EllipsizeMode';
 import TextBreakStrategySrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/TextBreakStrategy';
 import LineBreakStrategyIOSSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/LineBreakStrategyIOS';
 import WritingDirectionSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/enriched-markdown-text/WritingDirection';
@@ -115,7 +120,7 @@ For exactly which syntax each flavor parses and renders, and which elements are 
 
 Toggles for md4c's parser extensions; each opts a piece of extra inline syntax in or out. Pass only the flags you want to change; the rest keep their defaults below. Where a flag enables a new inline element, tune its appearance through the matching [style property](/react-native/api-reference/style-properties).
 
-<PropInfo type="Md4cFlags" default="{ underline: false, superscript: false, subscript: false, highlight: false, latexMath: true, hardSoftBreaks: false, preserveBlankLines: false }" />
+<PropInfo type="Md4cFlags" default="{ underline: false, superscript: false, subscript: false, highlight: false, latexMath: true, hardSoftBreaks: false, preserveBlankLines: false, admonitions: true }" />
 
 #### `underline`
 
@@ -172,6 +177,20 @@ When `true`, preserves runs of consecutive blank lines from the source instead o
 <PropInfo type="boolean" default="false" />
 
 <LivePreview src={Md4cPreserveBlankLinesSrc} />
+
+#### `admonitions`
+
+Renders GitHub-style admonitions (also called alerts): a blockquote whose first line is `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, or `> [!CAUTION]` becomes a themed callout with an icon and a title header instead of a plain quote. Unlike the other flags, this one is **on by default**.
+
+Admonitions inherit the blockquote's geometry and override only its colors, so restyle them through [`markdownStyle.blockquote.admonitions`](/react-native/api-reference/style-properties#admonitions) - see that section for the per-type palette.
+
+:::note
+Only takes effect with [`flavor="github"`](#flavor). Under `flavor="commonmark"` the flag is forced off and `> [!NOTE]` renders as an ordinary blockquote with the literal text.
+:::
+
+<PropInfo type="boolean" default="true" />
+
+<LivePreview src={Md4cAdmonitionsSrc} />
 
 ### `enableTaskListItemToggle`
 
@@ -385,6 +404,39 @@ Every field is optional; see the [Accessibility guide](/user-experience/accessib
 
 <LivePreview src={AccessibilityLabelsSrc} unavailable unavailableReason={<>iOS and Android only - it translates VoiceOver / TalkBack announcements.</>} />
 
+### `numberOfLines`
+
+Clamps the rendered Markdown to a maximum number of lines, truncating with an ellipsis (see [`ellipsizeMode`](#ellipsizemode)) when it overflows. `0` (the default) means unlimited. Mirrors the prop of the same name on React Native's core [`Text`](https://reactnative.dev/docs/text#numberoflines), and is meant for previews such as chat-list rows or reply quotes. The clamp is applied to the measurement pass as well as the rendered view, so measured and rendered heights stay in sync.
+
+:::note
+CommonMark only. Under [`flavor="github"`](#flavor) the content is laid out as independent block segments that cannot honor a document-wide line cap, so the prop is ignored.
+:::
+
+:::caution
+**On Android a clamped view is neither selectable nor tappable.** While `numberOfLines > 0`, text selection and link taps are off regardless of [`selectable`](#selectable). Android draws the truncation ellipsis only through `StaticLayout`, but enabling selection or a link movement method promotes the text to `DynamicLayout`, which has no `maxLines` support - React Native's own `Text` behaves the same way. Both are restored once the clamp is removed, and iOS keeps selection and links while clamped.
+:::
+
+<PropInfo type="number" default="0" />
+
+<LivePreview src={NumberOfLinesSrc} unavailable unavailableReason={<>iOS, Android, and macOS only - the web build does not clamp.</>} />
+
+### `ellipsizeMode`
+
+Where the ellipsis is placed when text is truncated by [`numberOfLines`](#numberoflines). Only takes effect when `numberOfLines` is set, and ignored under [`flavor="github"`](#flavor) for the same reason. Mirrors the prop of the same name on React Native's core [`Text`](https://reactnative.dev/docs/text#ellipsizemode).
+
+<PropInfo type="'head' | 'middle' | 'tail' | 'clip'" default="'tail'" />
+
+<LivePreview src={EllipsizeModeSrc} unavailable unavailableReason={<>iOS, Android, and macOS only - the web build does not clamp.</>} />
+
+- `'head'`: ellipsis at the start (`...d of the text`).
+- `'middle'`: ellipsis in the middle (`start...end`).
+- `'tail'` **(default)**: ellipsis at the end (`start of the...`).
+- `'clip'`: truncate at the line boundary with no ellipsis glyph.
+
+:::caution
+`'head'` and `'middle'` are single-line truncation modes - they only place the ellipsis as described when `numberOfLines` is `1`. Past one line Android falls back to tail-style truncation (only `TruncateAt.END` works there) and iOS is likewise unreliable, so use `'tail'` or `'clip'` for multi-line clamps. Same limitation as React Native's `Text`.
+:::
+
 ### `textBreakStrategy` <AndroidBadge /> {#textbreakstrategy}
 
 Controls how Android breaks lines within paragraphs. Mirrors the prop of the same name on React Native's core `Text`. Requires API 23+.
@@ -519,6 +571,45 @@ interface CopyPressEvent {
 ```
 
 <LivePreview src={OnCopyPressSrc} unavailable unavailableReason={<>iOS, Android, and macOS only - copying from a code block is a native interaction, and the web build renders code blocks without a copy affordance.</>} />
+
+### `onCodeBlockPress`
+
+Callback fired when a fenced code block is tapped or clicked anywhere in its body. Use it for actions like opening the code in a viewer or copying it yourself.
+
+Setting this prop is what arms the block for taps; leaving it unset keeps the block inert, with text selection, the header copy button, and the long-press menu unchanged. A tap never fires while text is being selected - selection still starts on long press. Works in both flavors: `flavor="github"` fires on the container-based code block, `flavor="commonmark"` on the code-block region inside the single text view. On web the block becomes a clickable, keyboard-activatable element with a button role.
+
+<PropInfo type="(event: CodeBlockPressEvent) => void" />
+
+```ts
+interface CodeBlockPressEvent {
+  code: string; // the block's source
+  language: string; // fence language ("" if none)
+}
+```
+
+<LivePreview src={OnCodeBlockPressSrc} />
+
+### `onLatexError`
+
+Callback fired when a math expression cannot be parsed or rendered by the LaTeX engine. The expression still renders - it falls back to showing its raw source rather than crashing - so this is a reporting hook, not a recovery one. Requires [`md4cFlags.latexMath`](#latexmath) (on by default).
+
+Fires **at most once per distinct failing expression** per component instance. The de-duplication is keyed by `displayMode` + `source` and its cache survives `markdown` changes, so streaming content reports each failure once instead of on every update.
+
+:::caution
+De-duplication is per component **instance**. A remount - navigation, a changed React `key`, or list recycling - produces a fresh instance with no memory of prior reports, which fires again for the same expressions. De-duplicate on your side (by `source`) if you aggregate app-wide. See [Handling render errors](/rich-text-formatting/latex-math#handling-render-errors).
+:::
+
+<PropInfo type="(event: LatexErrorEvent) => void" />
+
+```ts
+interface LatexErrorEvent {
+  source: string; // raw LaTeX, without $ / $$ delimiters
+  message?: string; // engine error message, when it gives one
+  displayMode: boolean; // false for inline $...$, true for block $$...$$
+}
+```
+
+<LivePreview src={OnLatexErrorSrc} unavailable unavailableReason={<>iOS and Android only - the web build renders math with KaTeX and does not report failures through this callback.</>} />
 
 ## See also
 

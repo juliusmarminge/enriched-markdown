@@ -10,10 +10,9 @@ import TabItem from '@theme/TabItem';
 
 `EnrichedMarkdownText` runs on web as plain React and DOM primitives - the
 renderer emits semantic HTML elements (`<p>`, `<h1>`-`<h6>`, `<blockquote>`,
-`<ul>`, `<ol>`, `<table>`, etc.) styled with CSS, **not** `react-native-web`
-`View` / `Text` wrappers. That keeps the output accessible and lets browser
-features (text selection, the native context menu, OS font scaling) work on
-their own.
+`<ul>`, `<ol>`, `<table>`, etc.) styled with CSS. That keeps the output
+accessible and lets browser features (text selection, the native context menu,
+OS font scaling) work on their own.
 
 Markdown parsing is handled by [md4c](https://github.com/mity/md4c) compiled to
 WebAssembly. The WASM binary is inlined as base64 inside the JavaScript bundle
@@ -57,9 +56,8 @@ pnpm add react-native-enriched-markdown
 
 ### Set up a web target
 
-Nothing in the rendering path needs `react-native-web` - the renderer is plain
-React. Your bundler does, however, have to resolve the library's web entry
-(`index.web.js`) instead of its native one, which means preferring `.web`
+The renderer is plain React. Your bundler only has to resolve the library's web
+entry (`index.web.js`) instead of its native one, which means preferring `.web`
 extensions. Follow the path that matches your project.
 
 #### Expo
@@ -91,16 +89,13 @@ module.exports = {
 };
 ```
 
-Metro web and Vite (with a `react-native-web` plugin) work as well, as long as
-`.web` extensions resolve first.
+Metro web and Vite work as well, as long as `.web` extensions resolve first.
 
 :::note
-The `react-native` alias above is a **bundler shim, not a rendering dependency**.
-The web entry still reaches into `react-native` for a couple of shared style
-helpers (`Platform` / `processColor` in `styleUtils`), so the specifier has to
-resolve to something in a browser build - `react-native-web` is the usual
-stand-in. No `react-native-web` component ever ends up in the rendered output,
-and none of its layout or styling is involved.
+The alias above is a **bundler shim**. The web entry reaches into `react-native`
+for two shared style helpers (`Platform` and `processColor` in `styleUtils`), so
+the specifier has to resolve to something in a browser build. Nothing from it
+reaches the rendered output.
 :::
 
 ### Parser (WASM)
@@ -179,10 +174,12 @@ All core `EnrichedMarkdownText` features are supported on web, including:
 
 - Full GFM: tables (with horizontal scroll), task lists (with checkbox interaction), strikethrough, links, images (block and inline), code blocks, LaTeX math (block and inline)
 - Almost all `markdownStyle` options. The exceptions are `codeBlock.syntaxColors` (code blocks are not syntax-highlighted on web, so per-token colors have no effect) and `spoiler` styling (spoilers are not rendered on web yet)
-- `onLinkPress`, `onLinkLongPress` (mapped to `contextmenu` event), `onImagePress`, `onTaskListItemPress` callbacks
+- `onLinkPress`, `onLinkLongPress` (mapped to `contextmenu` event), `onImagePress`, `onTaskListItemPress`, `onCodeBlockPress` callbacks
+- `onCodeBlockPress` - makes fenced code blocks clickable and keyboard-activatable (Enter/Space) with a button role; it does not fire while code text is selected
 - `onImagePress` - makes rendered images focusable and keyboard-activatable (Enter/Space) with a button role; the browser's right-click menu is preserved
 - `enableTaskListItemToggle` - set to `false` to render task list checkboxes read-only (the click is fully inert: no toggle, no `onTaskListItemPress`). The checkbox keeps its normal appearance, marked `readOnly` / `aria-disabled` and made pointer-inert rather than `disabled`, matching iOS and Android
-- `allowTrailingMargin`, `containerStyle`, `selectable`, `selectionColor`, `md4cFlags` (`underline`, `superscript`, `subscript`, `latexMath`, `highlight`, `hardSoftBreaks`, `preserveBlankLines`)
+- `allowTrailingMargin`, `containerStyle`, `selectable`, `selectionColor`, `md4cFlags` (`underline`, `superscript`, `subscript`, `latexMath`, `highlight`, `hardSoftBreaks`, `preserveBlankLines`, `admonitions`)
+- GitHub admonitions (`> [!NOTE]`) - rendered as callouts with the same icon set and `blockquote.admonitions` palette as native. There is no `flavor` prop on web, so they are always on unless `md4cFlags={{ admonitions: false }}`
 - RTL support via the `dir` prop (CSS logical properties automatically flip blockquote borders, list indentation, etc.)
 
 ### Accessibility
@@ -221,3 +218,6 @@ includes these web-only props in place of the native-only ones.
 - Code-block syntax highlighting - fenced code blocks render as plain monospaced text (no per-token colors); the `codeBlock.syntaxColors` style is ignored
 - Spoiler concealment (`||text||`) - the spoiler overlay is not rendered on web yet, so `spoiler` styling and `spoilerOverlay` have no effect
 - Configurable link `target` - all links open in a new tab (`target="_blank"`). Use `onLinkPress` for custom navigation.
+- Videos - the `<video>` tag is parsed on native only; on web it renders nothing
+- Line clamping - `numberOfLines` and `ellipsizeMode` are native-only and are not part of the web props type
+- `onLatexError` - web renders math through KaTeX and does not report failures through this callback

@@ -13,6 +13,7 @@ import InheritanceSrc from '!!raw-loader!@site/src/examples/react-native/api-ref
 import HeadingsSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Headings';
 import CodeBlockSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/CodeBlock';
 import BlockquoteSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Blockquote';
+import AdmonitionsSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Admonitions';
 import ListSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/List';
 import TaskListSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/TaskList';
 import TableSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Table';
@@ -28,6 +29,7 @@ import EmphasisSrc from '!!raw-loader!@site/src/examples/react-native/api-refere
 import StrikethroughSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Strikethrough';
 import UnderlineSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Underline';
 import ImageSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Image';
+import VideoSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/Video';
 import InlineImageSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/InlineImage';
 import MathBlockSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/MathBlock';
 import InlineMathSrc from '!!raw-loader!@site/src/examples/react-native/api-reference/style-properties/InlineMath';
@@ -198,6 +200,39 @@ Each heading level (`h1`–`h6`) and `paragraph` is styled by its own key. Give 
 
 <LivePreview src={BlockquoteSrc} />
 
+### Admonitions {#admonitions}
+
+A blockquote opening with `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, or `> [!CAUTION]` renders as a themed callout with an icon and title header. Admonitions nest under `blockquote` because they **inherit its geometry** - `borderWidth`, `gapWidth`, `padding`, `borderRadius`, font, and spacing all come from the blockquote style above - and override only the colors below.
+
+| Property                                             | Type               | Default                       | Description              |
+| ---------------------------------------------------- | ------------------ | ----------------------------- | ------------------------ |
+| `note` / `tip` / `important` / `warning` / `caution` | `AdmonitionColors` | The GitHub palette, see below | Per-type color overrides |
+
+Each type takes an `AdmonitionColors` object:
+
+| Property          | Type     | Default         | Description                                                                             |
+| ----------------- | -------- | --------------- | --------------------------------------------------------------------------------------- |
+| `color`           | `string` | Per-type, below | Tints the accent bar, the title label, and the icon                                     |
+| `backgroundColor` | `string` | `transparent`   | Fills the callout background. Omitted or empty means no fill, so the page shows through |
+
+Default `color` per type, matching GitHub's alert palette:
+
+| Type        | Default color |
+| ----------- | ------------- |
+| `note`      | `#0969DA`     |
+| `tip`       | `#1A7F37`     |
+| `important` | `#8250DF`     |
+| `warning`   | `#9A6700`     |
+| `caution`   | `#CF222E`     |
+
+Pass only the types you want to restyle - every type you omit keeps its default, and within a type an omitted field falls back the same way.
+
+:::note
+Requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor) and [`md4cFlags.admonitions`](/react-native/api-reference/enriched-markdown-text#admonitions), both on by default. With either off, the syntax renders as a plain blockquote and these styles do not apply.
+:::
+
+<LivePreview src={AdmonitionsSrc} />
+
 ### List-specific
 
 | Property           | Type     | Default   | Description                                                                                                                         |
@@ -354,6 +389,40 @@ Styles for highlighted text (`==text==`). Requires [`md4cFlags={{ highlight: tru
 Sizing precedence is `aspectRatio` > `maxHeight` > `height`: the first one set wins and the lower-priority knobs are ignored.
 
 <LivePreview src={ImageSrc} />
+
+### Video-specific
+
+Styles block-level videos embedded with the HTML `<video>` tag, written self-closing:
+
+```markdown
+<video src="https://example.com/ocean.mp4" />
+```
+
+The paired form `<video src="url"></video>` is equally valid. Only `src` is read - `width`, `height`, `controls`, `autoplay` and the rest of the HTML attributes are ignored, so all video appearance comes from here. Videos render through the platform's native player - `AVPlayerViewController` on iOS, ExoPlayer on Android - which supplies its own playback controls.
+
+| Property          | Type     | Default   | Description                                                                                                        |
+| ----------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| `aspectRatio`     | `number` | `16 / 9`  | Width / height ratio. The video fills the available width and derives its height from this ratio. Must be positive |
+| `backgroundColor` | `string` | `#000000` | Fill behind the player, visible before the video loads and in letterboxing areas                                   |
+| `borderRadius`    | `number` | `8`       | Corner radius                                                                                                      |
+| `marginTop`       | `number` | `0`       | Top margin                                                                                                         |
+| `marginBottom`    | `number` | `16`      | Bottom margin                                                                                                      |
+
+Unlike [images](#image-specific), there is no `height` or `maxHeight` knob - `aspectRatio` is the only sizing control.
+
+:::important
+Quote the URL. An unquoted `src` terminates at the first `/`, so `<video src=https://example.com/a.mp4 />` parses as the URL `https:` and the video fails to load.
+:::
+
+:::note
+Requires [`flavor="github"`](/react-native/api-reference/enriched-markdown-text#flavor) for native segment rendering, and the `enableVideo` build flag (on by default) in your app's `package.json` `enriched-markdown` block - see [Optional native features](/react-native/guides/native-assets#optional-features).
+:::
+
+:::caution
+Videos inside blockquotes and admonitions are fully supported. A video inside a **list** is currently promoted out of the list and rendered as a standalone block above the remaining items, without the list marker.
+:::
+
+<LivePreview src={VideoSrc} unavailable unavailableReason={<>iOS, Android, and macOS only - the web build does not parse the <code>&lt;video&gt;</code> tag yet.</>} />
 
 ### Inline image-specific
 

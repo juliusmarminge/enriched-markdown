@@ -32,9 +32,12 @@ Covers `react-native-enriched-markdown`, including its web and macOS targets.
   horizontal table scrolling and the block context menu. The tradeoff is that selection starts and
   ends inside one segment. `flavor="commonmark"` renders a single text view and
   selects across the whole document.
-- **Clamping text with `numberOfLines` is CommonMark-only.** Under
-  `flavor="github"` the content is laid out as independent block segments that
-  cannot honor a document-wide line cap, so the prop is ignored.
+- **Clamping text with
+  [`numberOfLines`](/react-native/api-reference/enriched-markdown-text#numberoflines)
+  is CommonMark-only.** Under `flavor="github"` the content is laid out as
+  independent block segments that cannot honor a document-wide line cap, so the
+  prop is ignored, and so is
+  [`ellipsizeMode`](/react-native/api-reference/enriched-markdown-text#ellipsizemode).
 - **[Android] A clamped view is neither selectable nor tappable.** While
   `numberOfLines > 0`, text selection and link taps are off regardless of
   [`selectable`](/react-native/api-reference/enriched-markdown-text#selectable).
@@ -47,9 +50,15 @@ Covers `react-native-enriched-markdown`, including its web and macOS targets.
   inside bold, italic, and links - see
   [Element structure](/react-native/api-reference/element-structure#superscript-and-subscript).
 - **Raw HTML is not rendered.** Inline HTML is disabled and HTML tags in the
-  source are ignored; the one allowlisted exception is a block-level `<video>`
-  tag, of which only `src` is read (all video styling comes from
-  `markdownStyle.video`) and plain `<br>` tag.
+  source are ignored. The one allowlisted exception is a block-level
+  [`<video>`](/react-native/api-reference/element-structure#videos) tag, of which
+  only `src` is read - all video styling comes from
+  [`markdownStyle.video`](/react-native/api-reference/style-properties#video-specific).
+- **`<br>` does not force a line break.** It is raw HTML like any other tag: an
+  inline `<br>` stays in the output as literal text, and one on its own line is
+  dropped. Use a hard break (two trailing spaces or a backslash) or
+  [`hardSoftBreaks`](/react-native/api-reference/enriched-markdown-text#hardsoftbreaks).
+  Parser-level support is [planned](/misc/roadmap).
 - **There is no `colorScheme` prop.** The library ships light-mode color
   defaults and leaves theming to you, exactly like React Native's `Text` - swap
   `markdownStyle` objects on `useColorScheme()`. See
@@ -141,9 +150,10 @@ Details and the full announcement model are in
 ### Web
 
 The web build renders `EnrichedMarkdownText` only. It has no editor, no spoiler
-concealment, and no code-block syntax highlighting (fenced blocks render as
-plain monospaced text), and every link opens in a new tab - `target` is not
-configurable. A handful of native-only props are accepted and ignored. See
+concealment, no code-block syntax highlighting (fenced blocks render as
+plain monospaced text), and no [video](/react-native/api-reference/element-structure#videos)
+support - the `<video>` tag is not parsed there. Every link opens in a new tab -
+`target` is not configurable. A handful of native-only props are accepted and ignored. See
 [Ignored props](/react-native/guides/web-support#ignored-props-native-only) and
 [Not supported on web](/react-native/guides/web-support#not-supported-on-web).
 
