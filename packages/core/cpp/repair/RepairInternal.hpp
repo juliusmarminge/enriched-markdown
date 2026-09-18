@@ -79,6 +79,9 @@ bool isListItemMarkerLine(std::string_view line);
 bool startsWith(std::string_view text, std::string_view prefix);
 bool endsWith(std::string_view text, std::string_view suffix);
 
+// The byte at i is preceded by an odd number of backslashes.
+bool isEscaped(std::string_view text, size_t i);
+
 bool isTripleAt(std::string_view text, size_t i);
 
 // Non-overlapping occurrence count, like text.match(/needle/g).length.

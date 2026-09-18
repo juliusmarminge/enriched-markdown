@@ -205,7 +205,7 @@ namespace {
 bool isBracketNotALink(std::string_view text, size_t idx) {
   const char next = idx + 1 < text.size() ? text[idx + 1] : '\0';
   const char prev = idx > 0 ? text[idx - 1] : '\0';
-  if (next == '^' || prev == ']') {
+  if (next == '^' || prev == ']' || isEscaped(text, idx)) {
     return true;
   }
   // What precedes the [ on its line: blockquote markers, then maybe a list marker.
@@ -222,7 +222,8 @@ bool isBracketNotALink(std::string_view text, size_t idx) {
   if (marker == npos || marker >= line.size() || !jsTrimStart(line.substr(marker)).empty()) {
     return false; // no list marker, or text between the marker and the [
   }
-  return next == '\0' || next == ' ' || next == ']' || next == 'x' || next == 'X'; // task-list checkbox
+  const bool checkbox = (next == 'x' || next == 'X') && (idx + 2 >= text.size() || text[idx + 2] == ']');
+  return next == '\0' || next == ' ' || next == ']' || checkbox; // task-list checkbox
 }
 
 // findFirstIncompleteBracket(): in text-only mode the bracket to drop is the
@@ -256,7 +257,8 @@ void links(RepairContext &ctx, LinkMode mode) {
 
   // handleIncompleteUrl(): [text](partial-url
   const size_t lastParen = text.rfind("](");
-  if (lastParen != npos && !ctx.code().inside(lastParen) && text.find(')', lastParen + 2) == npos) {
+  if (lastParen != npos && !isEscaped(text, lastParen) && !ctx.code().inside(lastParen) &&
+      text.find(')', lastParen + 2) == npos) {
     const size_t open = findMatchingOpeningBracket(text, lastParen);
     if (open != npos && !ctx.code().inside(open)) {
       const bool isImage = open > 0 && text[open - 1] == '!';
@@ -348,6 +350,7 @@ void katex(RepairContext &ctx) {
   const std::string_view text = ctx.text();
   // countDollarPairs()
   size_t pairs = 0;
+  size_t opener = npos; // the last pair counted is the open one when the count ends odd
   bool inInline = false;
   for (size_t i = 0; i + 1 < text.size(); ++i) {
     if (text[i] == '`' && !isPartOfTriple(text, i)) {
@@ -355,6 +358,7 @@ void katex(RepairContext &ctx) {
     }
     if (!inInline && text[i] == '$' && text[i + 1] == '$') {
       ++pairs;
+      opener = i;
       ++i;
     }
   }
@@ -362,7 +366,6 @@ void katex(RepairContext &ctx) {
     return;
   }
   // addClosingKatex()
-  const size_t opener = text.rfind("$$");
   if (endsWith(text, "$") && !endsWith(text, "$$")) { // half of the closer already streamed
     ctx.closeAt(opener, "$");
     return;
@@ -378,6 +381,7 @@ void inlineKatex(RepairContext &ctx) {
   const std::string_view text = ctx.text();
   // countSingleDollars()
   size_t count = 0;
+  size_t opener = npos; // the last dollar counted is the open one when the count ends odd
   bool inInline = false;
   for (size_t i = 0; i < text.size(); ++i) {
     if (text[i] == '\\') {
@@ -393,11 +397,12 @@ void inlineKatex(RepairContext &ctx) {
         ++i;
       } else {
         ++count;
+        opener = i;
       }
     }
   }
   if (count % 2 == 1) {
-    ctx.closeAt(text.rfind('$'), "$");
+    ctx.closeAt(opener, "$");
   }
 }
 
