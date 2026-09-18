@@ -28,6 +28,7 @@ class LinkLongPressMovementMethod : ArrowKeyMovementMethod() {
   private var startX = 0f
   private var startY = 0f
   private var pressedLink: LinkSpan? = null
+  private var pressedSpoiler: SpoilerSpan? = null
 
   var isLinkTouchActive: Boolean = false
     private set
@@ -43,7 +44,9 @@ class LinkLongPressMovementMethod : ArrowKeyMovementMethod() {
         startX = event.x
         startY = event.y
 
-        pressedLink = findLinkSpan(widget, buffer, event)
+        // A link under a concealed spoiler stays inert until the spoiler is revealed.
+        pressedSpoiler = findConcealedSpoiler(widget, buffer, event)
+        pressedLink = if (pressedSpoiler == null) findLinkSpan(widget, buffer, event) else null
         isLinkTouchActive = pressedLink != null
         isTouchWithinTextBounds = charOffsetAt(widget, event) != null
         pressedLink?.let { scheduleLongPress(widget, it) }
@@ -57,16 +60,23 @@ class LinkLongPressMovementMethod : ArrowKeyMovementMethod() {
           cancelLongPress()
           isLinkTouchActive = false
           pressedLink = null
+          pressedSpoiler = null
         }
       }
 
       MotionEvent.ACTION_UP -> {
         cancelLongPress()
         val tappedLink = pressedLink
+        val tappedSpoiler = pressedSpoiler
         isLinkTouchActive = false
         pressedLink = null
+        pressedSpoiler = null
 
-        if (handleSpoilerTap(widget, buffer, event)) {
+        if (tappedSpoiler != null &&
+          event.eventTime - event.downTime < ViewConfiguration.getLongPressTimeout() &&
+          findConcealedSpoiler(widget, buffer, event) === tappedSpoiler
+        ) {
+          revealSpoiler(widget, buffer, tappedSpoiler)
           return true
         }
 
@@ -83,6 +93,7 @@ class LinkLongPressMovementMethod : ArrowKeyMovementMethod() {
         cancelLongPress()
         isLinkTouchActive = false
         pressedLink = null
+        pressedSpoiler = null
       }
     }
 
@@ -145,18 +156,24 @@ class LinkLongPressMovementMethod : ArrowKeyMovementMethod() {
     return buffer.getSpans(offset, offset, LinkSpan::class.java).firstOrNull()
   }
 
-  private fun handleSpoilerTap(
+  private fun findConcealedSpoiler(
     widget: TextView,
     buffer: Spannable,
     event: MotionEvent,
-  ): Boolean {
-    val offset = charOffsetAt(widget, event) ?: return false
-    val tappedSpan =
-      buffer
-        .getSpans(offset, offset, SpoilerSpan::class.java)
-        .firstOrNull { !it.revealed && !it.revealing } ?: return false
+  ): SpoilerSpan? {
+    if ((widget as? SpoilerCapable)?.spoilerOverlayDrawer == null) return null
+    val offset = charOffsetAt(widget, event) ?: return null
+    return buffer
+      .getSpans(offset, offset, SpoilerSpan::class.java)
+      .firstOrNull { !it.revealed && !it.revealing }
+  }
 
-    val drawer = (widget as? SpoilerCapable)?.spoilerOverlayDrawer ?: return false
+  private fun revealSpoiler(
+    widget: TextView,
+    buffer: Spannable,
+    tappedSpan: SpoilerSpan,
+  ) {
+    val drawer = (widget as? SpoilerCapable)?.spoilerOverlayDrawer ?: return
     val spans = expandContiguousSpoilers(buffer, tappedSpan)
     val remaining = intArrayOf(spans.size)
 
@@ -167,7 +184,6 @@ class LinkLongPressMovementMethod : ArrowKeyMovementMethod() {
       }
     }
     widget.invalidate()
-    return true
   }
 
   private fun expandContiguousSpoilers(

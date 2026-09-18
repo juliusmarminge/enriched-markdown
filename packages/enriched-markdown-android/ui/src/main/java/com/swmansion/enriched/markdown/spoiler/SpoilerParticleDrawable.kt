@@ -18,6 +18,7 @@ class SpoilerParticleDrawable(
   private var particleCount = 0
 
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+  private val colorAlpha = Color.alpha(particleColor)
   private val colorRed = Color.red(particleColor)
   private val colorGreen = Color.green(particleColor)
   private val colorBlue = Color.blue(particleColor)
@@ -86,13 +87,17 @@ class SpoilerParticleDrawable(
       val progress = ((currentTimeMs - revealStartTime).toFloat() / REVEAL_DURATION_MS).coerceIn(0f, 1f)
       overallAlpha = (1f - progress) * (1f - progress)
 
-      if (progress >= 1f) {
-        revealFinished = true
-        particleCount = 0
-        revealCallback?.invoke()
-        revealCallback = null
-      }
+      if (progress >= 1f) finishReveal()
     }
+  }
+
+  fun finishReveal() {
+    if (!isRevealing || revealFinished) return
+    revealFinished = true
+    particleCount = 0
+    val callback = revealCallback
+    revealCallback = null
+    callback?.invoke()
   }
 
   fun draw(
@@ -107,7 +112,7 @@ class SpoilerParticleDrawable(
 
     for (index in 0 until particleCount) {
       val base = index * STRIDE
-      val alpha = (particleData[base + PARTICLE_ALPHA] * overallAlpha * 255f).toInt().coerceIn(0, 255)
+      val alpha = (particleData[base + PARTICLE_ALPHA] * overallAlpha * colorAlpha).toInt().coerceIn(0, 255)
       if (alpha <= 0) continue
 
       paint.color = Color.argb(alpha, colorRed, colorGreen, colorBlue)

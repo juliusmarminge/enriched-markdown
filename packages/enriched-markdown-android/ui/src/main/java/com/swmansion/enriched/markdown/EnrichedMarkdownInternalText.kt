@@ -71,6 +71,7 @@ class EnrichedMarkdownInternalText
     }
 
     fun applyStyledText(styledText: CharSequence) {
+      SpoilerOverlayDrawer.carryOverReveals(text, styledText)
       text = styledText
 
       if (movementMethod !is LinkLongPressMovementMethod) {
@@ -107,8 +108,8 @@ class EnrichedMarkdownInternalText
     }
 
     override fun onDetachedFromWindow() {
+      // Kept, not cleared: the next draw after reattaching picks the animation back up.
       spoilerOverlayDrawer?.stop()
-      spoilerOverlayDrawer = null
       super.onDetachedFromWindow()
     }
 

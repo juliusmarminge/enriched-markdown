@@ -1,7 +1,6 @@
 package com.swmansion.enriched.markdown.spoiler
 
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.drawable.ColorDrawable
 import android.text.Layout
 import android.text.Spanned
@@ -16,20 +15,9 @@ class SpoilerDrawContext(
   val spans: Array<SpoilerSpan>,
   val paddingLeft: Float,
   val paddingTop: Float,
-  val fontMetrics: Paint.FontMetrics,
   val backgroundColor: Int,
 ) {
   companion object {
-    /**
-     * The color the particle overlay paints over the concealed text before fading it out, so it
-     * has to match whatever the text sits on.
-     *
-     * The styled value wins when it is set. Otherwise the view tree is walked upwards for the
-     * first opaque [ColorDrawable] background, and white stands in when there is none. Inference
-     * misses the common Compose case — a background declared as a `Modifier` on the `AndroidView`
-     * wrapper is not a view background — which is exactly why
-     * [com.swmansion.enriched.markdown.styles.SpoilerStyle.backgroundColor] exists.
-     */
     fun resolveBackgroundColor(
       textView: TextView,
       styledBackgroundColor: Int?,

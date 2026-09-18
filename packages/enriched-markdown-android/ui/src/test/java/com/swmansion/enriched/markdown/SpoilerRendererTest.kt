@@ -209,22 +209,12 @@ class SpoilerRendererTest {
   }
 
   @Test
-  fun htmlConcealsTheSpoilerWithTheOverlayColor() {
+  fun htmlExportsASpoilerAsPlainText() {
     val html =
       HTMLGeneratorTestSupport.generateHTML(render(document(paragraph(spoiler(text("secret"))))))
 
-    // #374151 is the default overlay color, used as both fill and text color so the copied HTML
-    // stays concealed the way the rendered text is.
-    html.assertContainsHtml("data-spoiler=\"true\"")
-    html.assertContainsHtml("background-color: #374151; color: #374151")
-    html.assertContainsHtml(">secret</span>")
-  }
-
-  @Test
-  fun htmlLeavesPlainTextAlone() {
-    val html =
-      HTMLGeneratorTestSupport.generateHTML(render(document(paragraph(text("nothing hidden")))))
-
+    // Matches the React Native package, which leaves spoilers out of the HTML export.
+    html.assertContainsHtml("secret")
     assertFalse(html.contains("data-spoiler"))
   }
 }

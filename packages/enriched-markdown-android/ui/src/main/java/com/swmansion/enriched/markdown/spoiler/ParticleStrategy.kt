@@ -41,9 +41,7 @@ class ParticleStrategy(
 
   override fun pruneStaleSegments(activeKeys: Set<SegmentKey>) {
     val staleKeys = segments.keys - activeKeys
-    for (key in staleKeys) {
-      segments.remove(key)?.let { animator.unregister(it) }
-    }
+    staleKeys.forEach(::dropSegment)
   }
 
   override fun revealSpan(
@@ -62,7 +60,14 @@ class ParticleStrategy(
   }
 
   override fun stop() {
-    segments.values.forEach { animator.unregister(it) }
-    segments.clear()
+    segments.keys.toList().forEach(::dropSegment)
+  }
+
+  // A reflow or a mode switch can drop a segment mid-reveal; finishing it keeps the span from
+  // being stuck in `revealing` with nothing left to complete it.
+  private fun dropSegment(key: SegmentKey) {
+    val drawable = segments.remove(key) ?: return
+    animator.unregister(drawable)
+    drawable.finishReveal()
   }
 }

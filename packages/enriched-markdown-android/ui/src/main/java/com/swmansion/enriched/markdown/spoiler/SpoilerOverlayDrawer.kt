@@ -1,7 +1,9 @@
 package com.swmansion.enriched.markdown.spoiler
 
 import android.graphics.Canvas
+import android.graphics.Paint
 import android.text.Spanned
+import android.text.TextPaint
 import android.widget.TextView
 import com.swmansion.enriched.markdown.spans.SpoilerSpan
 import com.swmansion.enriched.markdown.styles.SpoilerStyle
@@ -17,6 +19,8 @@ class SpoilerOverlayDrawer(
   private var currentMode: SpoilerOverlay = SpoilerOverlay.PARTICLES
 
   private val activeKeys = mutableSetOf<SegmentKey>()
+  private val metricsPaint = TextPaint()
+  private val fontMetrics = Paint.FontMetrics()
 
   private var cachedStyle: SpoilerStyle? = null
 
@@ -33,15 +37,7 @@ class SpoilerOverlayDrawer(
 
   fun registerSpans(spans: Array<SpoilerSpan>) {
     if (spans.isEmpty()) return
-    val first = spans[0]
-    val style =
-      SpoilerStyle(
-        color = first.styleCache.spoilerColor,
-        backgroundColor = first.styleCache.spoilerBackgroundColor,
-        particleDensity = first.styleCache.spoilerParticleDensity,
-        particleSpeed = first.styleCache.spoilerParticleSpeed,
-        solidBorderRadius = first.styleCache.spoilerSolidBorderRadius,
-      )
+    val style = spans[0].styleCache.spoilerStyle
     cachedStyle = style
     strategy.applyStyle(style)
   }
@@ -56,6 +52,12 @@ class SpoilerOverlayDrawer(
       val spanStart = ctx.text.getSpanStart(span)
       val spanEnd = ctx.text.getSpanEnd(span)
       if (spanStart < 0 || spanEnd < 0 || spanStart >= spanEnd) continue
+
+      // The span may be set in a different size than the view (e.g. in a heading), so measure the
+      // band it covers with its own metrics rather than the view's.
+      metricsPaint.set(ctx.layout.paint)
+      span.updateMeasureState(metricsPaint)
+      metricsPaint.getFontMetrics(fontMetrics)
 
       val spanIdentity = System.identityHashCode(span)
       val firstLine = ctx.layout.getLineForOffset(spanStart)
@@ -72,7 +74,7 @@ class SpoilerOverlayDrawer(
             line,
             segmentStart,
             segmentEnd,
-            ctx.fontMetrics,
+            fontMetrics,
             ctx.paddingLeft,
             ctx.paddingTop,
           ) ?: continue
@@ -122,7 +124,6 @@ class SpoilerOverlayDrawer(
       spans = spans,
       paddingLeft = textView.totalPaddingLeft.toFloat(),
       paddingTop = textView.totalPaddingTop.toFloat(),
-      fontMetrics = layout.paint.fontMetrics,
       backgroundColor = SpoilerDrawContext.resolveBackgroundColor(textView, cachedStyle?.backgroundColor),
     )
   }
@@ -144,6 +145,27 @@ class SpoilerOverlayDrawer(
       drawer.registerSpans(spans)
       return drawer
     }
+
+    /**
+     * A restyle renders the same content again with fresh spans, so reveals the reader already
+     * made are carried over by position whenever the text itself is unchanged.
+     */
+    fun carryOverReveals(
+      previousText: CharSequence?,
+      nextText: CharSequence,
+    ) {
+      if (previousText !is Spanned || nextText !is Spanned) return
+      if (previousText.toString() != nextText.toString()) return
+      val previous = previousText.spoilerSpansInOrder()
+      val next = nextText.spoilerSpansInOrder()
+      if (previous.size != next.size) return
+      previous.zip(next).forEach { (old, new) ->
+        if (old.revealed || old.revealing) new.markRevealed()
+      }
+    }
+
+    private fun Spanned.spoilerSpansInOrder(): List<SpoilerSpan> =
+      getSpans(0, length, SpoilerSpan::class.java).sortedBy { getSpanStart(it) }
 
     private fun tearDown(existing: SpoilerOverlayDrawer?): Nothing? {
       existing?.stop()

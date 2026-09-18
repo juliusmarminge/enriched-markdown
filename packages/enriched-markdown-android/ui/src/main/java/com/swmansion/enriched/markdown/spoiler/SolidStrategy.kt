@@ -14,7 +14,15 @@ class SolidStrategy : SpoilerStrategy {
     var revealStartTime: Long = -1L,
     var revealFinished: Boolean = false,
     var revealCallback: (() -> Unit)? = null,
-  )
+  ) {
+    fun finishReveal() {
+      if (!revealing || revealFinished) return
+      revealFinished = true
+      val callback = revealCallback
+      revealCallback = null
+      callback?.invoke()
+    }
+  }
 
   private val segments = mutableMapOf<SegmentKey, SegmentState>()
   private val solidPaint = Paint()
@@ -42,11 +50,7 @@ class SolidStrategy : SpoilerStrategy {
       if (state.revealStartTime < 0L) state.revealStartTime = now
       val progress = ((now - state.revealStartTime).toFloat() / REVEAL_DURATION_MS).coerceIn(0f, 1f)
       state.alpha = (1f - progress) * (1f - progress)
-      if (progress >= 1f && !state.revealFinished) {
-        state.revealFinished = true
-        state.revealCallback?.invoke()
-        state.revealCallback = null
-      }
+      if (progress >= 1f) state.finishReveal()
     }
 
     if (!state.revealFinished) {
@@ -62,9 +66,7 @@ class SolidStrategy : SpoilerStrategy {
 
   override fun pruneStaleSegments(activeKeys: Set<SegmentKey>) {
     val staleKeys = segments.keys - activeKeys
-    for (key in staleKeys) {
-      segments.remove(key)
-    }
+    staleKeys.forEach(::dropSegment)
   }
 
   override fun revealSpan(
@@ -88,6 +90,12 @@ class SolidStrategy : SpoilerStrategy {
   }
 
   override fun stop() {
-    segments.clear()
+    segments.keys.toList().forEach(::dropSegment)
+  }
+
+  // A reflow or a mode switch can drop a segment mid-reveal; finishing it keeps the span from
+  // being stuck in `revealing` with nothing left to complete it.
+  private fun dropSegment(key: SegmentKey) {
+    segments.remove(key)?.finishReveal()
   }
 }

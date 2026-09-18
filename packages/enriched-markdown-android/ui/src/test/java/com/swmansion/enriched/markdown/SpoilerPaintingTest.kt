@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.text.SpannableString
+import android.text.TextPaint
 import android.util.TypedValue
 import android.view.View
 import android.widget.TextView
@@ -22,6 +23,7 @@ import com.swmansion.enriched.markdown.styles.StyleConfig
 import com.swmansion.enriched.markdown.test.MarkdownRenderTestSupport
 import com.swmansion.enriched.markdown.test.MarkdownRenderTestSupport.render
 import com.swmansion.enriched.markdown.test.TestAstFactory.document
+import com.swmansion.enriched.markdown.test.TestAstFactory.heading
 import com.swmansion.enriched.markdown.test.TestAstFactory.paragraph
 import com.swmansion.enriched.markdown.test.TestAstFactory.spoiler
 import com.swmansion.enriched.markdown.test.TestAstFactory.text
@@ -99,12 +101,16 @@ class SpoilerPaintingTest {
     val textView = TextView(context)
     textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, style.paragraphStyle.fontSize)
     textView.text = rendered
-    textView.measure(
-      View.MeasureSpec.makeMeasureSpec(WIDTH, View.MeasureSpec.EXACTLY),
+    textView.layOutAt(WIDTH)
+    return textView
+  }
+
+  private fun TextView.layOutAt(width: Int) {
+    measure(
+      View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
       View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
     )
-    textView.layout(0, 0, WIDTH, textView.measuredHeight)
-    return textView
+    layout(0, 0, width, measuredHeight)
   }
 
   private class Harness(
@@ -115,7 +121,7 @@ class SpoilerPaintingTest {
     val spans: Array<SpoilerSpan> get() = rendered.getSpans(0, rendered.length, SpoilerSpan::class.java)
 
     fun draw(): RecordingCanvas {
-      val canvas = RecordingCanvas(Bitmap.createBitmap(WIDTH, maxOf(textView.height, 1), Bitmap.Config.ARGB_8888))
+      val canvas = RecordingCanvas(Bitmap.createBitmap(maxOf(textView.width, 1), maxOf(textView.height, 1), Bitmap.Config.ARGB_8888))
       drawer.draw(canvas)
       return canvas
     }
@@ -227,6 +233,26 @@ class SpoilerPaintingTest {
     assertNull(rect)
   }
 
+  @Test
+  fun aSegmentCoversTheSpansOwnFontSize() {
+    val test = harness(document(heading(1, spoiler(text("secret")))))
+    val span = test.spans.single()
+    assertTrue(
+      "The heading must be larger than the view's base size for this to be meaningful",
+      span.blockStyle.fontSize > test.textView.textSize,
+    )
+    val metrics = TextPaint().apply { textSize = span.blockStyle.fontSize }.fontMetrics
+
+    val rect =
+      test
+        .draw()
+        .roundRects
+        .single()
+        .first
+
+    assertEquals(metrics.descent - metrics.ascent, rect.height(), 1f)
+  }
+
   // MARK: Overlay modes
 
   @Test
@@ -314,6 +340,77 @@ class SpoilerPaintingTest {
     test.draw()
 
     assertEquals("Only the still-concealed spoiler should be painted", 1, test.draw().roundRects.size)
+  }
+
+  @Test
+  fun switchingModesMidRevealFinishesTheReveal() {
+    val test = harness(document(paragraph(spoiler(text("secret")))))
+    test.draw()
+    val span = test.spans.single()
+    var completed = false
+    test.drawer.revealSpan(span) { completed = true }
+
+    test.drawer.spoilerOverlay = SpoilerOverlay.PARTICLES
+
+    assertTrue(completed)
+    assertTrue(span.revealed)
+    assertEquals(0, test.draw().rects.size)
+  }
+
+  @Test
+  fun aReflowMidRevealFinishesTheReveal() {
+    val prefix = List(30) { "plain" }.joinToString(" ", postfix = " ")
+    val test = harness(document(paragraph(text(prefix), spoiler(text("secret")))))
+    val span = test.spans.single()
+    assertTrue(
+      "The spoiler should start past the first line",
+      requireNotNull(test.textView.layout).getLineForOffset(test.rendered.getSpanStart(span)) > 0,
+    )
+    test.draw()
+    test.drawer.revealSpan(span) {}
+
+    // Wide enough to pull the spoiler up onto the first line, so its old segment goes stale.
+    test.textView.layOutAt(WIDTH * 20)
+    test.draw()
+
+    assertTrue(span.revealed)
+    assertFalse(span.revealing)
+  }
+
+  @Test
+  fun stoppingMidRevealFinishesTheReveal() {
+    val test = harness(document(paragraph(spoiler(text("secret")))), SpoilerOverlay.PARTICLES)
+    test.draw()
+    val span = test.spans.single()
+    test.drawer.revealSpan(span) {}
+
+    test.drawer.stop()
+
+    assertTrue(span.revealed)
+  }
+
+  @Test
+  fun aRestyleCarriesRevealsOver() {
+    val doc = document(paragraph(spoiler(text("one")), text(" "), spoiler(text("two"))))
+    val before = render(doc)
+    val after = render(doc)
+    before.getSpans(0, before.length, SpoilerSpan::class.java).minBy { before.getSpanStart(it) }.markRevealed()
+
+    SpoilerOverlayDrawer.carryOverReveals(before, after)
+
+    val revealed = after.getSpans(0, after.length, SpoilerSpan::class.java).sortedBy { after.getSpanStart(it) }.map { it.revealed }
+    assertEquals(listOf(true, false), revealed)
+  }
+
+  @Test
+  fun newContentStartsConcealed() {
+    val before = render(document(paragraph(spoiler(text("one")))))
+    val after = render(document(paragraph(spoiler(text("two")))))
+    before.getSpans(0, before.length, SpoilerSpan::class.java).single().markRevealed()
+
+    SpoilerOverlayDrawer.carryOverReveals(before, after)
+
+    assertFalse(after.getSpans(0, after.length, SpoilerSpan::class.java).single().revealed)
   }
 
   @Test

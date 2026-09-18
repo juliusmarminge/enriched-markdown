@@ -406,8 +406,9 @@ EnrichedMarkdownText(
 ```
 
 Tapping anywhere on a spoiler fades it away; adjoining spoilers that touch are revealed together, so
-a run broken up by inline formatting still reveals as one. A reveal is per view instance and is lost
-when the markdown changes.
+a run broken up by inline formatting still reveals as one. A link inside a concealed spoiler does
+nothing until the spoiler is revealed. A reveal is per view instance: it survives style and theme
+changes, and is lost when the markdown changes.
 
 ```kotlin
 markdownStyle {
@@ -433,9 +434,9 @@ view with a solid background, falling back to white — which is usually wrong u
 the background normally comes from a `Modifier` the renderer cannot see. **Set it explicitly
 whenever the text does not sit on white.**
 
-Selecting and copying a spoiler reproduces its `||…||` markers rather than the bare text, so copied
-markdown stays concealed for the next reader. The selection itself is not obscured: a spoiler's text
-is readable once selected, revealed or not.
+Selecting a concealed spoiler does not reveal it — the overlay stays on top of the selection. Copying
+a spoiler reproduces its `||…||` markers rather than the bare text, so copied markdown stays
+concealed for the next reader; HTML export carries the bare text.
 
 ## Development
 
