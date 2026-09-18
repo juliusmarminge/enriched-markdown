@@ -24,19 +24,30 @@ std::string paragraphOfUnderscores(size_t chars) {
   return p;
 }
 
-std::string document(size_t paragraphs, size_t charsPerParagraph) {
-  std::string doc;
-  for (size_t i = 0; i < paragraphs; ++i) {
-    doc += paragraphOfUnderscores(charsPerParagraph) + "\n\n";
+// A paragraph dense in complete links and bare bracket spans, so the
+// text-only link handler has to classify every `[` before the open one.
+std::string paragraphOfBrackets(size_t chars) {
+  std::string p;
+  while (p.size() < chars) {
+    p += "see [this](http://x.y/z) and [that] or [other](u) ";
   }
-  return doc + "and _open";
+  return p;
 }
 
-double millisecondsPerCall(const std::string &doc, int iterations) {
+std::string document(size_t paragraphs, size_t charsPerParagraph,
+                     std::string (*paragraph)(size_t) = paragraphOfUnderscores, std::string_view tail = "and _open") {
+  std::string doc;
+  for (size_t i = 0; i < paragraphs; ++i) {
+    doc += paragraph(charsPerParagraph) + "\n\n";
+  }
+  return doc + std::string(tail);
+}
+
+double millisecondsPerCall(const std::string &doc, int iterations, const RepairOptions &options = {}) {
   size_t sink = 0;
   const auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < iterations; ++i) {
-    sink += repairInlineMarkdown(doc, {}).size();
+    sink += repairInlineMarkdown(doc, options).size();
   }
   const auto end = std::chrono::steady_clock::now();
   CHECK(sink > 0);
@@ -53,6 +64,23 @@ TEST_CASE("repair cost is linear in line length") {
   MESSAGE("8 x 4000: " << shortMs << " ms, 8 x 16000: " << longMs << " ms");
 #ifdef NDEBUG
   // Linear scaling gives ~4x; a scan quadratic in line length gives ~16x.
+  CHECK(longMs < 8 * shortMs);
+#endif
+}
+
+// The underscore case never reaches the text-only link path (no brackets,
+// default link mode), so that path gets its own case: every `[` before the
+// unmatched one is classified, and classifying one must not cost the
+// distance to the line start.
+TEST_CASE("text-only link repair is linear in line length") {
+  RepairOptions textOnly;
+  textOnly.linkMode = LinkMode::TextOnly;
+  const std::string shortLines = document(8, 4000, paragraphOfBrackets, "and [open");
+  const std::string longLines = document(8, 16000, paragraphOfBrackets, "and [open");
+  const double shortMs = millisecondsPerCall(shortLines, 5, textOnly);
+  const double longMs = millisecondsPerCall(longLines, 5, textOnly);
+  MESSAGE("8 x 4000: " << shortMs << " ms, 8 x 16000: " << longMs << " ms");
+#ifdef NDEBUG
   CHECK(longMs < 8 * shortMs);
 #endif
 }

@@ -89,3 +89,88 @@ TEST_CASE("line-context lookup agrees with the reference helpers") {
   }
   CHECK(positions > 10000);
 }
+
+namespace {
+
+// isBracketNotALink() as it was before the per-line lookup: the same
+// predicate, walking back to the line start for every query. It is the
+// oracle here, so keep it as it was even if the fast path changes.
+bool referenceIsBracketNotALink(std::string_view text, size_t idx) {
+  using namespace Markdown::RepairInternal;
+  const char next = idx + 1 < text.size() ? text[idx + 1] : '\0';
+  const char prev = idx > 0 ? text[idx - 1] : '\0';
+  if (next == '^' || prev == ']' || isEscaped(text, idx)) {
+    return true;
+  }
+  std::string_view line = jsTrimStart(lineBefore(text, idx));
+  bool inBlockquote = false;
+  while (!line.empty() && line[0] == '>') {
+    line = jsTrimStart(line.substr(1));
+    inBlockquote = true;
+  }
+  if (inBlockquote && line.empty() && next == '!') {
+    return true;
+  }
+  const size_t marker = skipListMarker(line);
+  if (marker == npos || marker >= line.size() || !jsTrimStart(line.substr(marker)).empty()) {
+    return false;
+  }
+  const bool checkbox = (next == 'x' || next == 'X') && (idx + 2 >= text.size() || text[idx + 2] == ']');
+  return next == '\0' || next == ' ' || next == ']' || checkbox;
+}
+
+// Only `[` positions, the predicate's contract.
+void checkBracketPredicateAgrees(std::string_view text, size_t &brackets) {
+  const Markdown::RepairInternal::LineMarkerLookup markers(text);
+  for (size_t p = 0; p < text.size(); ++p) {
+    if (text[p] != '[') {
+      continue;
+    }
+    ++brackets;
+    CHECK_MESSAGE(Markdown::RepairInternal::isBracketNotALink(text, p, markers) == referenceIsBracketNotALink(text, p),
+                  "isBracketNotALink(" << show(text) << ", " << p << ")");
+  }
+}
+
+} // namespace
+
+// The per-line marker lookup must classify every position the way the
+// backward walk did, on every recorded input plus the marker shapes the
+// recorded cases are thin on.
+TEST_CASE("line-marker lookup agrees with the backward-walking bracket predicate") {
+  size_t brackets = 0;
+  for (size_t i = 0; i < ReferenceCases::kCaseCount; ++i) {
+    checkBracketPredicateAgrees(ReferenceCases::kCases[i].input, brackets);
+  }
+  for (const std::string_view text : {"- [ ] a",
+                                      "- [x] b",
+                                      "- [X]",
+                                      "- [",
+                                      "-[",
+                                      "- x [",
+                                      "1. [ ] c",
+                                      "12. [",
+                                      "1.[",
+                                      "12[",
+                                      "  * [ ]",
+                                      "> [!NOTE] b",
+                                      "> > [!",
+                                      "> [x",
+                                      ">[!",
+                                      "> - [ ] y",
+                                      "a > [",
+                                      "a [^1] b",
+                                      "[a][b]",
+                                      "\\[x",
+                                      "[a](b) [",
+                                      "\u00a0- [ ] nbsp",
+                                      "x\n- [ ] y\n> [!\n\n[",
+                                      "\n",
+                                      "a\n",
+                                      "[",
+                                      ""}) {
+    checkBracketPredicateAgrees(text, brackets);
+  }
+  MESSAGE("bracket positions checked: " << brackets);
+  CHECK(brackets > 150);
+}

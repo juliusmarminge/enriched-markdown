@@ -444,6 +444,71 @@ bool LineContextLookup::insideHtmlTag(size_t position) const {
   return position < flags_.size() && (flags_[position] & kHtmlTag) != 0;
 }
 
+namespace {
+
+// Where a marker bracket could sit on `line`, which ends at byte `lineEnd`
+// of the whole text. `rest` is always a suffix of the line, so a position is
+// lineEnd - rest.size().
+LineMarkers markersOf(std::string_view line, size_t lineEnd) {
+  LineMarkers markers{npos, npos};
+  std::string_view rest = jsTrimStart(line);
+  bool inBlockquote = false;
+  while (!rest.empty() && rest[0] == '>') {
+    rest = jsTrimStart(rest.substr(1));
+    inBlockquote = true;
+  }
+  if (inBlockquote) {
+    markers.admonitionBracket = lineEnd - rest.size();
+  }
+  const size_t marker = skipListMarker(rest);
+  if (marker != npos) {
+    const std::string_view afterMarker = rest.substr(marker);
+    const std::string_view content = jsTrimStart(afterMarker);
+    if (content.size() < afterMarker.size()) { // at least one whitespace after the marker
+      markers.checkboxBracket = lineEnd - content.size();
+    }
+  }
+  return markers;
+}
+
+} // namespace
+
+LineMarkerLookup::LineMarkerLookup(std::string_view text) {
+  size_t lineStart = 0;
+  for (;;) {
+    const size_t newline = text.find('\n', lineStart);
+    const size_t lineEnd = newline == npos ? text.size() : newline;
+    lineStarts_.push_back(lineStart);
+    lines_.push_back(markersOf(text.substr(lineStart, lineEnd - lineStart), lineEnd));
+    if (newline == npos) {
+      return;
+    }
+    lineStart = newline + 1;
+  }
+}
+
+const LineMarkers &LineMarkerLookup::lineFor(size_t position) const {
+  const auto next = std::upper_bound(lineStarts_.begin(), lineStarts_.end(), position);
+  return lines_[static_cast<size_t>(next - lineStarts_.begin()) - 1];
+}
+
+bool isBracketNotALink(std::string_view text, size_t idx, const LineMarkerLookup &markers) {
+  const char next = idx + 1 < text.size() ? text[idx + 1] : '\0';
+  const char prev = idx > 0 ? text[idx - 1] : '\0';
+  if (next == '^' || prev == ']' || isEscaped(text, idx)) {
+    return true;
+  }
+  const LineMarkers &line = markers.lineFor(idx);
+  if (idx == line.admonitionBracket && next == '!') {
+    return true; // > [!NOTE]
+  }
+  if (idx != line.checkboxBracket) {
+    return false;
+  }
+  const bool checkbox = (next == 'x' || next == 'X') && (idx + 2 >= text.size() || text[idx + 2] == ']');
+  return next == '\0' || next == ' ' || next == ']' || checkbox; // task-list checkbox
+}
+
 const CodeLookup &RepairContext::code() {
   if (!code_) {
     code_.emplace(text_);
@@ -463,6 +528,13 @@ const LineContextLookup &RepairContext::lines() {
     lines_.emplace(textBeforeClosers());
   }
   return *lines_;
+}
+
+const LineMarkerLookup &RepairContext::markers() {
+  if (!markers_) {
+    markers_.emplace(text_);
+  }
+  return *markers_;
 }
 
 bool RepairContext::insideAnyCode(size_t position) {
@@ -631,6 +703,7 @@ void RepairContext::dropLookups() {
   math_.reset();
   completeInline_.reset();
   lines_.reset();
+  markers_.reset();
 }
 
 // Any edit other than closeAt() may move the closer tail, so forget it too.

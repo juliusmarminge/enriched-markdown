@@ -182,6 +182,34 @@ class LineContextLookup {
   std::vector<uint8_t> flags_;
 };
 
+// The two places on a line where a `[` is block markup rather than a link:
+// right after a `>` chain (`> [!NOTE]`) and right after a list marker plus
+// whitespace (`- [ ]`). npos when the line has no such slot.
+struct LineMarkers {
+  size_t admonitionBracket;
+  size_t checkboxBracket;
+};
+
+// LineMarkers for every line, built in one pass so isBracketNotALink() no
+// longer walks back to the line start per `[`, which was quadratic on
+// bracket-heavy unwrapped paragraphs.
+class LineMarkerLookup {
+ public:
+  explicit LineMarkerLookup(std::string_view text);
+  const LineMarkers &lineFor(size_t position) const;
+
+ private:
+  std::vector<size_t> lineStarts_;
+  std::vector<LineMarkers> lines_;
+};
+
+// True for a `[` that is markup of its own rather than the start of a link:
+// a task-list marker (`- [ `, `- [x]`, or `- [` still streaming), an
+// admonition marker (`> [!`), a footnote reference (`[^`) or the second
+// bracket of a reference-style link (`][`). The reference has none of these.
+// Defined for positions where text[idx] == '['.
+bool isBracketNotALink(std::string_view text, size_t idx, const LineMarkerLookup &markers);
+
 // State for one pipeline run. Three responsibilities, kept together because
 // every one of them has to know when the text changed:
 //
@@ -211,6 +239,7 @@ class RepairContext {
   const MathLookup &math();
   // Built over textBeforeClosers(); valid for positions before the tail.
   const LineContextLookup &lines();
+  const LineMarkerLookup &markers();
   // isInsideCodeBlock() || isWithinCompleteInlineCode()
   bool insideAnyCode(size_t position);
 
@@ -243,6 +272,7 @@ class RepairContext {
   std::optional<MathLookup> math_;
   std::optional<CompleteInlineCodeLookup> completeInline_;
   std::optional<LineContextLookup> lines_;
+  std::optional<LineMarkerLookup> markers_;
 
   std::vector<Closer> closers_;  // in text order, contiguous from closersStart_
   size_t closersStart_ = 0;
