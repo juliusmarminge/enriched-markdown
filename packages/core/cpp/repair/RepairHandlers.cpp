@@ -346,7 +346,7 @@ void strikethrough(RepairContext &ctx) {
 }
 
 // Closes an open $$ block. Multi-line blocks get the closer on its own line.
-void katex(RepairContext &ctx) {
+void displayMath(RepairContext &ctx) {
   const std::string_view text = ctx.text();
   // countDollarPairs()
   size_t pairs = 0;
@@ -377,7 +377,7 @@ void katex(RepairContext &ctx) {
 }
 
 // Closes an open $…$ span. Opt-in, because `$5 and $6` is not math.
-void inlineKatex(RepairContext &ctx) {
+void inlineMath(RepairContext &ctx) {
   const std::string_view text = ctx.text();
   // countSingleDollars()
   size_t count = 0;

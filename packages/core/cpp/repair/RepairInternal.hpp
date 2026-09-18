@@ -165,6 +165,23 @@ class CompleteInlineCodeLookup {
   std::vector<uint8_t> insideAt_;
 };
 
+// isWithinLinkOrImageUrl() and isWithinHtmlTag() as lookups, built in one
+// forward pass. Both public functions walk backwards per query, which is
+// O(line length) per delimiter and quadratic on long unwrapped paragraphs;
+// the lookup gives the same answers in O(1). The parity tests check the two
+// agree on every position of every recorded case.
+class LineContextLookup {
+ public:
+  explicit LineContextLookup(std::string_view text);
+  bool insideLinkUrl(size_t position) const;
+  bool insideHtmlTag(size_t position) const;
+
+ private:
+  static constexpr uint8_t kLinkUrl = 1;
+  static constexpr uint8_t kHtmlTag = 2;
+  std::vector<uint8_t> flags_;
+};
+
 // State for one pipeline run. Three responsibilities, kept together because
 // every one of them has to know when the text changed:
 //
@@ -192,6 +209,8 @@ class RepairContext {
   std::string_view textBeforeClosers() const { return closers_.empty() ? text() : text().substr(0, closersStart_); }
   const CodeLookup &code();
   const MathLookup &math();
+  // Built over textBeforeClosers(); valid for positions before the tail.
+  const LineContextLookup &lines();
   // isInsideCodeBlock() || isWithinCompleteInlineCode()
   bool insideAnyCode(size_t position);
 
@@ -223,6 +242,7 @@ class RepairContext {
   std::optional<CodeLookup> code_;
   std::optional<MathLookup> math_;
   std::optional<CompleteInlineCodeLookup> completeInline_;
+  std::optional<LineContextLookup> lines_;
 
   std::vector<Closer> closers_;  // in text order, contiguous from closersStart_
   size_t closersStart_ = 0;
@@ -265,8 +285,8 @@ void italicSingleAsterisk(RepairContext &ctx);
 void italicSingleUnderscore(RepairContext &ctx);
 void inlineCode(RepairContext &ctx);
 void strikethrough(RepairContext &ctx);
-void katex(RepairContext &ctx);
-void inlineKatex(RepairContext &ctx);
+void displayMath(RepairContext &ctx);
+void inlineMath(RepairContext &ctx);
 // md4c extensions (RepairExtensions.cpp)
 void spoilers(RepairContext &ctx);
 void highlight(RepairContext &ctx);

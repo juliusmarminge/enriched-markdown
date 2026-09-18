@@ -82,7 +82,7 @@ DelimiterCount countSingleAsterisks(std::string_view text, const MathLookup &mat
 // math, URLs, HTML tags and words. The reference counts every such _; ours
 // also applies the open/close flanking rule the asterisk counter uses, so a
 // trailing `_` after a closed italic (`_a_ b_`) is not taken for an opener.
-DelimiterCount countSingleUnderscores(std::string_view text, const MathLookup &math) {
+DelimiterCount countSingleUnderscores(std::string_view text, const MathLookup &math, const LineContextLookup &lines) {
   DelimiterCount result;
   size_t &count = result.count;
   scanOutsideFences(text, [&](size_t &i) {
@@ -91,9 +91,9 @@ DelimiterCount countSingleUnderscores(std::string_view text, const MathLookup &m
     }
     const uint32_t prev = codePointBefore(text, i);
     const uint32_t next = codePointAt(text, i + 1);
-    // shouldSkipUnderscore()
-    const bool skip = prev == '\\' || math.inside(i) || isWithinLinkOrImageUrl(text, i) || isWithinHtmlTag(text, i) ||
-                      prev == '_' || next == '_' || (isWordCharUnit(prev) && isWordCharUnit(next));
+    // shouldSkipUnderscore(), cheapest tests first: snake_case never reaches the lookups
+    const bool skip = prev == '\\' || prev == '_' || next == '_' || (isWordCharUnit(prev) && isWordCharUnit(next)) ||
+                      math.inside(i) || lines.insideLinkUrl(i) || lines.insideHtmlTag(i);
     if (skip) {
       return false;
     }
@@ -178,7 +178,7 @@ size_t findFirstSingleAsteriskIndex(std::string_view text, const MathLookup &mat
 }
 
 // findFirstSingleUnderscoreIndex(): the first _ that can open incomplete italic.
-size_t findFirstSingleUnderscoreIndex(std::string_view text, const MathLookup &math) {
+size_t findFirstSingleUnderscoreIndex(std::string_view text, const MathLookup &math, const LineContextLookup &lines) {
   size_t found = npos;
   scanOutsideFences(text, [&](size_t &i) {
     if (text[i] != '_') {
@@ -186,7 +186,7 @@ size_t findFirstSingleUnderscoreIndex(std::string_view text, const MathLookup &m
     }
     const char prevByte = i > 0 ? text[i - 1] : '\0';
     const char nextByte = i + 1 < text.size() ? text[i + 1] : '\0';
-    if (prevByte == '_' || nextByte == '_' || prevByte == '\\' || math.inside(i) || isWithinLinkOrImageUrl(text, i)) {
+    if (prevByte == '_' || nextByte == '_' || prevByte == '\\' || math.inside(i) || lines.insideLinkUrl(i)) {
       return false;
     }
     if (isWordCharUnit(codePointBefore(text, i)) && isWordCharUnit(codePointAt(text, i + 1))) {
@@ -282,7 +282,8 @@ void italicDoubleUnderscore(RepairContext &ctx) {
   }
   // __content_ : same half-closer rule as bold.
   const bool halfCloser =
-      endsWith(content, "_") && countSingleUnderscores(text.substr(0, text.size() - 1), ctx.math()).count % 2 == 0;
+      endsWith(content, "_") &&
+      countSingleUnderscores(text.substr(0, text.size() - 1), ctx.math(), ctx.lines()).count % 2 == 0;
   ctx.closeAt(markerIndex, halfCloser ? "_" : "__");
 }
 
@@ -316,7 +317,7 @@ void italicSingleUnderscore(RepairContext &ctx) {
   if (text.find('_') == npos) {
     return;
   }
-  const size_t first = findFirstSingleUnderscoreIndex(text, ctx.math());
+  const size_t first = findFirstSingleUnderscoreIndex(text, ctx.math(), ctx.lines());
   if (first == npos) {
     return;
   }
@@ -324,7 +325,7 @@ void italicSingleUnderscore(RepairContext &ctx) {
   if (content.empty() || isWhitespaceOrMarkersOnly(content) || ctx.insideAnyCode(first)) {
     return;
   }
-  const DelimiterCount singles = countSingleUnderscores(text, ctx.math());
+  const DelimiterCount singles = countSingleUnderscores(text, ctx.math(), ctx.lines());
   if (singles.count % 2 != 1) {
     return;
   }

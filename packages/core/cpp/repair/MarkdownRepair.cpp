@@ -120,11 +120,11 @@ void repairInlineMarkdownInPlace(std::string &text, const RepairOptions &options
   if (options.strikethrough) {
     RepairHandlers::strikethrough(ctx);
   }
-  if (options.katex) {
-    RepairHandlers::katex(ctx);
+  if (options.displayMath) {
+    RepairHandlers::displayMath(ctx);
   }
-  if (options.inlineKatex) {
-    RepairHandlers::inlineKatex(ctx);
+  if (options.inlineMath) {
+    RepairHandlers::inlineMath(ctx);
   }
   if (options.spoilers) {
     RepairHandlers::spoilers(ctx);

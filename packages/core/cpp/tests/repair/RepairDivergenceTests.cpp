@@ -108,7 +108,7 @@ TEST_CASE("an escaped bracket is not a link") {
 // an escaped `\$` or a `$$` inside inline code.
 TEST_CASE("math closers are anchored at their opener") {
   RepairOptions o;
-  o.inlineKatex = true;
+  o.inlineMath = true;
   CHECK(repair("It costs $5.\n\nThe formula $$x^2$$", o) == "It costs $5.\n\nThe formula $$x^2$$");
   CHECK(repair("$a **b \\$5", o) == "$a **b \\$5**$");
   CHECK(repair("$$a\n\n`$$` b") == "$$a\n\n`$$` b");

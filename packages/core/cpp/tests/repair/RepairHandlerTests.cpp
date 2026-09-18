@@ -115,14 +115,14 @@ TEST_CASE("links and images") {
 }
 
 TEST_CASE("math") {
-  auto katex = handler(RepairHandlers::katex);
-  auto inlineKatex = handler(RepairHandlers::inlineKatex);
-  CHECK(katex("$$x") == "$$x$$");
-  CHECK(katex("$$\nx") == "$$\nx\n$$");
-  CHECK(katex("$$x$") == "$$x$$");
-  CHECK(katex("`$$x`") == "`$$x`");
-  CHECK(inlineKatex("$x") == "$x$");
-  CHECK(inlineKatex("costs $5 and $6") == "costs $5 and $6");
+  auto displayMath = handler(RepairHandlers::displayMath);
+  auto inlineMath = handler(RepairHandlers::inlineMath);
+  CHECK(displayMath("$$x") == "$$x$$");
+  CHECK(displayMath("$$\nx") == "$$\nx\n$$");
+  CHECK(displayMath("$$x$") == "$$x$$");
+  CHECK(displayMath("`$$x`") == "`$$x`");
+  CHECK(inlineMath("$x") == "$x$");
+  CHECK(inlineMath("costs $5 and $6") == "costs $5 and $6");
   CHECK(repair("$$ a * b") == "$$ a * b$$"); // asterisk inside math stays
 }
 

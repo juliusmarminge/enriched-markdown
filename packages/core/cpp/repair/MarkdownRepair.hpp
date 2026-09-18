@@ -47,7 +47,7 @@
 // Additions with no reference counterpart: closers for spoilers, highlight,
 // superscript and subscript (RepairExtensions.cpp).
 //
-// When wiring this into a renderer, default `inlineKatex` to the parser's
+// When wiring this into a renderer, default `inlineMath` to the parser's
 // latexMath flag: with `$…$` math enabled an open `$x` should be closed too.
 //
 // All text is UTF-8. Positions are byte offsets.
@@ -62,7 +62,10 @@ namespace Markdown {
 
 enum class LinkMode { Protocol, TextOnly };
 
-// Same names and defaults as the reference's options object.
+// Same names and defaults as the reference's options object, except that its
+// `katex` / `inlineKatex` are `displayMath` / `inlineMath` here: this repo
+// calls the feature latexMath everywhere, and "KaTeX" would suggest the web
+// renderer.
 struct RepairOptions {
   bool bold = true;
   bool boldItalic = true;
@@ -70,9 +73,9 @@ struct RepairOptions {
   bool htmlTags = true;
   bool images = true;
   bool inlineCode = true;
-  bool inlineKatex = false;  // opt-in upstream too: `$` is ambiguous with currency
+  bool inlineMath = false;  // `$…$`; opt-in upstream too, since `$` is ambiguous with currency
   bool italic = true;
-  bool katex = true;
+  bool displayMath = true;  // `$$…$$`
   bool links = true;
   bool setextHeadings = true;
   bool singleTilde = true;

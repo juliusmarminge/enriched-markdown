@@ -9,7 +9,7 @@
     "package.json"
   ],
   "scripts": {
-    "build": "cmake -S cpp/tests -B ../../build/core-tests && cmake --build ../../build/core-tests",
+    "build": "cmake -S cpp/tests -B ../../build/core-tests ${CORE_CMAKE_ARGS:-} && cmake --build ../../build/core-tests",
     "test": "yarn build && ctest --test-dir ../../build/core-tests --output-on-failure",
     "unicode-tables": "node scripts/generate-unicode-tables.mjs"
   }

@@ -384,6 +384,66 @@ bool CompleteInlineCodeLookup::inside(size_t position) const {
   return position < insideAt_.size() && insideAt_[position] != 0;
 }
 
+// One forward pass. Link URLs need care because the backward scan in
+// isWithinLinkOrImageUrl() answers for the nearest preceding paren only, and
+// only when a `)` follows on the same line. So parens are collected as
+// segments since the last `)` or newline, and when a `)` arrives every
+// segment that started with a `](` is marked, up to the next paren.
+LineContextLookup::LineContextLookup(std::string_view text) : flags_(text.size() + 1, 0) {
+  struct Segment {
+    size_t start; // index of the paren
+    bool isLinkOpen;
+  };
+  std::vector<Segment> segments;
+  bool inTag = false;
+  const size_t n = text.size();
+  for (size_t i = 0; i < n; ++i) {
+    if (inTag) {
+      flags_[i] |= kHtmlTag;
+    }
+    switch (text[i]) {
+      case '(':
+        segments.push_back({i, i > 0 && text[i - 1] == ']'});
+        break;
+      case ')':
+        for (size_t k = 0; k < segments.size(); ++k) {
+          if (!segments[k].isLinkOpen) {
+            continue;
+          }
+          const size_t end = k + 1 < segments.size() ? segments[k + 1].start : i; // inclusive
+          for (size_t p = segments[k].start + 1; p <= end; ++p) {
+            flags_[p] |= kLinkUrl;
+          }
+        }
+        segments.clear();
+        break;
+      case '\n':
+        segments.clear();
+        inTag = false;
+        break;
+      case '<':
+        inTag = i + 1 < n && isAsciiLetterOrSlash(text[i + 1]);
+        break;
+      case '>':
+        inTag = false;
+        break;
+      default:
+        break;
+    }
+  }
+  if (inTag) {
+    flags_[n] |= kHtmlTag;
+  }
+}
+
+bool LineContextLookup::insideLinkUrl(size_t position) const {
+  return position < flags_.size() && (flags_[position] & kLinkUrl) != 0;
+}
+
+bool LineContextLookup::insideHtmlTag(size_t position) const {
+  return position < flags_.size() && (flags_[position] & kHtmlTag) != 0;
+}
+
 const CodeLookup &RepairContext::code() {
   if (!code_) {
     code_.emplace(text_);
@@ -396,6 +456,13 @@ const MathLookup &RepairContext::math() {
     math_.emplace(text_);
   }
   return *math_;
+}
+
+const LineContextLookup &RepairContext::lines() {
+  if (!lines_) {
+    lines_.emplace(textBeforeClosers());
+  }
+  return *lines_;
 }
 
 bool RepairContext::insideAnyCode(size_t position) {
@@ -563,6 +630,7 @@ void RepairContext::dropLookups() {
   code_.reset();
   math_.reset();
   completeInline_.reset();
+  lines_.reset();
 }
 
 // Any edit other than closeAt() may move the closer tail, so forget it too.

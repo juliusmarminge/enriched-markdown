@@ -4,6 +4,7 @@
 
 #include "MarkdownRepair.hpp"
 #include "ReferenceCases.hpp"
+#include "RepairInternal.hpp"
 #include "doctest/doctest.h"
 
 namespace {
@@ -57,4 +58,34 @@ TEST_CASE("reference parity: exported helpers") {
     }
     CHECK_MESSAGE(actual == h.expected, "helper call " << i << " (" << show(h.text) << ", " << h.argument << ")");
   }
+}
+
+// The forward-pass lookup must agree with the backward-walking public
+// functions on every position of every recorded input, so the recorded cases
+// double as an oracle for the fast path.
+TEST_CASE("line-context lookup agrees with the reference helpers") {
+  size_t positions = 0;
+  for (size_t i = 0; i < ReferenceCases::kCaseCount; ++i) {
+    const std::string_view text = ReferenceCases::kCases[i].input;
+    const Markdown::RepairInternal::LineContextLookup lookup(text);
+    for (size_t p = 0; p <= text.size(); ++p, ++positions) {
+      CHECK_MESSAGE(lookup.insideLinkUrl(p) == Markdown::isWithinLinkOrImageUrl(text, p),
+                    "insideLinkUrl(" << show(text) << ", " << p << ")");
+      CHECK_MESSAGE(lookup.insideHtmlTag(p) == Markdown::RepairInternal::isWithinHtmlTag(text, p),
+                    "insideHtmlTag(" << show(text) << ", " << p << ")");
+    }
+  }
+  // Shapes the recorded cases do not cover: an unclosed URL, a bare paren
+  // after a link paren, nested link parens, a paren inside inline code.
+  for (const std::string_view text : {"[a](url _x", "[a](b(c) d) e", "[a](b [c](d) e) f", "x (y) [a](z)",
+                                      "<a href=\"_x\">_y</a> <b _c", "a\n(b) [c](d\ne)"}) {
+    const Markdown::RepairInternal::LineContextLookup lookup(text);
+    for (size_t p = 0; p <= text.size(); ++p, ++positions) {
+      CHECK_MESSAGE(lookup.insideLinkUrl(p) == Markdown::isWithinLinkOrImageUrl(text, p),
+                    "insideLinkUrl(" << show(text) << ", " << p << ")");
+      CHECK_MESSAGE(lookup.insideHtmlTag(p) == Markdown::RepairInternal::isWithinHtmlTag(text, p),
+                    "insideHtmlTag(" << show(text) << ", " << p << ")");
+    }
+  }
+  CHECK(positions > 10000);
 }

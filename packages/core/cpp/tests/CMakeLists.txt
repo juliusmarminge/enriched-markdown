@@ -15,8 +15,10 @@ project(enriched_markdown_core_tests CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# The module ships inside optimised app builds, so that is the configuration
+# tested by default. CI also runs a Debug leg so assert()s are exercised.
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
 # doctest is a test-only dependency, fetched at configure time and pinned by
