@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `Above the rule.
@@ -13,15 +14,18 @@ export default function App() {
 
   // A thematic break (---) draws as a single line; color, height, and its
   // margins are all styleable.
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    thematicBreak: {
-      color: isDark ? '#f472b6' : '#db2777',
-      height: 3,
-      marginTop: 12,
-      marginBottom: 12,
-    },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      thematicBreak: {
+        color: isDark ? '#f472b6' : '#db2777',
+        height: 3,
+        marginTop: 12,
+        marginBottom: 12,
+      },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>

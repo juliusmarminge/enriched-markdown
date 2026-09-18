@@ -90,7 +90,7 @@ This also prevents KaTeX from being loaded at runtime.
 
 ## Disabling LaTeX Math (reducing bundle size)
 
-LaTeX math rendering relies on **RaTeX** — a native, KaTeX-compatible math engine — on both iOS and Android. It is included by default but can be excluded to reduce your app's binary size (~3–5 MB on iOS, varies on Android).
+LaTeX math rendering relies on **[RaTeX](https://ratex.lites.dev/)** — a native, KaTeX-compatible math engine — on both iOS and Android. It is included by default but can be excluded to reduce your app's binary size (~3–5 MB on iOS, varies on Android).
 
 ### 1. Disable at the parser level (JS)
 

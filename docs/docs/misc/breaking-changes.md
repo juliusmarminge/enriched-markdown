@@ -67,7 +67,7 @@ In a monorepo the _build_ flag is read from the app's `package.json` (beside `io
 
 ### Explicitly enabling a feature whose assets are missing now fails the build
 
-Previously, a missing native asset (the RaTeX XCFramework, or the tree-sitter grammars) always silently disabled the feature. Now, if you **explicitly** set `enableMath: true` or `enableCodeHighlight: true` but the asset was not downloaded (for example an install with `--ignore-scripts`, or a monorepo root opt-out that an app overrides), the build fails with an actionable error instead of degrading. Features left on by default still degrade to a clean build. To fix, restore the assets:
+Previously, a missing native asset (the [RaTeX](https://ratex.lites.dev/) XCFramework, or the tree-sitter grammars) always silently disabled the feature. Now, if you **explicitly** set `enableMath: true` or `enableCodeHighlight: true` but the asset was not downloaded (for example an install with `--ignore-scripts`, or a monorepo root opt-out that an app overrides), the build fails with an actionable error instead of degrading. Features left on by default still degrade to a clean build. To fix, restore the assets:
 
 ```sh
 node node_modules/react-native-enriched-markdown/postinstall.mjs

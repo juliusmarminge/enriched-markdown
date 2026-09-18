@@ -1,6 +1,6 @@
 ---
 sidebar_label: macOS support
-sidebar_position: 3
+sidebar_position: 5
 ---
 
 # macOS support
@@ -13,8 +13,8 @@ macOS renders the same elements as iOS - CommonMark, GitHub Flavored Markdown (t
 
 These are expected to be addressed in upcoming releases:
 
-- **LaTeX math** (inline and block) is not enabled on macOS yet. It is a possible future follow-up now that the math engine (RaTeX) ships as a vendored XCFramework with a macOS slice - see [LaTeX math](/rich-text-formatting/latex-math).
+- **LaTeX math** (inline and block) is not enabled on macOS yet. It is a possible future follow-up now that the math engine ([RaTeX](https://ratex.lites.dev/)) ships as a vendored XCFramework with a macOS slice - see [LaTeX math](/rich-text-formatting/latex-math).
 - **Tail fade-in animation** falls back to an instant reveal (no `CADisplayLink` on macOS).
-- **VoiceOver** accessibility is stubbed, pending an `NSAccessibility` implementation - see [Accessibility](/misc/accessibility).
+- **VoiceOver** accessibility is stubbed, pending an `NSAccessibility` implementation - see [Accessibility](/user-experience/accessibility).
 - **Font-scale observation** does not respond to system font-size changes.
 - **`selectionColor`** affects only the selection background; the iOS-style caret and handle tinting is not available, since AppKit's `NSTextView` does not expose it via `tintColor`.

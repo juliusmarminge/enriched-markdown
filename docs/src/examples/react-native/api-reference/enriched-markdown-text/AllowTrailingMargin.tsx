@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `First paragraph.
@@ -8,14 +9,17 @@ Last paragraph - its bottom margin is kept because \`allowTrailingMargin\` is on
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
-  const base = defaultMarkdownStyle(isDark);
 
   // Give paragraphs a bottom margin so the preserved trailing margin is
   // visible. Spread the base paragraph style so only marginBottom changes.
-  const markdownStyle = {
-    ...base,
-    paragraph: { ...base.paragraph, marginBottom: 16 },
-  };
+  const markdownStyle = useMemo(() => {
+    const base = defaultMarkdownStyle(isDark);
+
+    return {
+      ...base,
+      paragraph: { ...base.paragraph, marginBottom: 16 },
+    };
+  }, [isDark]);
 
   return (
     <View style={styles.container}>

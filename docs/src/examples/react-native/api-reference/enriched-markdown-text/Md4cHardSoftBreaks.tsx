@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 // Single newlines (soft breaks). With hardSoftBreaks off they collapse into
@@ -8,11 +9,13 @@ const markdown = 'First line\nSecond line\nThird line';
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const markdownStyle = useMemo(() => defaultMarkdownStyle(isDark), [isDark]);
+
   return (
     <View style={styles.container}>
       <EnrichedMarkdownText
         markdown={markdown}
-        markdownStyle={defaultMarkdownStyle(isDark)}
+        markdownStyle={markdownStyle}
         md4cFlags={{ hardSoftBreaks: true }}
       />
     </View>

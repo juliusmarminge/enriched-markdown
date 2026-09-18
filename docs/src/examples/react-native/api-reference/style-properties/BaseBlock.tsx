@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `## A styled heading
@@ -13,22 +14,25 @@ export default function App() {
 
   // fontSize, color, lineHeight, fontWeight, and the block margins are the
   // shared base properties every block type extends.
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    h2: {
-      fontSize: 22,
-      color: isDark ? '#93c5fd' : '#1d4ed8',
-      marginTop: 0,
-      marginBottom: 8,
-    },
-    paragraph: {
-      fontSize: 16,
-      color: isDark ? '#e5e7eb' : '#374151',
-      lineHeight: 26,
-      marginTop: 0,
-      marginBottom: 12,
-    },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      h2: {
+        fontSize: 22,
+        color: isDark ? '#93c5fd' : '#1d4ed8',
+        marginTop: 0,
+        marginBottom: 8,
+      },
+      paragraph: {
+        fontSize: 16,
+        color: isDark ? '#e5e7eb' : '#374151',
+        lineHeight: 26,
+        marginTop: 0,
+        marginBottom: 12,
+      },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>

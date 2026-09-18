@@ -81,7 +81,7 @@ workspace root — so put it in the root `package.json` to skip a download for t
 
 ### Explicitly enabling a feature whose assets are missing now fails the build
 
-Previously, a missing native asset (the RaTeX XCFramework, or the tree-sitter grammars) always silently
+Previously, a missing native asset (the [RaTeX](https://ratex.lites.dev/) XCFramework, or the tree-sitter grammars) always silently
 disabled the feature. Now, if you **explicitly** set `enableMath: true` or `enableCodeHighlight: true` but
 the asset was not downloaded (for example an install with `--ignore-scripts`, or a monorepo root opt-out
 that an app overrides), the build fails with an actionable error instead of degrading. Features left on by

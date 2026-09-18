@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 // Superscript (^text^) and highlight (==text==) are md4c flags, toggled
@@ -9,12 +10,13 @@ const markdown =
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const markdownStyle = useMemo(() => defaultMarkdownStyle(isDark), [isDark]);
 
   return (
     <View style={styles.container}>
       <EnrichedMarkdownText
         markdown={markdown}
-        markdownStyle={defaultMarkdownStyle(isDark)}
+        markdownStyle={markdownStyle}
         md4cFlags={{ superscript: true, highlight: true }}
       />
     </View>

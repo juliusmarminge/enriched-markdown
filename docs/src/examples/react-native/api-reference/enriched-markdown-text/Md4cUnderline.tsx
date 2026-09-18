@@ -1,16 +1,19 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = 'With `underline` on, _this_ is underlined and *this* stays italic.';
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const markdownStyle = useMemo(() => defaultMarkdownStyle(isDark), [isDark]);
+
   return (
     <View style={styles.container}>
       <EnrichedMarkdownText
         markdown={markdown}
-        markdownStyle={defaultMarkdownStyle(isDark)}
+        markdownStyle={markdownStyle}
         md4cFlags={{ underline: true }}
       />
     </View>

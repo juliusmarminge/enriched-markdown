@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `# Styled heading
@@ -16,11 +17,14 @@ export default function App() {
   const isDark = useColorScheme() === 'dark';
 
   // Start from the shared default palette, then override just the elements you want.
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    h1: { fontSize: 26, color: isDark ? '#57b495' : '#3f9e82' },
-    link: { color: '#e0699f' },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      h1: { fontSize: 26, color: isDark ? '#57b495' : '#3f9e82' },
+      link: { color: '#e0699f' },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>

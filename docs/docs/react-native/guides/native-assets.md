@@ -141,7 +141,7 @@ of supported image sources per platform - and how images are cached - see
 
 Two parts of the library's native layer are large prebuilt assets: the
 tree-sitter runtime and grammar sources for
-[code-block highlighting](/rich-text-formatting/code-highlighting) and the RaTeX
+[code-block highlighting](/rich-text-formatting/code-highlighting) and the [RaTeX](https://ratex.lites.dev/)
 static XCFramework for [iOS LaTeX math](/rich-text-formatting/latex-math).
 Shipping them inside the npm tarball would push every install past 200 MB, even
 for apps that use neither feature.

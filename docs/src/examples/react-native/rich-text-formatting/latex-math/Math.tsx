@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 // Block math ($$...$$) needs flavor="github"; inline math ($...$) works anywhere.
@@ -12,13 +13,16 @@ Einstein's $E = mc^2$ flows inline with the surrounding text.`;
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
-  const base = defaultMarkdownStyle(isDark);
 
-  const markdownStyle = {
-    ...base,
-    math: { ...base.math, padding: 12, textAlign: 'center' },
-    inlineMath: { ...base.inlineMath },
-  };
+  const markdownStyle = useMemo(() => {
+    const base = defaultMarkdownStyle(isDark);
+
+    return {
+      ...base,
+      math: { ...base.math, padding: 12, textAlign: 'center' },
+      inlineMath: { ...base.inlineMath },
+    };
+  }, [isDark]);
 
   return (
     <View style={styles.container}>

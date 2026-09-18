@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `- عنصر أول
@@ -9,6 +10,7 @@ const markdown = `- عنصر أول
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const markdownStyle = useMemo(() => defaultMarkdownStyle(isDark), [isDark]);
 
   // dir="rtl" flips list indentation, blockquote borders, and text alignment
   // via CSS logical properties on web.
@@ -16,7 +18,7 @@ export default function App() {
     <View style={styles.container}>
       <EnrichedMarkdownText
         markdown={markdown}
-        markdownStyle={defaultMarkdownStyle(isDark)}
+        markdownStyle={markdownStyle}
         dir="rtl"
       />
     </View>

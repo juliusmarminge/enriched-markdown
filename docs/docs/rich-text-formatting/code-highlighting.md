@@ -70,7 +70,11 @@ The default set is the smaller-footprint tier; the opt-in grammars are heavier a
 
 ## Copy button
 
-With `flavor="github"`, each code block renders a header with a copy button (and a long-press menu offering **Copy** and **Copy as Markdown**). The `commonmark` flavor renders code blocks inline with no header, so it has no copy button. A copy callback fires whenever code is copied - via the header button, the long-press action, or the assistive-technology copy action - and the copy action's label is configurable. See the [Reference](#reference) for the exact callback and menu-config API.
+A code block rendered as its own block component carries a header with the language label and a **copy button**, backed by a long-press menu offering **Copy** and **Copy as Markdown**. A copy callback fires whenever code is copied - via the header button, the long-press action, or the assistive-technology copy action - and the copy action's label is configurable. See the [Reference](#reference) for the exact callback and menu-config API.
+
+:::note
+The iOS and Android packages render fenced code blocks as block components by default, so the header and its copy button are always present. In React Native the block renderer is opt-in: it comes with [`flavor="github"`](/react-native/guides/markdown-flavors), while the default `commonmark` flavor draws the whole document as a single text view, where a code block is inline text with no header - and therefore no copy button.
+:::
 
 ## Reducing binary size
 

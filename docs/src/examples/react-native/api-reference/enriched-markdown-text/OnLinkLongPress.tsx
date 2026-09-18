@@ -1,6 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 // On web, long press maps to the contextmenu event - right-click the link.
@@ -8,13 +8,14 @@ const markdown = 'Long-press (or right-click) [this link](https://reactnative.de
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const markdownStyle = useMemo(() => defaultMarkdownStyle(isDark), [isDark]);
   const [status, setStatus] = useState('No link long-pressed yet.');
 
   return (
     <View style={styles.container}>
       <EnrichedMarkdownText
         markdown={markdown}
-        markdownStyle={defaultMarkdownStyle(isDark)}
+        markdownStyle={markdownStyle}
         onLinkLongPress={({ url }) => setStatus(`Long-pressed: ${url}`)}
       />
       <Text style={styles.status}>{status}</Text>

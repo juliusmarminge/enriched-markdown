@@ -72,6 +72,7 @@ import {
   EnrichedMarkdownTextInput,
   type EnrichedMarkdownTextInputInstance,
   type CaretRect,
+  type MarkdownTextInputStyle,
 } from 'react-native-enriched-markdown';
 
 const USERS = [
@@ -79,6 +80,15 @@ const USERS = [
   { name: 'Bob', url: 'user://bob' },
   { name: 'Carol', url: 'user://carol' },
 ];
+
+// The composer re-renders on every keystroke, so keep the style object out of
+// JSX. It depends on nothing here, so module scope is enough; build it with
+// useMemo when it derives from state or props.
+const MENTION_STYLE: MarkdownTextInputStyle = {
+  linkVariants: {
+    '^user:': { color: '#1264A3', underline: false },
+  },
+};
 
 export default function Composer() {
   const ref = useRef<EnrichedMarkdownTextInputInstance>(null);
@@ -100,11 +110,7 @@ export default function Composer() {
       <EnrichedMarkdownTextInput
         ref={ref}
         mentionIndicators={['@']}
-        markdownStyle={{
-          linkVariants: {
-            '^user:': { color: '#1264A3', underline: false },
-          },
-        }}
+        markdownStyle={MENTION_STYLE}
         onStartMention={() => setOpen(true)}
         onChangeMention={({ text }) => setQuery(text)}
         onEndMention={() => setOpen(false)}

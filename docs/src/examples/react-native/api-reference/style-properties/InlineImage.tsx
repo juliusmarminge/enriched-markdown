@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const src =
@@ -12,12 +13,15 @@ export default function App() {
 
   // An inline image sits within a line of text. Its only style is size, which
   // renders it as a square scaled to the surrounding text.
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    inlineImage: {
-      size: 24,
-    },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      inlineImage: {
+        size: 24,
+      },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>

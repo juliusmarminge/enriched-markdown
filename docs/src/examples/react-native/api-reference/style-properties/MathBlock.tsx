@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `Block math renders as a standalone display element:
@@ -13,16 +14,19 @@ export default function App() {
 
   // Block math ($$...$$) needs md4cFlags={{ latexMath: true }} (on by default).
   // fontSize, color, backgroundColor, padding, margins, and textAlign all apply.
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    math: {
-      fontSize: 22,
-      color: isDark ? '#e5e7eb' : '#111827',
-      backgroundColor: isDark ? '#1f2937' : '#f3f4f6',
-      padding: 16,
-      textAlign: 'center' as const,
-    },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      math: {
+        fontSize: 22,
+        color: isDark ? '#e5e7eb' : '#111827',
+        backgroundColor: isDark ? '#1f2937' : '#f3f4f6',
+        padding: 16,
+        textAlign: 'center' as const,
+      },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>

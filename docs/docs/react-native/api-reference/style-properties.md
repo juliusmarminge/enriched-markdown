@@ -116,20 +116,35 @@ The library provides sensible default styles for all Markdown elements out of th
 <LivePreview src={CustomThemeSrc} />
 
 :::tip
-Memoize the `markdownStyle` prop with `useMemo` to avoid unnecessary re-renders:
+Never build the `markdownStyle` object inline in JSX - a fresh object on every
+render makes the component re-parse and re-lay out the document. Memoize it with
+`useMemo`, keyed on whatever it derives from:
 
 ```tsx
+import { useMemo } from 'react';
+import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import type { MarkdownStyle } from 'react-native-enriched-markdown';
 
-const markdownStyle: MarkdownStyle = useMemo(
-  () => ({
-    paragraph: { fontSize: 16 },
-    h1: { fontSize: 32 },
-  }),
-  [],
-);
+type Props = { markdown: string; accentColor: string };
+
+export default function Article({ markdown, accentColor }: Props) {
+  const markdownStyle: MarkdownStyle = useMemo(
+    () => ({
+      paragraph: { fontSize: 16 },
+      h1: { fontSize: 32, color: accentColor },
+    }),
+    [accentColor]
+  );
+
+  return (
+    <EnrichedMarkdownText markdown={markdown} markdownStyle={markdownStyle} />
+  );
+}
 ```
 
+When the style depends on nothing at all, skip the hook and declare it at module
+scope - the reference is then stable for free. Every example on this page
+follows one of these two shapes.
 :::
 
 ## Dark mode

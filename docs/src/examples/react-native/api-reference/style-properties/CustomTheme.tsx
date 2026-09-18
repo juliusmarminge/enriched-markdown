@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `# Make it yours
@@ -14,16 +15,19 @@ Every element takes a **style object**. Start from the defaults and override onl
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
-  const base = defaultMarkdownStyle(isDark);
-  const accent = isDark ? '#c4b5fd' : '#7c3aed';
 
   // Spread the defaults, then override just the elements you want to restyle.
-  const markdownStyle = {
-    ...base,
-    h1: { fontSize: 30, color: accent },
-    link: { color: isDark ? '#f0abfc' : '#c026d3', underline: true },
-    blockquote: { ...base.blockquote, borderColor: accent },
-  };
+  const markdownStyle = useMemo(() => {
+    const base = defaultMarkdownStyle(isDark);
+    const accent = isDark ? '#c4b5fd' : '#7c3aed';
+
+    return {
+      ...base,
+      h1: { fontSize: 30, color: accent },
+      link: { color: isDark ? '#f0abfc' : '#c026d3', underline: true },
+      blockquote: { ...base.blockquote, borderColor: accent },
+    };
+  }, [isDark]);
 
   return (
     <View style={styles.container}>

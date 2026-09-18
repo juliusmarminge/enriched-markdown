@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown =
@@ -10,13 +11,16 @@ export default function App() {
 
   // Highlight needs md4cFlags={{ highlight: true }}. Only color and
   // backgroundColor apply; the rest inherits from the block.
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    highlight: {
-      color: '#1f2937',
-      backgroundColor: isDark ? '#fde047' : '#fef08a',
-    },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      highlight: {
+        color: '#1f2937',
+        backgroundColor: isDark ? '#fde047' : '#fef08a',
+      },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>

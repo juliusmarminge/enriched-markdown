@@ -153,7 +153,7 @@ There is a small CommonMark core that every Markdown parser agrees on (everythin
 
 Tables render with column alignment, rich text in cells, and header styling; task lists become interactive checkboxes you can respond to. See the per-platform `EnrichedMarkdownText` reference for the props that surface these.
 
-For an in-depth look at why flavors exist, everything GFM adds, and how extensions are enabled, see [Markdown flavors](/rich-text-formatting/markdown-flavors) in Rich text formatting. Some of the extensions themselves are defined by the [GitHub Flavored Markdown spec](https://github.github.com/gfm/).
+For an in-depth look at why flavors exist, everything GFM adds, and how extensions are enabled, see [Markdown flavors](/react-native/guides/markdown-flavors) in the React Native guides. Some of the extensions themselves are defined by the [GitHub Flavored Markdown spec](https://github.github.com/gfm/).
 
 ## How the components use Markdown
 

@@ -8,13 +8,17 @@ import TabItem from '@theme/TabItem';
 
 # Web support
 
-`EnrichedMarkdownText` runs on web using [`react-native-web`](https://necolas.github.io/react-native-web/)
-for the React Native primitives and [md4c](https://github.com/mity/md4c)
-compiled to WebAssembly for parsing. The WASM binary is bundled in the npm
-package - no build step is required by consumers.
+`EnrichedMarkdownText` runs on web as plain React and DOM primitives - the
+renderer emits semantic HTML elements (`<p>`, `<h1>`-`<h6>`, `<blockquote>`,
+`<ul>`, `<ol>`, `<table>`, etc.) styled with CSS, **not** `react-native-web`
+`View` / `Text` wrappers. That keeps the output accessible and lets browser
+features (text selection, the native context menu, OS font scaling) work on
+their own.
 
-The web renderer uses semantic HTML elements (`<p>`, `<h1>`-`<h6>`,
-`<blockquote>`, `<ul>`, `<ol>`, `<table>`, etc.) for improved accessibility.
+Markdown parsing is handled by [md4c](https://github.com/mity/md4c) compiled to
+WebAssembly. The WASM binary is inlined as base64 inside the JavaScript bundle
+(`SINGLE_FILE=1`), so there is no separate `.wasm` asset to host or configure
+and no build step is required by consumers.
 
 :::note
 Web support currently applies to `EnrichedMarkdownText` (the renderer).
@@ -53,8 +57,10 @@ pnpm add react-native-enriched-markdown
 
 ### Set up a web target
 
-Web rendering runs through [`react-native-web`](https://necolas.github.io/react-native-web/),
-so your app needs a web build. Follow the path that matches your project.
+Nothing in the rendering path needs `react-native-web` - the renderer is plain
+React. Your bundler does, however, have to resolve the library's web entry
+(`index.web.js`) instead of its native one, which means preferring `.web`
+extensions. Follow the path that matches your project.
 
 #### Expo
 
@@ -70,39 +76,46 @@ Metro resolves platform-specific files automatically, so
 `react-native-enriched-markdown` picks up its web build with no extra
 configuration.
 
-#### Bare React Native (webpack)
+#### Bare React Native and other bundlers
 
-Without Expo, wire up `react-native-web` in your bundler. With webpack, alias
-`react-native` to `react-native-web` and make sure the resolver prefers `.web`
-files, so the library's web entry is chosen over its native one:
+Without Expo, point your resolver at the `.web` files. With webpack:
 
 ```js
 // webpack.config.js
 module.exports = {
   // ...
   resolve: {
-    alias: { 'react-native$': 'react-native-web' },
     extensions: ['.web.tsx', '.web.ts', '.web.js', '.tsx', '.ts', '.js'],
+    alias: { 'react-native$': 'react-native-web' },
   },
 };
 ```
 
-See the [react-native-web multi-platform guide](https://necolas.github.io/react-native-web/docs/multi-platform/)
-for a complete webpack + Babel example. Metro web and Vite (with a
-`react-native-web` plugin) work as well, as long as `.web` extensions resolve.
+Metro web and Vite (with a `react-native-web` plugin) work as well, as long as
+`.web` extensions resolve first.
+
+:::note
+The `react-native` alias above is a **bundler shim, not a rendering dependency**.
+The web entry still reaches into `react-native` for a couple of shared style
+helpers (`Platform` / `processColor` in `styleUtils`), so the specifier has to
+resolve to something in a browser build - `react-native-web` is the usual
+stand-in. No `react-native-web` component ever ends up in the rendered output,
+and none of its layout or styling is involved.
+:::
 
 ### Parser (WASM)
 
-The md4c parser ships as a WebAssembly binary inlined into the JavaScript
-bundle, so there is no separate `.wasm` asset to host or configure. It decodes
-and compiles once, on the first render.
+The md4c parser ships as a WebAssembly binary inlined into the JavaScript bundle
+as base64 (`SINGLE_FILE=1`), so there is no separate `.wasm` asset to host or
+configure. It decodes and compiles once, on the first render.
 
 ### Math (KaTeX)
 
 LaTeX math (`md4cFlags.latexMath`, on by default) renders with
-[KaTeX](https://katex.org/), an **optional** peer dependency. To show math on
-web, install it and import its stylesheet once (for example in your web entry
-file):
+[KaTeX](https://katex.org/) in **MathML output mode**, which browsers render
+natively - no CSS or font files required. KaTeX is an **optional** peer
+dependency, loaded lazily the first time a math node is encountered, so it has
+no cost on pages without math. Install it to enable web math:
 
 <Tabs groupId="package-managers">
   <TabItem value="npm" label="npm">
@@ -128,12 +141,20 @@ pnpm add katex
   </TabItem>
 </Tabs>
 
-```tsx
-import 'katex/dist/katex.min.css';
-```
-
 If `katex` is not installed, the library skips math rendering and falls back to
-the raw `$...$` / `$$...$$` source text - everything else keeps working.
+the raw `$...$` / `$$...$$` source text - everything else keeps working. Setting
+`md4cFlags={{ latexMath: false }}` stops math parsing altogether, so KaTeX is
+never loaded.
+
+:::note
+MathML is supported natively in Chrome 109+, Firefox, and Safari; older browsers
+show the raw LaTeX source as a text fallback. Unlike some KaTeX setups, no
+stylesheet or `<link>` tag is needed - import `katex/dist/katex.min.css` once in
+your web entry only if you want KaTeX's own fonts applied to the MathML output.
+:::
+
+See [LaTeX math](/rich-text-formatting/latex-math) for the authoring syntax and
+the `markdownStyle.math` / `inlineMath` options.
 
 ### Render
 

@@ -42,22 +42,29 @@ react-native/         (40)  basics/ (10)        installation, your-first-project
                             api-reference/ (20) enriched-markdown-text,
                                                 enriched-markdown-text-input,
                                                 style-properties, element-structure
-                            guides/ (30)        image-caching, native-assets,
-                                                testing, web-support
+                            guides/ (30)        markdown-flavors, web-support,
+                                                image-caching, native-assets,
+                                                testing, macos
 rich-text-formatting/ (50)  code-highlighting, editor-style-text, latex-math,
-                            markdown-flavors, markdown-streaming, mentions
-misc/                 (60)  compatibility.mdx, macos, rtl, accessibility,
-                            copy-options, breaking-changes
+                            markdown-streaming, mentions
+user-experience/      (55)  accessibility, rtl, copy-options
+misc/                 (60)  compatibility.mdx, breaking-changes,
+                            known-limitations, roadmap, contributing
 ```
 
   iOS and Android are **standalone native packages** with their own doc trees
   (native devs install them directly); `react-native/` documents the RN package.
   The APIs are meant to converge, but the prose is written per tree - there is
   no global platform selector (an earlier prototype of one was removed).
-  `rich-text-formatting/` and `misc/` are cross-platform and sit at the top
-  level. Web is (becoming) its own package - a separate library the same way
-  the native Android package is separate today - not dropped. It ships web
-  support for `EnrichedMarkdownText` (react-native-web + md4c-wasm), documented
+  `rich-text-formatting/`, `user-experience/` and `misc/` are cross-platform and
+  sit at the top level. `user-experience/` holds how the rendered text behaves
+  for the reader (accessibility, RTL, copy options); `misc/` is meta material
+  about the project itself (compatibility, breaking changes, known
+  limitations, roadmap, contributing). Web is (becoming) its own package - a
+  separate library the same way the native Android package is separate today -
+  not dropped. It ships web
+  support for `EnrichedMarkdownText` (a plain React/DOM renderer - no
+  react-native-web primitives - plus md4c-wasm), documented
   in `react-native/guides/web-support.md` (ported from `docs-md/WEB.md`); the
   editor stays native-only.
 

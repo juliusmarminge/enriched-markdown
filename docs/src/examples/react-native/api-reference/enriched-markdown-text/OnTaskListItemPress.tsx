@@ -1,6 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `- [x] Buy groceries
@@ -10,6 +10,7 @@ const markdown = `- [x] Buy groceries
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const markdownStyle = useMemo(() => defaultMarkdownStyle(isDark), [isDark]);
   const [status, setStatus] = useState('Tap a checkbox above.');
 
   return (
@@ -17,7 +18,7 @@ export default function App() {
       <EnrichedMarkdownText
         markdown={markdown}
         flavor="github"
-        markdownStyle={defaultMarkdownStyle(isDark)}
+        markdownStyle={markdownStyle}
         onTaskListItemPress={({ index, checked, text }) =>
           setStatus(
             `Task ${index} (${text}) is now ${checked ? 'checked' : 'unchecked'}.`

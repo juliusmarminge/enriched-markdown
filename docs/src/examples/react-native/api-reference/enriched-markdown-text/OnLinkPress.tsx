@@ -1,6 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown =
@@ -8,13 +8,14 @@ const markdown =
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const markdownStyle = useMemo(() => defaultMarkdownStyle(isDark), [isDark]);
   const [status, setStatus] = useState('No link pressed yet.');
 
   return (
     <View style={styles.container}>
       <EnrichedMarkdownText
         markdown={markdown}
-        markdownStyle={defaultMarkdownStyle(isDark)}
+        markdownStyle={markdownStyle}
         onLinkPress={({ url }) => setStatus(`Pressed: ${url}`)}
       />
       <Text style={styles.status}>{status}</Text>

@@ -70,7 +70,7 @@ export default function App() {
 `EnrichedMarkdownText` accepts every prop below. It also forwards the standard React Native [`View`](https://reactnative.dev/docs/view#props) props - such as `testID`, `onLayout`, `pointerEvents`, `hitSlop`, and the `accessibility*` props - to the underlying native view. The one exception is `style`: use [`containerStyle`](#containerstyle) instead. It maps to the wrapper view's `style`, and is renamed so it is not mistaken for styling the Markdown text - that is [`markdownStyle`](#markdownstyle).
 
 :::note
-Each prop has a live playground below - edit the code and try it. Props marked with a <IosBadge />, <AndroidBadge />, or <WebBadge /> badge only take effect on that platform.
+Each prop has a live playground below - edit the code and try it. Props marked with a <IosBadge />, <AndroidBadge />, or <WebBadge /> badge only take effect on that platform - they are flagged with a matching colored dot in the table of contents.
 :::
 
 ### `markdown`
@@ -151,7 +151,7 @@ When `true`, parses `==text==` as highlighted spans. When disabled, double equal
 
 #### `latexMath`
 
-When `true`, parses `$...$` as inline math and `$$...$$` as display (block) math. Rendering on web uses [KaTeX](https://katex.org/) and natively [RaTeX](https://github.com/erweixin/RaTeX). Unlike the other flags on this page, `latexMath` is enabled by default - set it to `false` to treat dollar signs as plain text.
+When `true`, parses `$...$` as inline math and `$$...$$` as display (block) math. Rendering on web uses [KaTeX](https://katex.org/) and natively [RaTeX](https://ratex.lites.dev/). Unlike the other flags on this page, `latexMath` is enabled by default - set it to `false` to treat dollar signs as plain text.
 
 <PropInfo type="boolean" default="true" />
 
@@ -183,7 +183,7 @@ Controls whether tapping a task list checkbox toggles its checked state. When `f
 
 ### `enableBlockContextMenu`
 
-Controls the long-press context menu on block views - fenced code blocks, tables, and block math. When `false`, long-pressing a block no longer opens the copy popup. It does not affect the code-block header copy button, the VoiceOver / TalkBack copy action, or the system text-selection menu. To hide individual built-in actions while keeping the menu, use [`selectionMenuConfig`](#selectionmenuconfig) instead - see [Copy options](/misc/copy-options#controlling-the-built-in-menu).
+Controls the long-press context menu on block views - fenced code blocks, tables, and block math. When `false`, long-pressing a block no longer opens the copy popup. It does not affect the code-block header copy button, the VoiceOver / TalkBack copy action, or the system text-selection menu. To hide individual built-in actions while keeping the menu, use [`selectionMenuConfig`](#selectionmenuconfig) instead - see [Copy options](/user-experience/copy-options#controlling-the-built-in-menu).
 
 <PropInfo type="boolean" default="true" />
 
@@ -350,7 +350,7 @@ With `flavor="github"`, `selection.start` / `selection.end` in menu callbacks ar
 
 ### `accessibilityLabels`
 
-Translations for every string spoken by VoiceOver (iOS) and TalkBack (Android): list items, table rows, math, and the iOS rotor. All fields are optional; omitted fields fall back to the English defaults. Placeholders (`{n}`, `{content}`, `{latex}`) are substituted natively at speak time and must be preserved in translations. See the [Accessibility guide](/misc/accessibility) for the full defaults table.
+Translations for every string spoken by VoiceOver (iOS) and TalkBack (Android): list items, table rows, math, and the iOS rotor. All fields are optional; omitted fields fall back to the English defaults. Placeholders (`{n}`, `{content}`, `{latex}`) are substituted natively at speak time and must be preserved in translations. See the [Accessibility guide](/user-experience/accessibility) for the full defaults table.
 
 <PropInfo type="AccessibilityLabels" />
 
@@ -381,7 +381,7 @@ interface AccessibilityLabels {
 }
 ```
 
-Every field is optional; see the [Accessibility guide](/misc/accessibility) for each field's English default.
+Every field is optional; see the [Accessibility guide](/user-experience/accessibility) for each field's English default.
 
 <LivePreview src={AccessibilityLabelsSrc} unavailable unavailableReason={<>iOS and Android only - it translates VoiceOver / TalkBack announcements.</>} />
 
@@ -427,7 +427,7 @@ Android resolves direction per paragraph via the platform Bidi heuristic (`TEXT_
 - `'ltr'` / `'rtl'`: force the base direction on every paragraph. Code blocks always render left-to-right regardless of this prop.
 
 :::note
-See [RTL support](/misc/rtl) for the full behavior information.
+See [RTL support](/user-experience/rtl) for the full behavior information.
 :::
 
 ### `dir` <WebBadge /> {#dir}
@@ -524,7 +524,7 @@ interface CopyPressEvent {
 
 - [Element structure](/react-native/api-reference/element-structure) - every supported element, its syntax, block vs. inline categorization, and nesting behavior.
 - [Style properties](/react-native/api-reference/style-properties) - all styleable properties, including a [Dark mode](/react-native/api-reference/style-properties#dark-mode) recipe with `useColorScheme()`.
-- [Copy options](/misc/copy-options) - smart copy, copy as Markdown, and copy image URL.
-- [Accessibility](/misc/accessibility) - VoiceOver and TalkBack support, custom rotors, and semantic traits.
+- [Copy options](/user-experience/copy-options) - smart copy, copy as Markdown, and copy image URL.
+- [Accessibility](/user-experience/accessibility) - VoiceOver and TalkBack support, custom rotors, and semantic traits.
 - [Testing with Jest](/react-native/guides/testing) - the shipped Jest mock for rendering and asserting on the components in tests.
-- [RTL support](/misc/rtl) - right-to-left languages and per-element RTL behavior.
+- [RTL support](/user-experience/rtl) - right-to-left languages and per-element RTL behavior.

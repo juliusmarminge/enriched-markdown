@@ -2,7 +2,7 @@
 
 Two pieces of the library's native layer are large prebuilt/vendored assets: the
 tree-sitter runtime and grammar sources used for [code-block highlighting](./CODE_HIGHLIGHT.md)
-(~170 MB of C source across every supported grammar) and the RaTeX static XCFramework used for
+(~170 MB of C source across every supported grammar) and the [RaTeX](https://ratex.lites.dev/) static XCFramework used for
 [iOS LaTeX math](./LATEX_MATH.md) (~47 MB). Shipping them inside the npm tarball would make every
 install download ~230 MB even for apps that use neither feature.
 
@@ -16,7 +16,7 @@ idempotent — a `.stamp` fingerprint in each vendor directory makes repeated in
 |---|---|---|
 | tree-sitter runtime | GitHub release tarball (`github.com/tree-sitter/tree-sitter`) | code highlighting (iOS + Android) |
 | grammar sources (`parser.c`/`scanner.c`/`highlights.scm`) | npm registry (`registry.npmjs.org`) | code highlighting (iOS + Android) |
-| RaTeX XCFramework + fonts | GitHub release (`github.com/erweixin/RaTeX`) | LaTeX math (iOS only) |
+| [RaTeX](https://ratex.lites.dev/) XCFramework + fonts | GitHub release | LaTeX math (iOS only) |
 
 The pins live in `grammar-versions.json` and `ratex-version.json` inside the installed package. The
 pre-built highlight registry for the default language set **is** shipped in the tarball, so the only

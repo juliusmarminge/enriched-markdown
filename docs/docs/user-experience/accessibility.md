@@ -1,6 +1,6 @@
 ---
 sidebar_label: Accessibility
-sidebar_position: 5
+sidebar_position: 1
 ---
 
 # Accessibility
@@ -88,7 +88,7 @@ The editor's model is intentionally simpler than the renderer's:
 
 ## Known limitations
 
-- **macOS** screen-reader support is still pending (a no-op stub ships today); see [macOS support](/misc/macos).
+- **macOS** screen-reader support is still pending (a no-op stub ships today); see [macOS support](/react-native/guides/macos).
 - **Android** has no rotor concept, so `accessibilityLabels.rotor.*` is ignored there.
 
 ## Reference

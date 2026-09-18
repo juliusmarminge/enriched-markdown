@@ -139,3 +139,59 @@ nav[class*='navbarLanding'] {
   z-index: var(--ifm-z-index-fixed);
   background-color: var(--ifm-navbar-background-color);
 }
+
+/* Platform dots in the table of contents.
+   Injected by src/components/PlatformBadge/tocDots.ts for headings that carry
+   an <AndroidBadge /> / <IosBadge /> / <WebBadge />; colors mirror
+   src/components/PlatformBadge/styles.module.css. */
+.table-of-contents__link:has(.platform-toc-dots) {
+  position: relative;
+  padding-right: 1.15rem;
+}
+
+.platform-toc-dots {
+  position: absolute;
+  top: 0.35em;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.platform-toc-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+}
+
+.platform-toc-dot--android {
+  background-color: var(--swm-green-light-100);
+  border-color: var(--swm-green-light-100);
+}
+
+[data-theme='dark'] .platform-toc-dot--android {
+  background-color: var(--swm-green-dark-100);
+  border-color: var(--swm-green-dark-100);
+}
+
+.platform-toc-dot--ios {
+  background-color: #fbfcfe;
+  border-color: #8d95a5;
+}
+
+[data-theme='dark'] .platform-toc-dot--ios {
+  background-color: #f4f6fa;
+  border-color: #f4f6fa;
+}
+
+.platform-toc-dot--web {
+  background-color: var(--swm-blue-light-100);
+  border-color: var(--swm-blue-light-100);
+}
+
+[data-theme='dark'] .platform-toc-dot--web {
+  background-color: var(--swm-blue-dark-100);
+  border-color: var(--swm-blue-dark-100);
+}

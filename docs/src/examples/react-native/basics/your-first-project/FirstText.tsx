@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, Linking, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const markdown = `# Welcome to Markdown!
@@ -19,10 +20,13 @@ export default function App() {
   // Start from the shared default palette (it follows the color scheme) and
   // override just the elements you want. Every element is styleable this way -
   // tweak a value and watch the preview update.
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    link: { color: isDark ? '#57b495' : '#3f9e82' },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      link: { color: isDark ? '#57b495' : '#3f9e82' },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>

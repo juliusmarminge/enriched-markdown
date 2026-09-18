@@ -1,5 +1,6 @@
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import { View, StyleSheet, useColorScheme } from 'react-native';
+import { useMemo } from 'react';
 import { defaultMarkdownStyle } from './theme';
 
 const src =
@@ -14,15 +15,18 @@ export default function App() {
   // rounds the corners and the margins space it from surrounding blocks.
   // maxHeight and aspectRatio are alternative sizing knobs (precedence:
   // aspectRatio > maxHeight > height).
-  const markdownStyle = {
-    ...defaultMarkdownStyle(isDark),
-    image: {
-      height: 120,
-      borderRadius: 12,
-      marginTop: 8,
-      marginBottom: 8,
-    },
-  };
+  const markdownStyle = useMemo(
+    () => ({
+      ...defaultMarkdownStyle(isDark),
+      image: {
+        height: 120,
+        borderRadius: 12,
+        marginTop: 8,
+        marginBottom: 8,
+      },
+    }),
+    [isDark]
+  );
 
   return (
     <View style={styles.container}>
