@@ -101,6 +101,7 @@ interface LinkVariantEntryInternal {
   pill: boolean;
   label: string;
   iconUri: string;
+  iconTintColor?: ColorValue;
   borderRadius: CodegenTypes.Float;
   paddingHorizontal: CodegenTypes.Float;
   paddingVertical: CodegenTypes.Float;

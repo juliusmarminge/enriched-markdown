@@ -75,6 +75,107 @@ class LinkPillSpanTest {
     assertTrue("PNG bytes", file.length() > 0)
   }
 
+  private fun drawIcon(
+    uri: String,
+    tint: Int?,
+  ): Bitmap {
+    val bitmap = Bitmap.createBitmap(120, 40, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val iconTop = 24 + (paint.fontMetrics.ascent + paint.fontMetrics.descent - 16) / 2
+    // Align the bitmap destination, avoiding fractional resampling differences between Skia paths.
+    canvas.translate(0f, kotlin.math.floor(iconTop) - iconTop)
+    span(
+      style.copy(
+        iconUri = uri,
+        iconTintColor = tint,
+        paddingHorizontal = 0f,
+        borderWidth = 0f,
+        backgroundColor = Color.TRANSPARENT,
+      ),
+    ).draw(canvas, original, 0, original.length, 0f, 0, 24, 40, paint)
+    return bitmap
+  }
+
+  @Test
+  fun iconTintPreservesAlphaAndLeavesCachedOriginalColorsUnchanged() {
+    val file = File.createTempFile("enriched-icon", ".png")
+    try {
+      writeIcon(file)
+      val uri = file.toURI().toString()
+      val cached = LinkPillIconCache.load(uri)!!
+      val before = drawIcon(uri, null)
+      val tinted = drawIcon(uri, Color.BLUE)
+      val translucent = drawIcon(uri, Color.argb(128, 0, 0, 255))
+      val transparent = drawIcon(uri, Color.TRANSPARENT)
+      val after = drawIcon(uri, null)
+      assertSame(cached, LinkPillIconCache.load(uri))
+      assertEquals(Color.RED, cached.getPixel(2, 8))
+      assertEquals(Color.GREEN, cached.getPixel(12, 8))
+      assertTrue(pixels(before).contentEquals(pixels(after)))
+      val iconTop = kotlin.math.floor(24 + (paint.fontMetrics.ascent + paint.fontMetrics.descent - 16) / 2)
+      val centerY = (iconTop + 8).toInt()
+      assertEquals(Color.RED, before.getPixel(2, centerY))
+      assertEquals(Color.GREEN, before.getPixel(12, centerY))
+      assertEquals(Color.BLUE, tinted.getPixel(2, centerY))
+      assertEquals(Color.BLUE, tinted.getPixel(12, centerY))
+      assertEquals(128, Color.alpha(translucent.getPixel(2, centerY)))
+      assertEquals(Color.TRANSPARENT, transparent.getPixel(2, centerY))
+      assertEquals(128, Color.alpha(tinted.getPixel(2, (iconTop + 12).toInt())))
+      assertEquals(Color.TRANSPARENT, tinted.getPixel(2, (iconTop + 5).toInt()))
+      assertEquals(64, Color.alpha(translucent.getPixel(2, (iconTop + 12).toInt())))
+      // Flat regions verify image alpha independently of fractional resampling at transitions.
+      for (offset in listOf(2, 5, 8, 12)) {
+        val y = (iconTop + offset).toInt()
+        for (x in 1 until 15) {
+          assertEquals(Color.alpha(before.getPixel(x, y)), Color.alpha(tinted.getPixel(x, y)))
+        }
+      }
+      for (y in 0 until 40) {
+        for (x in 0 until 16) {
+          if (Color.alpha(tinted.getPixel(x, y)) > 0) {
+            assertEquals(0, Color.red(tinted.getPixel(x, y)))
+            assertEquals(0, Color.green(tinted.getPixel(x, y)))
+            assertEquals(255, Color.blue(tinted.getPixel(x, y)))
+          }
+        }
+      }
+    } finally {
+      file.delete()
+    }
+  }
+
+  @Test
+  fun tintTransportDistinguishesMissingAndTransparentAndParticipatesInHash() {
+    val parser = StyleParser(RuntimeEnvironment.getApplication(), false, 1f)
+    val map =
+      JavaOnlyMap.of(
+        "pattern",
+        "^app:",
+        "color",
+        Color.BLACK.toDouble(),
+        "underline",
+        false,
+        "backgroundColor",
+        0.0,
+        "fontFamily",
+        "",
+        "label",
+        "",
+        "iconUri",
+        "",
+      )
+    val absent = LinkVariantEntry.fromReadableMap(map, parser)
+    assertEquals(null, absent.iconTintColor)
+    map.putDouble("iconTintColor", 0.0)
+    val clear = LinkVariantEntry.fromReadableMap(map, parser)
+    assertEquals(Color.TRANSPARENT, clear.iconTintColor)
+    map.putDouble("iconTintColor", Color.BLUE.toDouble())
+    val blue = LinkVariantEntry.fromReadableMap(map, parser)
+    assertEquals(Color.BLUE, blue.iconTintColor)
+    assertNotEquals(absent, clear)
+    assertNotEquals(clear.hashCode(), blue.hashCode())
+  }
+
   @Test
   fun iconCacheInvalidatesModifiedFilesAndBoundsEntryCountWithoutRecyclingOwners() {
     val files = mutableListOf<File>()

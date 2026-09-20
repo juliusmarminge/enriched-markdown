@@ -117,7 +117,10 @@
       CGSize iconSize = CGSizeMake(_icon.size.width * scale, _icon.size.height * scale);
       CGRect iconRect = CGRectMake(left + (side - iconSize.width) / 2, (size.height - iconSize.height) / 2,
                                    iconSize.width, iconSize.height);
-      [_icon drawInRect:iconRect];
+      UIImage *presentedIcon = _variant.iconTintColor ? [_icon imageWithTintColor:_variant.iconTintColor
+                                                                    renderingMode:UIImageRenderingModeAlwaysOriginal]
+                                                      : _icon;
+      [presentedIcon drawInRect:iconRect];
       left += side * 1.25;
     }
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];

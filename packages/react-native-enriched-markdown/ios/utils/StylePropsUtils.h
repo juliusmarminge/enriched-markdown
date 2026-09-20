@@ -563,6 +563,7 @@ BOOL applyMarkdownStyleToConfig(StyleConfig *config, const MarkdownStyle &newSty
             newVariant.underline != oldVariant.underline || newVariant.backgroundColor != oldVariant.backgroundColor ||
             newVariant.fontFamily != oldVariant.fontFamily || newVariant.pill != oldVariant.pill ||
             newVariant.label != oldVariant.label || newVariant.iconUri != oldVariant.iconUri ||
+            newVariant.iconTintColor != oldVariant.iconTintColor ||
             newVariant.borderRadius != oldVariant.borderRadius ||
             newVariant.paddingHorizontal != oldVariant.paddingHorizontal ||
             newVariant.paddingVertical != oldVariant.paddingVertical ||
@@ -584,6 +585,7 @@ BOOL applyMarkdownStyleToConfig(StyleConfig *config, const MarkdownStyle &newSty
         variant.pill = entry.pill;
         variant.label = [[NSString alloc] initWithUTF8String:entry.label.c_str()];
         variant.iconUri = [[NSString alloc] initWithUTF8String:entry.iconUri.c_str()];
+        variant.iconTintColor = entry.iconTintColor ? RCTUIColorFromSharedColor(entry.iconTintColor) : nil;
         variant.borderRadius = entry.borderRadius;
         variant.paddingHorizontal = entry.paddingHorizontal;
         variant.paddingVertical = entry.paddingVertical;

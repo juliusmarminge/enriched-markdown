@@ -3,6 +3,8 @@ package com.swmansion.enriched.markdown.spans
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.RectF
 import android.os.Build
 import android.text.Spanned
@@ -27,6 +29,7 @@ class LinkPillSpan(
   private val icon = LinkPillIconCache.load(context, variant.iconUri)
   private val iconPaint =
     Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+      variant.iconTintColor?.let { colorFilter = PorterDuffColorFilter(it, PorterDuff.Mode.SRC_IN) }
     }
 
   val accessibilityText = if (label == originalLinkText) originalLinkText else "$label, $originalLinkText"

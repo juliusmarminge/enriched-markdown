@@ -295,6 +295,7 @@ export const normalizeMarkdownStyle = (
       return {
         pattern,
         ...normalizeLinkPillStyle(override),
+        iconTintColor: override.iconTintColor,
         fontFamily: override.fontFamily ?? linkBase.fontFamily,
         color: override.color ?? linkBase.color,
         underline: override.underline ?? linkBase.underline,

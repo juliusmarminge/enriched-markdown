@@ -138,3 +138,35 @@ it.each([true, {}])('enables default presentation for %s', (pill) => {
       .linkVariants[0]
   ).toMatchObject({ pill: true, label: '', paddingHorizontal: 6 });
 });
+
+it('preserves original icon colors by default and transports explicit tint including transparent', () => {
+  const style = normalizeMarkdownStyle({
+    linkVariants: {
+      '^plain:': { pill: true },
+      '^tinted:': { pill: true, iconTintColor: '#abcdef' },
+      '^clear:': { pill: true, iconTintColor: 'transparent' },
+    },
+  });
+  const entry = (pattern: string) =>
+    style.linkVariants.find((variant) => variant.pattern === pattern);
+  expect(entry('^plain:')?.iconTintColor).toBeUndefined();
+  expect(entry('^tinted:')?.iconTintColor).toBe(normalizeColor('#abcdef'));
+  expect(entry('^clear:')?.iconTintColor).toBe(normalizeColor('transparent'));
+  expect(
+    normalizeWebStyle({
+      linkVariants: { '^app:': { iconTintColor: '#abcdef' } },
+    }).linkVariants[0]?.iconTintColor
+  ).toBe('#abcdef');
+});
+
+it('ignores invalid native icon tint instead of silently making an icon transparent', () => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  const style = normalizeMarkdownStyle({
+    linkVariants: { '^app:': { pill: true, iconTintColor: 'invalid color' } },
+  });
+  expect(style.linkVariants[0]?.iconTintColor).toBeUndefined();
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining('Ignoring invalid color')
+  );
+  warn.mockRestore();
+});

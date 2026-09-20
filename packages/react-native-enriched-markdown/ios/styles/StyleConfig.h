@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL pill;
 @property (nonatomic, copy) NSString *label;
 @property (nonatomic, copy) NSString *iconUri;
+@property (nonatomic, strong, nullable) RCTUIColor *iconTintColor;
 @property (nonatomic, assign) CGFloat borderRadius;
 @property (nonatomic, assign) CGFloat paddingHorizontal;
 @property (nonatomic, assign) CGFloat paddingVertical;

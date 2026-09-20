@@ -113,6 +113,7 @@ export interface LinkVariantEntryInternal {
   pill: boolean;
   label: string;
   iconUri: string;
+  iconTintColor?: string;
   borderRadius: number;
   paddingHorizontal: number;
   paddingVertical: number;

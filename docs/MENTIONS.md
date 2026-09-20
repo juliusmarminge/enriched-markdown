@@ -122,6 +122,8 @@ The existing `color`, `underline`, and `backgroundColor` fields still apply. Pil
 
 Pill presentation is currently native only. Web renders ordinary links and retains their original labels. Links containing image or math attachments retain their existing native rendering. Icons use the existing local image resolver. iOS supports file paths, `file://` URIs, and file-backed bundle names including `@2x`/`@3x` variants. Asset-catalog-only images have no thumbnail-readable path and render no icon. Android also supports bundled drawable/raw resources, assets, content and data URIs. Remote URLs and unreadable sources render no icon.
 
+`iconTintColor` optionally applies a source-in tint to native pill icons, preserving image alpha. Omit it to keep the image's original colors. An explicit `transparent` tint hides the pixels while retaining icon space. Tint is applied per presentation and leaves cached originals unchanged.
+
 Icon decoding is downsampled to approximately 512 pixels. Android caches are bounded to 64 images and 8 MiB. iOS uses a pressure-aware `NSCache` configured with the same count and decoded-byte cost limits; images held by visible pills are separate from this cache budget. File metadata changes invalidate cached icons.
 
 ## Positioning the Suggestion List

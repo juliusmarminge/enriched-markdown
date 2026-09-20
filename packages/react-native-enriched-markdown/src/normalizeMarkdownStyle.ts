@@ -344,6 +344,9 @@ export const normalizeMarkdownStyle = (
       return {
         pattern,
         ...pill,
+        iconTintColor: normalizeColor(override.iconTintColor) as
+          | string
+          | undefined,
         fontFamily: override.fontFamily ?? linkBase.fontFamily,
         borderColor: (normalizeColor(pill.borderColor) ??
           transparent) as string,

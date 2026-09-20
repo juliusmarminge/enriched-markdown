@@ -132,6 +132,8 @@ export interface LinkPillStyle {
   label?: string;
   /** Local image source. Unreadable or non-local sources are ignored. */
   iconUri?: string;
+  /** Optional source-in icon tint. Omitted preserves original image colors and alpha. */
+  iconTintColor?: string;
   borderRadius?: number;
   paddingHorizontal?: number;
   paddingVertical?: number;
