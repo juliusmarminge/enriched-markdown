@@ -59,7 +59,8 @@ static inline Size ENRMClampMeasuredSize(CGSize size, const LayoutConstraints &l
 template <typename PropsT>
 static inline bool ENRMPropsNeedExactStreamingMeasurement(const PropsT &oldProps, const PropsT &newProps)
 {
-  return oldProps.streamingAnimation != newProps.streamingAnimation ||
+  return ENRMImageSourcesFingerprint(oldProps) != ENRMImageSourcesFingerprint(newProps) ||
+         oldProps.streamingAnimation != newProps.streamingAnimation ||
          oldProps.allowFontScaling != newProps.allowFontScaling ||
          oldProps.maxFontSizeMultiplier != newProps.maxFontSizeMultiplier ||
          oldProps.allowTrailingMargin != newProps.allowTrailingMargin ||
@@ -70,8 +71,7 @@ static inline bool ENRMPropsNeedExactStreamingMeasurement(const PropsT &oldProps
          oldProps.md4cFlags.highlight != newProps.md4cFlags.highlight ||
          oldProps.md4cFlags.hardSoftBreaks != newProps.md4cFlags.hardSoftBreaks ||
          oldProps.md4cFlags.preserveBlankLines != newProps.md4cFlags.preserveBlankLines ||
-         oldProps.isGFM != newProps.isGFM ||
-         oldProps.md4cFlags.admonitions != newProps.md4cFlags.admonitions ||
+         oldProps.isGFM != newProps.isGFM || oldProps.md4cFlags.admonitions != newProps.md4cFlags.admonitions ||
          computeStyleFingerprint(oldProps.markdownStyle) != computeStyleFingerprint(newProps.markdownStyle);
 }
 

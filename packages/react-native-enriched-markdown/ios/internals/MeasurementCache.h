@@ -1,4 +1,5 @@
 #pragma once
+#import "ENRMImageSources.h"
 
 #include <CoreGraphics/CGBase.h>
 #include <React/RCTUtils.h>
@@ -175,7 +176,7 @@ inline MeasurementCacheKey buildMeasurementCacheKey(const PropsType &props, CGFl
       .md4cFlagsHardSoftBreaks = props.md4cFlags.hardSoftBreaks,
       .md4cFlagsPreserveBlankLines = props.md4cFlags.preserveBlankLines,
       .md4cFlagsAdmonitions = props.md4cFlags.admonitions,
-      .styleFingerprint = computeStyleFingerprint(props.markdownStyle),
+      .styleFingerprint = computeStyleFingerprint(props.markdownStyle) ^ ENRMImageSourcesFingerprint(props),
       .fontScale = fontScale,
       .flavor = flavor,
       .lineBreakStrategyIOS = props.lineBreakStrategyIOS,

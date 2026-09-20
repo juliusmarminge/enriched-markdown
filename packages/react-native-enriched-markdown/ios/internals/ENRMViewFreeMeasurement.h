@@ -1,4 +1,6 @@
 #pragma once
+#import "ENRMDocumentAssets.h"
+#import "ENRMImageSources.h"
 
 #import "ENRMBlockquoteContainerView.h"
 #import "ENRMCodeBlockContainerView.h"
@@ -272,6 +274,10 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
     ENRMWritingDirectionMode writingDirectionMode =
         ENRMResolveWritingDirectionMode([[NSString alloc] initWithUTF8String:typedProps.writingDirection.c_str()]);
 
+    BOOL resolveSources = typedProps.enableImageSourceResolution && typedProps.isGFM;
+    NSArray *assets = resolveSources ? ENRMPrepareDocumentAssets(ast) : @[];
+    ENRMPrepareImageSources(ast, assets, resolveSources, ENRMImageSourcesAccepted(typedProps),
+                            ENRMImageSourcesFromProps(typedProps));
     NSArray<ENRMRenderedSegment *> *segments =
         ENRMRenderSegmentsFromAST(ast, config, typedProps.allowTrailingMargin, typedProps.allowFontScaling,
                                   typedProps.maxFontSizeMultiplier, lineBreakStrategy, /*blockquoteContent*/ NO);

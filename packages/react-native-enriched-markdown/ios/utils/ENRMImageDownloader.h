@@ -11,7 +11,7 @@ typedef void (^ENRMImageDownloadCompletion)(RCTUIImage *_Nullable image);
  * pairs, so the same URL fetched with different headers is cached and
  * deduplicated separately without embedding header values in the key.
  */
-NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> *_Nullable headers);
+FOUNDATION_EXPORT NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> *_Nullable headers);
 
 @interface ENRMImageDownloader : NSObject
 

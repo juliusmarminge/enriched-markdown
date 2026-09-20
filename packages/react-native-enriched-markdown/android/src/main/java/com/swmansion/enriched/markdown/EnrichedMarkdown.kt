@@ -14,8 +14,10 @@ import com.swmansion.enriched.markdown.accessibility.AccessibilityLabels
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
 import com.swmansion.enriched.markdown.media.DocumentAsset
 import com.swmansion.enriched.markdown.media.DocumentAssets
+import com.swmansion.enriched.markdown.media.ImageSourceDecision
 import com.swmansion.enriched.markdown.media.documentAssetsEventData
 import com.swmansion.enriched.markdown.media.emitMediaEvent
+import com.swmansion.enriched.markdown.media.withImageSources
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
 import com.swmansion.enriched.markdown.segments.BlockquoteContainerView
@@ -61,11 +63,47 @@ class EnrichedMarkdown(
   private val videoContainerClass: Class<*>? by lazy { SegmentViewCreators.videoContainerClass() }
 
   private var currentRenderId = 0L
+  private var enableImageSourceResolution = false
+  private var imageSourcesRevision = -1
+  private var imageSourcesContinuityStart = 1
+  private var imageSources = emptyList<ImageSourceDecision>()
   private var documentRevision = 0
   private var enableDocumentAssets = false
   private var acceptedRevision = -1
   private var acceptedAssets = emptyList<DocumentAsset>()
   private var lastAssetManifest: Pair<Int, List<DocumentAsset>>? = null
+
+  fun setEnableImageSourceResolution(value: Boolean) {
+    if (enableImageSourceResolution == value) return
+    enableImageSourceResolution = value
+    dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
+    renderPending = true
+  }
+
+  fun setImageSourcesRevision(value: Int) {
+    if (imageSourcesRevision == value) return
+    imageSourcesRevision = value
+    dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
+    renderPending = true
+  }
+
+  fun setImageSourcesContinuityStart(value: Int) {
+    if (imageSourcesContinuityStart == value) return
+    imageSourcesContinuityStart = value
+    dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
+    renderPending = true
+  }
+
+  fun setImageSources(value: List<ImageSourceDecision>) {
+    if (imageSources == value) return
+    imageSources = value
+    dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
+    renderPending = true
+  }
 
   fun setDocumentRevision(value: Int) {
     if (documentRevision == value) return
@@ -186,6 +224,7 @@ class EnrichedMarkdown(
     if (imageRequestHeaders == headers) return
     imageRequestHeaders = headers
     markdownStyle?.imageRequestHeaders = headers
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
     dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
     renderPending = true
   }
@@ -401,6 +440,10 @@ class EnrichedMarkdown(
     val tableMode = tableStreamingMode
     val codeBlockMode = codeBlockStreamingMode
 
+    val sourcesEnabled = enableImageSourceResolution && isGFM
+    val sourcesRevision = imageSourcesRevision
+    val sourcesContinuityStart = imageSourcesContinuityStart
+    val sources = imageSources
     val revision = documentRevision
     val flags = md4cFlags
     val gfm = isGFM
@@ -430,7 +473,8 @@ class EnrichedMarkdown(
           }
 
         val assets = if (assetEventsEnabled) DocumentAssets.collect(ast).assets else emptyList()
-        val segments = splitASTIntoSegments(ast)
+        val sourceAST = withImageSources(ast, sourcesEnabled, revision, sourcesRevision, sourcesContinuityStart, sources)
+        val segments = splitASTIntoSegments(sourceAST)
         val renderedSegments =
           MarkdownSegmentRenderer.render(
             segments,

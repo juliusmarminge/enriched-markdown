@@ -1,5 +1,6 @@
 #import "SegmentRenderer.h"
 #import "ENRMFeatureFlags.h"
+#import "ENRMImageSources.h"
 #import "ENRMTextRenderer.h"
 #import "MarkdownASTNode.h"
 #import "ParagraphStyleUtils.h"
@@ -90,11 +91,13 @@ NSArray<ENRMRenderedSegment *> *ENRMRenderSegmentsFromAST(MarkdownASTNode *ast, 
                                                                           maxFontSizeMultiplier, lineBreakStrategy)
                                        : ENRMRenderASTNodes(textSegment.nodes, config, allowTrailingMargin,
                                                             allowFontScaling, maxFontSizeMultiplier, lineBreakStrategy);
-      uint64_t signature = ENRMSignatureForNodes(textSegment.nodes) ^ kTextKindSalt;
+      uint64_t signature = ENRMSignatureForNodes(textSegment.nodes) ^
+                           ENRMImageSourceSignatureForNodes(textSegment.nodes) ^ kTextKindSalt;
       [renderedSegments addObject:[ENRMRenderedSegment textSegmentWithResult:rendered signature:signature]];
     } else if ([segment isKindOfClass:[ENRMTableSegment class]]) {
       ENRMTableSegment *tableSegment = (ENRMTableSegment *)segment;
-      uint64_t signature = ENRMSignatureForNode(tableSegment.tableNode) ^ kTableKindSalt;
+      uint64_t signature = ENRMSignatureForNode(tableSegment.tableNode) ^
+                           ENRMImageSourceSignatureForNode(tableSegment.tableNode) ^ kTableKindSalt;
       [renderedSegments addObject:[ENRMRenderedSegment tableSegmentWithSegment:tableSegment signature:signature]];
     }
 #if ENRICHED_MARKDOWN_MATH
@@ -117,7 +120,8 @@ NSArray<ENRMRenderedSegment *> *ENRMRenderSegmentsFromAST(MarkdownASTNode *ast, 
                                                                          signature:signature]];
     } else if ([segment isKindOfClass:[ENRMBlockquoteSegment class]]) {
       ENRMBlockquoteSegment *blockquoteSegment = (ENRMBlockquoteSegment *)segment;
-      uint64_t signature = ENRMSignatureForNode(blockquoteSegment.blockquoteNode) ^ kBlockquoteKindSalt;
+      uint64_t signature = ENRMSignatureForNode(blockquoteSegment.blockquoteNode) ^
+                           ENRMImageSourceSignatureForNode(blockquoteSegment.blockquoteNode) ^ kBlockquoteKindSalt;
       [renderedSegments addObject:[ENRMRenderedSegment blockquoteSegmentWithSegment:blockquoteSegment
                                                                           signature:signature]];
     }

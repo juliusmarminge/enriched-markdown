@@ -431,7 +431,20 @@ export interface DocumentAssetsEventInternal {
   }[];
 }
 
+export interface ImageSourceInternal {
+  id: string;
+  url: string;
+  anchor: string;
+  uri: string;
+  headers: ReadonlyArray<Readonly<{ name: string; value: string }>>;
+  useDefault: boolean;
+}
+
 export interface NativeProps extends ViewProps {
+  enableImageSourceResolution?: CodegenTypes.WithDefault<boolean, false>;
+  imageSourcesRevision?: CodegenTypes.WithDefault<CodegenTypes.Int32, -1>;
+  imageSourcesContinuityStart?: CodegenTypes.WithDefault<CodegenTypes.Int32, 1>;
+  imageSources?: ReadonlyArray<Readonly<ImageSourceInternal>>;
   documentRevision?: CodegenTypes.WithDefault<CodegenTypes.Int32, 0>;
   enableDocumentAssets?: CodegenTypes.WithDefault<boolean, false>;
   onDocumentAssets?: CodegenTypes.DirectEventHandler<DocumentAssetsEventInternal>;

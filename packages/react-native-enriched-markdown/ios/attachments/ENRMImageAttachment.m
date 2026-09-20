@@ -34,6 +34,7 @@ static NSCache<NSString *, RCTUIImage *> *_processedImageCache;
 @interface ENRMImageAttachment ()
 
 @property (nonatomic, copy) NSString *imageURL;
+@property (nonatomic, copy, nullable) NSString *transportURI;
 @property (nonatomic, copy, nullable) NSDictionary<NSString *, NSString *> *requestHeaders;
 @property (nonatomic, copy) NSString *cacheKey;
 @property (nonatomic, assign) BOOL isInline;
@@ -81,16 +82,38 @@ static NSCache<NSString *, RCTUIImage *> *_processedImageCache;
   // the same image URL at a different width than a copy outside the table, and a shared
   // NSTextAttachment would thrash its single last-processed width into a redraw loop. The
   // image caches keep fresh instances cheap (no re-fetch or re-scale).
-  return [[self alloc] initWithImageURL:imageURL config:config isInline:isInline];
+  return [self attachmentForURL:imageURL
+                         config:config
+                       isInline:isInline
+                   transportURI:imageURL
+                 requestHeaders:config.imageRequestHeaders];
 }
 
-- (instancetype)initWithImageURL:(NSString *)imageURL config:(StyleConfig *)config isInline:(BOOL)isInline
++ (instancetype)attachmentForURL:(NSString *)imageURL
+                          config:(StyleConfig *)config
+                        isInline:(BOOL)isInline
+                    transportURI:(NSString *)transportURI
+                  requestHeaders:(NSDictionary<NSString *, NSString *> *)requestHeaders
+{
+  return [[self alloc] initWithImageURL:imageURL
+                                 config:config
+                               isInline:isInline
+                           transportURI:transportURI
+                         requestHeaders:requestHeaders];
+}
+
+- (instancetype)initWithImageURL:(NSString *)imageURL
+                          config:(StyleConfig *)config
+                        isInline:(BOOL)isInline
+                    transportURI:(NSString *)transportURI
+                  requestHeaders:(NSDictionary<NSString *, NSString *> *)requestHeaders
 {
   self = [super init];
   if (self) {
     _imageURL = imageURL;
-    _requestHeaders = [[config imageRequestHeaders] copy];
-    _cacheKey = ENRMImageCacheKey(imageURL, _requestHeaders);
+    _transportURI = [transportURI copy];
+    _requestHeaders = [requestHeaders copy];
+    _cacheKey = transportURI ? ENRMImageCacheKey(transportURI, _requestHeaders) : @"";
     _isInline = isInline;
 
     _cachedHeight = isInline ? [config inlineImageSize] : [config imageHeight];
@@ -320,11 +343,11 @@ static NSCache<NSString *, RCTUIImage *> *_processedImageCache;
 
 - (void)startDownloadingImage
 {
-  if (self.imageURL.length == 0)
+  if (self.transportURI.length == 0)
     return;
 
   __weak typeof(self) weakSelf = self;
-  [[ENRMImageDownloader shared] downloadURL:self.imageURL
+  [[ENRMImageDownloader shared] downloadURL:self.transportURI
                                     headers:self.requestHeaders
                                  completion:^(RCTUIImage *image) { [weakSelf handleLoadedImage:image]; }];
 }

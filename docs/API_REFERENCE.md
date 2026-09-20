@@ -90,6 +90,17 @@ IDs distinguish occurrences, including duplicate URLs, and are scoped to one com
 
 `DocumentAssetsEvent`, `MarkdownDocumentAsset`, `MarkdownMediaAsset`, `MarkdownLinkAsset`, and `MarkdownAssetPlacement` are exported types. This callback does not change native rendering, selection, copy, or press handling. CommonMark and web do not emit it.
 
+### `resolveImageSource`
+
+Optional callback for GitHub flavor on iOS and Android. Receives an accepted
+native image descriptor and returns `{ uri, headers? }`, `null` to use the
+original source, or a promise of either. Pending or rejected results keep the
+native placeholder without requesting the original URL. Image events, copy and
+Markdown exports retain the original URL.
+
+See [Resolving image sources](../packages/react-native-enriched-markdown/docs/image-sources.md)
+for header precedence, caching and callback lifetime.
+
 ### `onImagePress`
 
 Callback when a rendered image is tapped or clicked. Access the image URL via `event.url` and its Markdown alt text via `event.altText` (`""` when the image has no alt text). Use it to open a lightbox or full-screen viewer.

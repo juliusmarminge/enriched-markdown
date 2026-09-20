@@ -1,4 +1,8 @@
-import type { DocumentAssetsEvent } from './media';
+import type {
+  DocumentAssetsEvent,
+  MarkdownMediaAsset,
+  MarkdownImageSource,
+} from './media';
 import type { ColorValue, ViewProps, ViewStyle, TextStyle } from 'react-native';
 import type { MarkdownStyle, Md4cFlags } from './MarkdownStyle';
 import type { AccessibilityLabels } from './AccessibilityLabels';
@@ -127,6 +131,15 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * Receives the payload directly, like onImagePress. GitHub flavor on iOS/Android.
    */
   onDocumentAssets?: (event: DocumentAssetsEvent) => void;
+  /**
+   * Resolve native image request URI/headers from the accepted image descriptor.
+   * Null uses the original source. Pending/rejected results keep a placeholder.
+   * GitHub flavor on iOS/Android only. Keep callback identity stable to reuse results.
+   * Image events, copy and Markdown exports retain the original URL.
+   */
+  resolveImageSource?: (
+    asset: MarkdownMediaAsset
+  ) => MarkdownImageSource | null | Promise<MarkdownImageSource | null>;
   /**
    * Style configuration for markdown elements.
    * @platform ios, android, web

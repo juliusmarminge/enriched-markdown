@@ -13,6 +13,7 @@ import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.viewmanagers.EnrichedMarkdownManagerDelegate
 import com.facebook.react.viewmanagers.EnrichedMarkdownManagerInterface
 import com.facebook.yoga.YogaMeasureMode
+import com.swmansion.enriched.markdown.media.parseImageSources
 import com.swmansion.enriched.markdown.spoiler.SpoilerOverlay
 import com.swmansion.enriched.markdown.utils.common.CodeBlockStreamingMode
 import com.swmansion.enriched.markdown.utils.common.TableStreamingMode
@@ -116,6 +117,38 @@ class EnrichedMarkdownManager :
     markdownEventTypeConstants().apply {
       put("onDocumentAssets", mapOf("registrationName" to "onDocumentAssets"))
     }
+
+  @ReactProp(name = "enableImageSourceResolution", defaultBoolean = false)
+  override fun setEnableImageSourceResolution(
+    view: EnrichedMarkdown?,
+    value: Boolean,
+  ) {
+    view?.setEnableImageSourceResolution(value)
+  }
+
+  @ReactProp(name = "imageSourcesRevision", defaultInt = -1)
+  override fun setImageSourcesRevision(
+    view: EnrichedMarkdown?,
+    value: Int,
+  ) {
+    view?.setImageSourcesRevision(value)
+  }
+
+  @ReactProp(name = "imageSourcesContinuityStart", defaultInt = 1)
+  override fun setImageSourcesContinuityStart(
+    view: EnrichedMarkdown?,
+    value: Int,
+  ) {
+    view?.setImageSourcesContinuityStart(value)
+  }
+
+  @ReactProp(name = "imageSources")
+  override fun setImageSources(
+    view: EnrichedMarkdown?,
+    value: ReadableArray?,
+  ) {
+    view?.setImageSources(parseImageSources(value))
+  }
 
   @ReactProp(name = "documentRevision", defaultInt = 0)
   override fun setDocumentRevision(

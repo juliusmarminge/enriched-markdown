@@ -43,6 +43,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)attachmentForURL:(NSString *)imageURL config:(StyleConfig *)config isInline:(BOOL)isInline;
 
+// A nil transportURI holds the normal placeholder without starting a request.
++ (instancetype)attachmentForURL:(NSString *)imageURL
+                          config:(StyleConfig *)config
+                        isInline:(BOOL)isInline
+                    transportURI:(nullable NSString *)transportURI
+                  requestHeaders:(nullable NSDictionary<NSString *, NSString *> *)requestHeaders;
+
 + (NSCache<NSString *, RCTUIImage *> *)originalImageCache;
 + (NSCache<NSString *, RCTUIImage *> *)processedImageCache;
 

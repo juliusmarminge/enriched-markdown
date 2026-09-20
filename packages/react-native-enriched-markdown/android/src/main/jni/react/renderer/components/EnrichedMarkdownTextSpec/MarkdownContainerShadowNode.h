@@ -20,6 +20,14 @@ public:
   MarkdownContainerShadowNode(ShadowNode const &sourceShadowNode, ShadowNodeFragment const &fragment)
       : ConcreteViewShadowNode(sourceShadowNode, fragment) {
     dirtyLayoutIfNeeded();
+    const auto &oldProps = static_cast<const MarkdownContainerShadowNode &>(sourceShadowNode).getConcreteProps();
+    const auto &props = getConcreteProps();
+    if (oldProps.enableImageSourceResolution != props.enableImageSourceResolution ||
+        oldProps.imageSourcesRevision != props.imageSourcesRevision ||
+        oldProps.imageSourcesContinuityStart != props.imageSourcesContinuityStart ||
+        oldProps.imageSources != props.imageSources) {
+      dirtyLayout();
+    }
   }
 
   static ShadowNodeTraits BaseTraits() {

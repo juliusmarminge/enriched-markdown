@@ -13,6 +13,8 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.uimanager.PixelUtil
 import com.facebook.yoga.YogaMeasureMode
 import com.facebook.yoga.YogaMeasureOutput
+import com.swmansion.enriched.markdown.media.parseImageSources
+import com.swmansion.enriched.markdown.media.withImageSources
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
 import com.swmansion.enriched.markdown.renderer.Renderer
@@ -333,6 +335,12 @@ object MeasurementStore {
     result = 31 * result + maxFontSizeMultiplier.toBits()
     result = 31 * result + allowTrailingMargin.hashCode()
     result = 31 * result + imageRequestHeaders.hashCode()
+    result = 31 * result + props.getBooleanOrDefault("enableImageSourceResolution", false).hashCode()
+    result = 31 * result + props.getIntOrDefault("imageSourcesRevision", -1)
+    result = 31 * result + props.getIntOrDefault("imageSourcesContinuityStart", 1)
+    result = 31 * result + parseImageSources(props.getArrayOrNull("imageSources")).hashCode()
+    result = 31 * result + props.getIntOrDefault("documentRevision", 0)
+
     result = 31 * result + props.getIntOrDefault("numberOfLines", 0)
     result = 31 * result + props.getStringOrDefault("ellipsizeMode", EllipsizeUtils.DEFAULT_MODE).hashCode()
     return result
@@ -502,7 +510,16 @@ object MeasurementStore {
 
       val style = StyleConfig(styleMap, context, allowFontScaling, maxFontSizeMultiplier)
       style.imageRequestHeaders = parseImageRequestHeaders(props.getArrayOrNull("imageRequestHeaders"))
-      val segments = splitASTIntoSegments(ast)
+      val sourceAST =
+        withImageSources(
+          ast,
+          isGFM && props.getBooleanOrDefault("enableImageSourceResolution", false),
+          props.getIntOrDefault("documentRevision", 0),
+          props.getIntOrDefault("imageSourcesRevision", -1),
+          props.getIntOrDefault("imageSourcesContinuityStart", 1),
+          parseImageSources(props.getArrayOrNull("imageSources")),
+        )
+      val segments = splitASTIntoSegments(sourceAST)
       val renderedSegments = MarkdownSegmentRenderer.render(segments, style, context, null, null)
 
       val mathHeightByIndex = HashMap<Int, Float>()

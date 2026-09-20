@@ -1,5 +1,6 @@
 package com.swmansion.enriched.markdown.segments
 
+import com.swmansion.enriched.markdown.media.mergeImageRequestHeaders
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 
 /** FNV-1a 64-bit hashing. Constants match the iOS implementation for cross-platform parity. */
@@ -61,6 +62,16 @@ object SegmentSignature {
       for (key in node.attributes.keys.sorted()) {
         hash = fnvMixString(hash, key)
         hash = fnvMixString(hash, node.attributes[key])
+      }
+    }
+
+    node.imageSource?.let { source ->
+      hash = fnvMixString(hash, "image-source")
+      hash = fnvMixLong(hash, source.uri?.length?.toLong() ?: -1)
+      hash = fnvMixString(hash, source.uri)
+      for ((name, value) in mergeImageRequestHeaders(emptyMap(), source.headers).toSortedMap()) {
+        hash = fnvMixString(hash, name)
+        hash = fnvMixString(hash, value)
       }
     }
 

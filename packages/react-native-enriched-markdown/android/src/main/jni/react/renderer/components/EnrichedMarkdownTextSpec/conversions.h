@@ -38,6 +38,20 @@ inline folly::dynamic toDynamic(const EnrichedMarkdownProps &props) {
   serializedProps["allowTrailingMargin"] = props.allowTrailingMargin;
   serializedProps["streamingAnimation"] = props.streamingAnimation;
 
+  serializedProps["enableImageSourceResolution"] = props.enableImageSourceResolution;
+  serializedProps["imageSourcesRevision"] = props.imageSourcesRevision;
+  serializedProps["imageSourcesContinuityStart"] = props.imageSourcesContinuityStart;
+  folly::dynamic imageSources = folly::dynamic::array();
+  for (const auto &source : props.imageSources) {
+    folly::dynamic headers = folly::dynamic::array();
+    for (const auto &header : source.headers) {
+      headers.push_back(folly::dynamic::object("name", header.name)("value", header.value));
+    }
+    imageSources.push_back(folly::dynamic::object("id", source.id)("url", source.url)("anchor", source.anchor)(
+        "uri", source.uri)("headers", std::move(headers))("useDefault", source.useDefault));
+  }
+  serializedProps["imageSources"] = std::move(imageSources);
+  serializedProps["documentRevision"] = props.documentRevision;
   folly::dynamic imageRequestHeaders = folly::dynamic::array();
   for (const auto &header : props.imageRequestHeaders) {
     imageRequestHeaders.push_back(toDynamic(header));
