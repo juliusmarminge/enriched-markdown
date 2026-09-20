@@ -1,4 +1,5 @@
-import { useDocumentAssets } from './useDocumentAssets';
+import { StyleSheet, View } from 'react-native';
+import { useMediaSlots } from './useMediaSlots';
 import { useMemo, useCallback, useRef, useEffect } from 'react';
 import EnrichedMarkdownTextNativeComponent from '../EnrichedMarkdownTextNativeComponent';
 import type { MarkdownStyleInternal } from '../EnrichedMarkdownTextNativeComponent';
@@ -136,6 +137,7 @@ export const EnrichedMarkdownText = ({
   onLinkPress,
   onLinkLongPress,
   onImagePress,
+  renderMedia,
   onDocumentAssets,
   resolveImageSource,
   onTaskListItemPress,
@@ -438,25 +440,47 @@ export const EnrichedMarkdownText = ({
     ...rest,
   };
 
-  const assets = useDocumentAssets(
+  const media = useMediaSlots(
+    markdown,
     JSON.stringify([
-      markdown,
       normalizedMd4cFlags,
       streamingAnimation,
       normalizedStreamingConfig,
       flavor,
+      !!renderMedia,
       !!onDocumentAssets,
       !!resolveImageSource,
     ]),
+    flavor === 'github' ? renderMedia : undefined,
     flavor === 'github' ? onDocumentAssets : undefined,
     flavor === 'github' ? resolveImageSource : undefined
   );
 
   if (flavor === 'github') {
-    return <EnrichedMarkdownNativeComponent {...sharedProps} {...assets} />;
+    if (renderMedia) {
+      return (
+        <View style={containerStyle} onLayout={rest.onLayout}>
+          <EnrichedMarkdownNativeComponent
+            {...sharedProps}
+            {...media.nativeProps}
+            style={mediaStyles.native}
+            onLayout={media.onNativeLayout}
+          />
+          {media.slots}
+        </View>
+      );
+    }
+    return (
+      <EnrichedMarkdownNativeComponent
+        {...sharedProps}
+        {...media.nativeProps}
+      />
+    );
   }
 
   return <EnrichedMarkdownTextNativeComponent {...sharedProps} />;
 };
 
 export default EnrichedMarkdownText;
+
+const mediaStyles = StyleSheet.create({ native: { alignSelf: 'stretch' } });

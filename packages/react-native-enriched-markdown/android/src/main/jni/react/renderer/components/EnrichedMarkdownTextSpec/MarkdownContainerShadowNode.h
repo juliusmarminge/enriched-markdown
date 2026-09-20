@@ -25,7 +25,10 @@ public:
     if (oldProps.enableImageSourceResolution != props.enableImageSourceResolution ||
         oldProps.imageSourcesRevision != props.imageSourcesRevision ||
         oldProps.imageSourcesContinuityStart != props.imageSourcesContinuityStart ||
-        oldProps.imageSources != props.imageSources) {
+        oldProps.imageSources != props.imageSources || oldProps.documentRevision != props.documentRevision ||
+        oldProps.enableMediaSlots != props.enableMediaSlots ||
+        oldProps.mediaOverridesRevision != props.mediaOverridesRevision ||
+        oldProps.mediaOverrides != props.mediaOverrides) {
       dirtyLayout();
     }
   }

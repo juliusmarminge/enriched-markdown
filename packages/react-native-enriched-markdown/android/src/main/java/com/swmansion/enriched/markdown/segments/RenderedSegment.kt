@@ -3,6 +3,7 @@ package com.swmansion.enriched.markdown.segments
 import android.content.Context
 import android.text.Spannable
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
+import com.swmansion.enriched.markdown.media.MediaSlot
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.renderer.BlockquoteTextRenderer
 import com.swmansion.enriched.markdown.renderer.Renderer
@@ -56,6 +57,7 @@ sealed interface RenderedSegment {
   data class Video(
     val node: MarkdownASTNode,
     override val signature: Long,
+    val mediaSlot: MediaSlot? = null,
   ) : RenderedSegment
 }
 
@@ -98,7 +100,7 @@ object MarkdownSegmentRenderer {
 
         is MarkdownSegment.Video -> {
           val signature = SegmentSignature.signatureForNode(segment.node) xor SegmentSignature.VIDEO_KIND_SALT
-          RenderedSegment.Video(segment.node, signature)
+          RenderedSegment.Video(segment.node, signature xor (segment.mediaSlot?.hashCode()?.toLong() ?: 0L), segment.mediaSlot)
         }
       }
     }

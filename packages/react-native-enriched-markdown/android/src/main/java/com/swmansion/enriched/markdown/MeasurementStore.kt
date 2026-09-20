@@ -13,7 +13,11 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.uimanager.PixelUtil
 import com.facebook.yoga.YogaMeasureMode
 import com.facebook.yoga.YogaMeasureOutput
+import com.swmansion.enriched.markdown.media.DocumentAssets
+import com.swmansion.enriched.markdown.media.MediaSlotView
+import com.swmansion.enriched.markdown.media.mediaSlotsForDocument
 import com.swmansion.enriched.markdown.media.parseImageSources
+import com.swmansion.enriched.markdown.media.parseMediaOverrides
 import com.swmansion.enriched.markdown.media.withImageSources
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
@@ -348,6 +352,10 @@ object MeasurementStore {
 
     result = 31 * result + props.getIntOrDefault("numberOfLines", 0)
     result = 31 * result + props.getStringOrDefault("ellipsizeMode", EllipsizeUtils.DEFAULT_MODE).hashCode()
+    result = 31 * result + props.getIntOrDefault("documentRevision", 0)
+    result = 31 * result + props.getIntOrDefault("mediaOverridesRevision", -1)
+    result = 31 * result + props.getBooleanOrDefault("enableMediaSlots", false).hashCode()
+    result = 31 * result + parseMediaOverrides(props.getArrayOrNull("mediaOverrides")).hashCode()
     return result
   }
 
@@ -526,7 +534,19 @@ object MeasurementStore {
           props.getIntOrDefault("imageSourcesContinuityStart", 1),
           parseImageSources(props.getArrayOrNull("imageSources")),
         )
-      val segments = splitASTIntoSegments(sourceAST)
+      val slotsEnabled = props.getBooleanOrDefault("enableMediaSlots", false)
+      val assets = if (slotsEnabled) DocumentAssets.collect(ast) else null
+      val mediaSlots =
+        assets?.let {
+          mediaSlotsForDocument(
+            it,
+            slotsEnabled,
+            props.getIntOrDefault("documentRevision", 0),
+            props.getIntOrDefault("mediaOverridesRevision", -1),
+            parseMediaOverrides(props.getArrayOrNull("mediaOverrides")),
+          )
+        } ?: emptyMap()
+      val segments = splitASTIntoSegments(sourceAST, mediaSlots, assets)
       val renderedSegments = MarkdownSegmentRenderer.render(segments, style, context, null, null)
 
       val mathHeightByIndex = HashMap<Int, Float>()
@@ -614,11 +634,12 @@ object MeasurementStore {
           }
 
           is RenderedSegment.Video -> {
-            totalHeightPx += style.videoStyle.marginTop
-            totalHeightPx += width / style.videoStyle.resolvedAspectRatio
+            totalHeightPx += segment.mediaSlot?.let { MediaSlotView.marginTop(it, style) } ?: style.videoStyle.marginTop
+            totalHeightPx +=
+              segment.mediaSlot?.let { MediaSlotView.heightPx(it, style, width) } ?: (width / style.videoStyle.resolvedAspectRatio)
             maxContentWidthPx = width
             if (includeBottomMargin) {
-              totalHeightPx += style.videoStyle.marginBottom
+              totalHeightPx += segment.mediaSlot?.let { MediaSlotView.marginBottom(it, style) } ?: style.videoStyle.marginBottom
             }
           }
         }

@@ -17,7 +17,7 @@ interface MarkdownAssetDescriptor {
 
 export interface MarkdownMediaAsset extends MarkdownAssetDescriptor {
   kind: 'image' | 'video';
-  /** Whether this occurrence is a standalone native media block. */
+  /** Whether this occurrence supports native block media replacement. */
   eligible: boolean;
 }
 

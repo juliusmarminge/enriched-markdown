@@ -33,6 +33,9 @@ EnrichedMarkdownShadowNode::EnrichedMarkdownShadowNode(const ShadowNode &sourceS
 
   if (ENRMImageSourcesFingerprint(oldProps) != ENRMImageSourcesFingerprint(newProps))
     YGNodeMarkDirty(&yogaNode_);
+  if (ENRMMediaPropsFingerprint(oldProps) != ENRMMediaPropsFingerprint(newProps)) {
+    lastExactMeasurementCounter_ = -1;
+  }
   dirtyLayoutIfNeeded();
 }
 

@@ -111,6 +111,19 @@ Each item has `text`, `onPress({ url })`, and optional `icon`, `visible`, `disab
 ```
 
 Works in CommonMark text and GitHub-flavor text segments, including blockquotes and table cells. The text-selection menu stays controlled by `contextMenuItems` and `selectionMenuConfig`, and block copy menus by `enableBlockContextMenu`. Android, macOS and iOS below 17 ignore this prop; use `onLinkLongPress` there.
+### `renderMedia`
+Optional callback for GitHub flavor on iOS and Android. It receives an eligible `MarkdownMediaAsset` from the accepted native document manifest and returns React content for that occurrence. Standalone root image paragraphs and direct root video blocks support replacement. Inline, list, table, linked, and quote images retain native rendering. Returning null, undefined, or a boolean also keeps native rendering.
+  markdown={markdown}
+  flavor="github"
+  renderMedia={(asset) =>
+    asset.kind === 'image'
+      ? <Image accessibilityLabel={asset.altText}
+          source={{ uri: asset.url }} style={{ width: '100%', height: 180 }} />
+      : null
+  }
+Return content with an intrinsic height at the native block width. Avoid `height: '100%'` at its root. React owns the media's interaction and accessibility. The native placeholder is inaccessible and reserves the measured height; surrounding Markdown retains native layout, selection, copy, and press handling. The native and React accessibility groups are separate, so this API does not promise a merged accessibility reading order.
+Duplicate URLs have independent slots. Ordinary trailing appends retain mounted component state and valid measurements while accepted occurrence identity remains unchanged. Native live and shadow layout reject stale revisions, changed identity, and measurements at an old width. Arbitrary document edits invalidate continuity. Applications may classify a native image occurrence as video inside their callback; `asset.kind` still describes the native AST.
+This API adds no player or source resolver. Existing native media handles unsupported placements and fallback decisions. CommonMark and web do not call `renderMedia`.
 
 ### `onDocumentAssets`
 

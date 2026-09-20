@@ -2,6 +2,7 @@ package com.swmansion.enriched.markdown.media
 
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import java.util.IdentityHashMap
+import kotlin.math.abs
 
 /** Descriptors come from the accepted native AST, including occurrences we cannot override. */
 data class DocumentAsset(
@@ -88,4 +89,50 @@ class DocumentAssets private constructor(
       return DocumentAssets(assets, byNode)
     }
   }
+}
+
+/** Values are DIP. A zero width denotes a provisional height, valid at any width. */
+data class MediaOverride(
+  val id: String,
+  val height: Float,
+  val width: Float,
+  val url: String,
+  val kind: String,
+  val anchor: String,
+) {
+  fun matches(asset: DocumentAsset): Boolean =
+    asset.eligible && id == asset.id && url == asset.url && kind == asset.kind && anchor == asset.anchor
+}
+
+data class MediaSlot(
+  val asset: DocumentAsset,
+  val measuredOverride: MediaOverride?,
+) {
+  fun heightForWidth(
+    width: Float,
+    fallback: Float,
+  ): Float {
+    val value = measuredOverride ?: return fallback
+    return if (value.height.isFinite() && value.height >= 0 &&
+      (value.width == 0f || abs(value.width - width) < 0.5f)
+    ) {
+      value.height
+    } else {
+      fallback
+    }
+  }
+}
+
+fun mediaSlotsForDocument(
+  assets: DocumentAssets,
+  enabled: Boolean,
+  revision: Int,
+  overridesRevision: Int,
+  overrides: List<MediaOverride>,
+): Map<String, MediaSlot> {
+  if (!enabled) return emptyMap()
+  val decisions = overrides.associateBy { it.id }
+  return assets.assets
+    .filter { it.eligible && (overridesRevision != revision || decisions.containsKey(it.id)) }
+    .associate { asset -> asset.id to MediaSlot(asset, decisions[asset.id]?.takeIf { it.matches(asset) }) }
 }

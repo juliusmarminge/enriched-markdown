@@ -9,14 +9,18 @@ import android.util.Log
 import android.view.View
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.uimanager.PixelUtil
 import com.facebook.react.uimanager.StateWrapper
 import com.swmansion.enriched.markdown.accessibility.AccessibilityLabels
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
 import com.swmansion.enriched.markdown.media.DocumentAsset
 import com.swmansion.enriched.markdown.media.DocumentAssets
 import com.swmansion.enriched.markdown.media.ImageSourceDecision
+import com.swmansion.enriched.markdown.media.MediaOverride
+import com.swmansion.enriched.markdown.media.MediaSlotView
 import com.swmansion.enriched.markdown.media.documentAssetsEventData
 import com.swmansion.enriched.markdown.media.emitMediaEvent
+import com.swmansion.enriched.markdown.media.mediaSlotsForDocument
 import com.swmansion.enriched.markdown.media.withImageSources
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
@@ -69,10 +73,14 @@ class EnrichedMarkdown(
   private var imageSourcesContinuityStart = 1
   private var imageSources = emptyList<ImageSourceDecision>()
   private var documentRevision = 0
+  private var mediaOverridesRevision = -1
   private var enableDocumentAssets = false
+  private var enableMediaSlots = false
+  private var mediaOverrides = emptyList<MediaOverride>()
   private var acceptedRevision = -1
   private var acceptedAssets = emptyList<DocumentAsset>()
   private var lastAssetManifest: Pair<Int, List<DocumentAsset>>? = null
+  private var lastMediaFrames: String? = null
 
   fun setEnableImageSourceResolution(value: Boolean) {
     if (enableImageSourceResolution == value) return
@@ -113,10 +121,31 @@ class EnrichedMarkdown(
     renderPending = true
   }
 
+  fun setMediaOverridesRevision(value: Int) {
+    if (mediaOverridesRevision == value) return
+    mediaOverridesRevision = value
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
+    renderPending = true
+  }
+
   fun setEnableDocumentAssets(value: Boolean) {
     if (enableDocumentAssets == value) return
     enableDocumentAssets = value
     lastAssetManifest = null
+    renderPending = true
+  }
+
+  fun setEnableMediaSlots(value: Boolean) {
+    if (enableMediaSlots == value) return
+    enableMediaSlots = value
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
+    renderPending = true
+  }
+
+  fun setMediaOverrides(value: List<MediaOverride>) {
+    if (mediaOverrides == value) return
+    mediaOverrides = value
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
     renderPending = true
   }
 
@@ -459,9 +488,12 @@ class EnrichedMarkdown(
     val sourcesContinuityStart = imageSourcesContinuityStart
     val sources = imageSources
     val revision = documentRevision
+    val assetEventsEnabled = enableDocumentAssets
+    val slotsEnabled = enableMediaSlots
+    val overrideRevision = mediaOverridesRevision
+    val overrides = mediaOverrides
     val flags = md4cFlags
     val gfm = isGFM
-    val assetEventsEnabled = enableDocumentAssets
     val renderId = ++currentRenderId
 
     executor.execute {
@@ -486,9 +518,10 @@ class EnrichedMarkdown(
             return@execute
           }
 
-        val assets = if (assetEventsEnabled) DocumentAssets.collect(ast).assets else emptyList()
+        val assets = if (assetEventsEnabled || slotsEnabled || sourcesEnabled) DocumentAssets.collect(ast) else null
+        val mediaSlots = assets?.let { mediaSlotsForDocument(it, slotsEnabled, revision, overrideRevision, overrides) } ?: emptyMap()
         val sourceAST = withImageSources(ast, sourcesEnabled, revision, sourcesRevision, sourcesContinuityStart, sources)
-        val segments = splitASTIntoSegments(sourceAST)
+        val segments = splitASTIntoSegments(sourceAST, mediaSlots, assets)
         val renderedSegments =
           MarkdownSegmentRenderer.render(
             segments,
@@ -502,9 +535,12 @@ class EnrichedMarkdown(
         postToMain(renderId) {
           if (revision != documentRevision) return@postToMain
           acceptedRevision = revision
-          acceptedAssets = assets
+          acceptedAssets = assets?.assets ?: emptyList()
+          val forceHeight = DirtyFlag.FORCE_HEIGHT in dirtyFlags
           applyRenderedSegments(renderedSegments, hasPendingCodeBlock)
-          if (assetEventsEnabled) publishAssets(revision, assets)
+          if (assetEventsEnabled) publishAssets(revision, acceptedAssets)
+          publishMediaFrames()
+          if (forceHeight) onImageLayoutChanged()
         }
       } catch (e: Exception) {
         Log.e(TAG, "Render failed", e)
@@ -591,7 +627,7 @@ class EnrichedMarkdown(
         is RenderedSegment.Math -> isMathContainerView(view)
         is RenderedSegment.CodeBlock -> view is CodeBlockContainerView
         is RenderedSegment.Blockquote -> view is BlockquoteContainerView
-        is RenderedSegment.Video -> isVideoContainerView(view)
+        is RenderedSegment.Video -> if (segment.mediaSlot != null) view is MediaSlotView else isVideoContainerView(view)
       }
 
     override fun createView(segment: RenderedSegment): View {
@@ -727,6 +763,7 @@ class EnrichedMarkdown(
   ) {
     layoutSegments()
     if (acceptedRevision == documentRevision) publishAssets(acceptedRevision, acceptedAssets)
+    publishMediaFrames()
   }
 
   fun onImageLayoutChanged() {
@@ -747,6 +784,8 @@ class EnrichedMarkdown(
     acceptedAssets = emptyList()
     applyRenderedSegments(emptyList(), false)
     publishAssets(revision, emptyList())
+    publishMediaFrames()
+    onImageLayoutChanged()
   }
 
   private fun publishAssets(
@@ -759,6 +798,35 @@ class EnrichedMarkdown(
     if (emitMediaEvent(this, "onDocumentAssets", documentAssetsEventData(revision, assets))) {
       lastAssetManifest = manifest
     }
+  }
+
+  private fun publishMediaFrames() {
+    if (acceptedRevision != documentRevision || width <= 0) return
+    val slots = segmentViews.filterIsInstance<MediaSlotView>()
+    val key =
+      "$acceptedRevision:" +
+        slots.joinToString(";") {
+          "${it.slot.asset.id},${it.left},${it.top},${it.width},${it.height}"
+        }
+    if (lastMediaFrames == key) return
+    val frames = Arguments.createArray()
+    slots.forEach { view ->
+      frames.pushMap(
+        Arguments.createMap().apply {
+          putString("id", view.slot.asset.id)
+          putDouble("x", PixelUtil.toDIPFromPixel(view.left.toFloat()).toDouble())
+          putDouble("y", PixelUtil.toDIPFromPixel(view.top.toFloat()).toDouble())
+          putDouble("width", PixelUtil.toDIPFromPixel(view.width.toFloat()).toDouble())
+          putDouble("height", PixelUtil.toDIPFromPixel(view.height.toFloat()).toDouble())
+        },
+      )
+    }
+    val data =
+      Arguments.createMap().apply {
+        putInt("revision", acceptedRevision)
+        putArray("frames", frames)
+      }
+    if (emitMediaEvent(this, "onMediaLayout", data)) lastMediaFrames = key
   }
 
   fun cleanup() {

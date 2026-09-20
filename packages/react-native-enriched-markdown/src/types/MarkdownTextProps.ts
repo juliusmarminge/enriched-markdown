@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type {
   DocumentAssetsEvent,
   MarkdownMediaAsset,
@@ -151,8 +152,15 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * @platform ios, android, web
    */
   markdown: string;
-  /** Native parsed media and link occurrences, including inline/list/table placements.
-   * Receives the payload directly, like onImagePress. GitHub flavor on iOS/Android.
+  /**
+   * Render an eligible native media occurrence as a React sibling. Returning
+   * null keeps native rendering. Supported for top-level standalone images and
+   * videos in GitHub flavor on iOS and Android. React content owns interaction
+   * and accessibility; its intrinsic height reserves native layout space.
+   */
+  renderMedia?: (asset: MarkdownMediaAsset) => ReactNode | null;
+  /** Native parsed media and link occurrences, including unsupported placements.
+   * Supported in GitHub flavor on iOS and Android.
    */
   onDocumentAssets?: (event: DocumentAssetsEvent) => void;
   /**
