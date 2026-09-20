@@ -1,5 +1,7 @@
 #import "BaselineShiftTextAttributes.h"
 
+NSString *const ENRMScriptAttributeName = @"ENRMScript";
+
 void ENRMApplyBaselineShift(NSMutableAttributedString *output, NSRange range, CGFloat fontScale,
                             CGFloat baselineOffsetScale)
 {

@@ -245,7 +245,12 @@ export default function PlaygroundScreen() {
               markdownStyle={MARKDOWN_STYLE}
               flavor="github"
               spoilerOverlay="solid"
-              md4cFlags={{ underline: underlineEnabled, highlight: true }}
+              md4cFlags={{
+                underline: underlineEnabled,
+                highlight: true,
+                superscript: true,
+                subscript: true,
+              }}
               onLinkPress={({ url }) =>
                 Alert.alert('Link', url, [{ text: 'OK' }])
               }

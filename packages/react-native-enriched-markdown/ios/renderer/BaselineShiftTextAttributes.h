@@ -2,5 +2,7 @@
 #import "ENRMUIKit.h"
 #import <Foundation/Foundation.h>
 
+extern NSString *const ENRMScriptAttributeName;
+
 void ENRMApplyBaselineShift(NSMutableAttributedString *output, NSRange range, CGFloat fontScale,
                             CGFloat baselineOffsetScale);
