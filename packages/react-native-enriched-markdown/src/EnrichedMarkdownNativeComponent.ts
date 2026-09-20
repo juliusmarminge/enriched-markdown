@@ -429,6 +429,15 @@ interface StreamingConfigInternal {
   codeBlockMode: string;
 }
 
+// Same transport as EnrichedMarkdownTextInput.linkRegex. Kept local for codegen.
+interface TextLinkNativeRegex {
+  pattern: string;
+  caseInsensitive: boolean;
+  dotAll: boolean;
+  isDisabled: boolean;
+  isDefault: boolean;
+}
+
 interface LinkContextMenuItemConfig {
   text: string;
   icon: string;
@@ -522,6 +531,8 @@ export interface NativeProps extends ViewProps {
   onDocumentAssets?: CodegenTypes.DirectEventHandler<DocumentAssetsEventInternal>;
   onMediaLayout?: CodegenTypes.DirectEventHandler<MediaLayoutEventInternal>;
 
+  linkRegex?: Readonly<TextLinkNativeRegex>;
+  inlineCodeLinkRegex?: Readonly<TextLinkNativeRegex>;
   /**
    * Markdown content to render.
    */

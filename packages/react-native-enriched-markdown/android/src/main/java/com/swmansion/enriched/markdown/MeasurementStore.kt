@@ -13,6 +13,7 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.uimanager.PixelUtil
 import com.facebook.yoga.YogaMeasureMode
 import com.facebook.yoga.YogaMeasureOutput
+import com.swmansion.enriched.markdown.input.autolink.LinkRegexConfig
 import com.swmansion.enriched.markdown.media.DocumentAssets
 import com.swmansion.enriched.markdown.media.MediaSlotView
 import com.swmansion.enriched.markdown.media.mediaSlotsForDocument
@@ -21,6 +22,7 @@ import com.swmansion.enriched.markdown.media.parseMediaOverrides
 import com.swmansion.enriched.markdown.media.withImageSources
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
+import com.swmansion.enriched.markdown.parser.parseTextLinkRegex
 import com.swmansion.enriched.markdown.renderer.Renderer
 import com.swmansion.enriched.markdown.segments.BlockquoteContainerView
 import com.swmansion.enriched.markdown.segments.CodeBlockContainerView
@@ -338,6 +340,8 @@ object MeasurementStore {
     var result = markdown.hashCode()
     result = 31 * result + (styleMap?.hashCode() ?: 0)
     result = 31 * result + (md4cFlagsMap?.hashCode() ?: 0)
+    result = 31 * result + (parseTextLinkRegex(props.getMapOrNull("linkRegex"))?.hashCode() ?: 0)
+    result = 31 * result + (parseTextLinkRegex(props.getMapOrNull("inlineCodeLinkRegex"))?.hashCode() ?: 0)
     result = 31 * result + fontScale.toBits()
     result = 31 * result + allowFontScaling.hashCode()
     result = 31 * result + maxFontSizeMultiplier.toBits()
@@ -427,6 +431,8 @@ object MeasurementStore {
         maxFontSizeMultiplier,
         imageRequestHeaders,
         parseLinkPillContent(props.getArrayOrNull("linkPillContent")),
+        parseTextLinkRegex(props.getMapOrNull("linkRegex")),
+        parseTextLinkRegex(props.getMapOrNull("inlineCodeLinkRegex")),
       )
     spannable?.replaceMathSpansWithPlaceholders(context)
     val textToMeasure = spannable ?: markdown
@@ -519,7 +525,13 @@ object MeasurementStore {
 
     return try {
       val ast =
-        Parser.shared.parseMarkdown(markdown, md4cFlags, isGFM)
+        Parser.shared.parseMarkdown(
+          markdown,
+          md4cFlags,
+          isGFM,
+          parseTextLinkRegex(props.getMapOrNull("linkRegex")),
+          parseTextLinkRegex(props.getMapOrNull("inlineCodeLinkRegex")),
+        )
           ?: return YogaMeasureOutput.make(PixelUtil.toDIPFromPixel(width), 0f)
 
       val style = StyleConfig(styleMap, context, allowFontScaling, maxFontSizeMultiplier)
@@ -700,11 +712,13 @@ object MeasurementStore {
     maxFontSizeMultiplier: Float,
     imageRequestHeaders: Map<String, String> = emptyMap(),
     linkPillContent: Map<String, LinkPillContent> = emptyMap(),
+    linkRegex: LinkRegexConfig? = null,
+    inlineCodeLinkRegex: LinkRegexConfig? = null,
   ): Spannable? {
     if (styleMap == null) return null
 
     return try {
-      val ast = Parser.shared.parseMarkdown(markdown, md4cFlags, isGFM) ?: return null
+      val ast = Parser.shared.parseMarkdown(markdown, md4cFlags, isGFM, linkRegex, inlineCodeLinkRegex) ?: return null
       val style = StyleConfig(styleMap, context, allowFontScaling, maxFontSizeMultiplier)
       style.imageRequestHeaders = imageRequestHeaders
       style.linkPillContent = linkPillContent

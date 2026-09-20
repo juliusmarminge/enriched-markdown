@@ -14,6 +14,7 @@
 #import "ENRMSpoilerTapUtils.h"
 #import "ENRMTailFadeInAnimator.h"
 #import "ENRMTextInteractionUtils.h"
+#import "ENRMTextLinkRecognizer.h"
 #import "ENRMTextRenderer.h"
 #import "ENRMTextViewSetup.h"
 #import "ENRMUIKit.h"
@@ -86,6 +87,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
   StyleConfig *_config;
   ENRMMd4cFlags *_md4cFlags;
   BOOL _isGFM;
+  ENRMLinkRegexConfig *_linkRegex;
+  ENRMLinkRegexConfig *_inlineCodeLinkRegex;
 
   ENRMAsyncRenderCoordinator *_renderCoordinator;
 
@@ -299,6 +302,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
     };
     _md4cFlags = [EnrichedMarkdownText flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
+    _linkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRegex);
+    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->inlineCodeLinkRegex);
 
     _renderCoordinator =
         [[ENRMAsyncRenderCoordinator alloc] initWithQueueLabel:"com.swmansion.enriched.markdown.render"];
@@ -441,6 +446,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
   ENRMMarkdownParser *parser = _parser;
   ENRMMd4cFlags *md4cFlags = [_md4cFlags copy];
   BOOL isGFM = _isGFM;
+  ENRMLinkRegexConfig *linkRegex = _linkRegex;
+  ENRMLinkRegexConfig *inlineCodeLinkRegex = _inlineCodeLinkRegex;
 
   BOOL allowFontScaling = _fontScaleObserver.allowFontScaling;
   CGFloat maxFontSizeMultiplier = _maxFontSizeMultiplier;
@@ -453,7 +460,11 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
 
   [_renderCoordinator
       scheduleRender:^BOOL {
-        MarkdownASTNode *ast = [parser parseMarkdown:markdownString flags:md4cFlags isGFM:isGFM];
+        MarkdownASTNode *ast = [parser parseMarkdown:markdownString
+                                               flags:md4cFlags
+                                               isGFM:isGFM
+                                           linkRegex:linkRegex
+                                 inlineCodeLinkRegex:inlineCodeLinkRegex];
         if (!ast)
           return NO;
 
@@ -473,7 +484,11 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
 
 - (NSMutableAttributedString *)parseAndRenderMarkdown:(NSString *)markdownString
 {
-  MarkdownASTNode *ast = [_parser parseMarkdown:markdownString flags:_md4cFlags isGFM:_isGFM];
+  MarkdownASTNode *ast = [_parser parseMarkdown:markdownString
+                                          flags:_md4cFlags
+                                          isGFM:_isGFM
+                                      linkRegex:_linkRegex
+                            inlineCodeLinkRegex:_inlineCodeLinkRegex];
   if (!ast) {
     return nil;
   }
@@ -678,6 +693,19 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
     _dirtyFlags |= ENRMDirtyRender;
   }
 
+  ENRMLinkRegexConfig *linkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRegex);
+  ENRMLinkRegexConfig *inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.inlineCodeLinkRegex);
+  if ((_linkRegex || linkRegex) && ![_linkRegex isEqualToConfig:linkRegex]) {
+    _linkRegex = linkRegex;
+    _dirtyFlags |= ENRMDirtyRender;
+    _forceHeightUpdateOnNextRender = YES;
+  }
+  if ((_inlineCodeLinkRegex || inlineCodeLinkRegex) && ![_inlineCodeLinkRegex isEqualToConfig:inlineCodeLinkRegex]) {
+    _inlineCodeLinkRegex = inlineCodeLinkRegex;
+    _dirtyFlags |= ENRMDirtyRender;
+    _forceHeightUpdateOnNextRender = YES;
+  }
+
   if (newViewProps.md4cFlags.underline != oldViewProps.md4cFlags.underline ||
       newViewProps.md4cFlags.superscript != oldViewProps.md4cFlags.superscript ||
       newViewProps.md4cFlags.subscript != oldViewProps.md4cFlags.subscript ||
@@ -839,6 +867,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
   _config = nil;
   _md4cFlags = [EnrichedMarkdownText flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
+  _linkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRegex);
+  _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->inlineCodeLinkRegex);
   _maxFontSizeMultiplier = 0;
   _lastElementMarginBottom = 0;
   _allowTrailingMargin = NO;

@@ -62,6 +62,7 @@ const INLINE_IMAGE_URI = Image.resolveAssetSource(
 
 const DEFAULT_INPUT_LINE_HEIGHT = undefined;
 const TALL_INPUT_LINE_HEIGHT = 36;
+const REFERENCE_REGEX = /ref:[a-z]+/;
 
 export default function PlaygroundScreen() {
   const headerHeight = useHeaderHeight();
@@ -76,6 +77,7 @@ export default function PlaygroundScreen() {
   const [inputLineHeight, setInputLineHeight] = useState<number | undefined>(
     DEFAULT_INPUT_LINE_HEIGHT
   );
+  const [recognitionMode, setRecognitionMode] = useState(0);
   const handleGetMarkdown = useCallback(async () => {
     const md = await inputRef.current?.getMarkdown();
     Alert.alert('Markdown', md ?? '(empty)', [{ text: 'OK' }]);
@@ -268,12 +270,23 @@ export default function PlaygroundScreen() {
         <View style={styles.divider} />
 
         <Text style={styles.previewLabel}>Preview</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => setRecognitionMode((mode) => (mode + 1) % 3)}
+          testID="recognize-links-button"
+        >
+          <Text style={styles.buttonText}>
+            Reference links: {['Off', 'CommonMark', 'GitHub'][recognitionMode]}
+          </Text>
+        </TouchableOpacity>
         <View style={styles.previewContainer} testID="preview-container">
           {markdown.length > 0 ? (
             <EnrichedMarkdownText
               markdown={markdown}
               markdownStyle={MARKDOWN_STYLE}
-              flavor="github"
+              flavor={recognitionMode === 1 ? 'commonmark' : 'github'}
+              linkRegex={recognitionMode ? REFERENCE_REGEX : null}
+              inlineCodeLinkRegex={recognitionMode ? REFERENCE_REGEX : null}
               spoilerOverlay="solid"
               md4cFlags={{
                 underline: underlineEnabled,

@@ -4,6 +4,7 @@ import { useMemo, useCallback, useRef, useEffect } from 'react';
 import EnrichedMarkdownTextNativeComponent from '../EnrichedMarkdownTextNativeComponent';
 import type { MarkdownStyleInternal } from '../EnrichedMarkdownTextNativeComponent';
 import EnrichedMarkdownNativeComponent from '../EnrichedMarkdownNativeComponent';
+import { toNativeTextLinkRegexConfig } from '../utils/regexParser';
 import { normalizeMarkdownStyle } from '../normalizeMarkdownStyle';
 import {
   isLinkPillContentEqual,
@@ -132,6 +133,8 @@ const defaultMd4cFlags: Md4cFlags = {
 
 export const EnrichedMarkdownText = ({
   markdown,
+  linkRegex: _linkRegex,
+  inlineCodeLinkRegex: _inlineCodeLinkRegex,
   markdownStyle = {},
   containerStyle,
   onLinkPress,
@@ -171,6 +174,14 @@ export const EnrichedMarkdownText = ({
   ellipsizeMode,
   ...rest
 }: EnrichedMarkdownTextProps) => {
+  const linkRegex = useMemo(
+    () => toNativeTextLinkRegexConfig(_linkRegex),
+    [_linkRegex]
+  );
+  const inlineCodeLinkRegex = useMemo(
+    () => toNativeTextLinkRegexConfig(_inlineCodeLinkRegex),
+    [_inlineCodeLinkRegex]
+  );
   const normalizedStyleRef = useRef<MarkdownStyleInternal | null>(null);
   const normalized = normalizeMarkdownStyle(markdownStyle);
   // normalizeMarkdownStyle returns cached objects for structurally equal inputs,
@@ -399,6 +410,8 @@ export const EnrichedMarkdownText = ({
 
   const sharedProps = {
     markdown,
+    linkRegex,
+    inlineCodeLinkRegex,
     markdownStyle: normalizedStyle,
     onLinkPress: handleLinkPress,
     onLinkLongPress: handleLinkLongPress,
