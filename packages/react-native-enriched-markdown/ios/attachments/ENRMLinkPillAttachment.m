@@ -165,22 +165,27 @@ static char ENRMPillGlyphTailKey;
   // during generation can recurse into this delegate before those glyphs exist.
   tail.glyphEnd = NSMaxRange(glyphRange);
   tail.characterIndex = indexes[count - 1];
-  NSMutableData *glyphData = [NSMutableData dataWithBytes:glyphs length:count * sizeof(CGGlyph)];
-  NSMutableData *propertyData = [NSMutableData dataWithBytes:properties length:count * sizeof(NSGlyphProperty)];
-  CGGlyph *replacement = glyphData.mutableBytes;
-  NSGlyphProperty *replacementProperties = propertyData.mutableBytes;
-  BOOL changed = NO;
+  NSMutableData *glyphData = nil;
+  NSMutableData *propertyData = nil;
+  CGGlyph *replacement = NULL;
+  NSGlyphProperty *replacementProperties = NULL;
   for (NSUInteger i = 0; i < count; i++) {
+    id attachment = [manager.textStorage attribute:NSAttachmentAttributeName atIndex:indexes[i] effectiveRange:NULL];
+    if (![attachment isKindOfClass:ENRMLinkPillAttachment.class])
+      continue;
     NSRange range;
     // Attribute runs may split at every source character after UIKit fixes fonts/colors.
     // The pill starts at the longest range of the attachment alone, not the current run.
-    id attachment = [manager.textStorage attribute:NSAttachmentAttributeName
-                                           atIndex:indexes[i]
-                             longestEffectiveRange:&range
-                                           inRange:NSMakeRange(0, manager.textStorage.length)];
-    if (![attachment isKindOfClass:ENRMLinkPillAttachment.class])
-      continue;
-    changed = YES;
+    [manager.textStorage attribute:NSAttachmentAttributeName
+                           atIndex:indexes[i]
+             longestEffectiveRange:&range
+                           inRange:NSMakeRange(0, manager.textStorage.length)];
+    if (!glyphData) {
+      glyphData = [NSMutableData dataWithBytes:glyphs length:count * sizeof(CGGlyph)];
+      propertyData = [NSMutableData dataWithBytes:properties length:count * sizeof(NSGlyphProperty)];
+      replacement = glyphData.mutableBytes;
+      replacementProperties = propertyData.mutableBytes;
+    }
     // A character can have multiple glyphs, even across font/callback boundaries.
     BOOL startsAttachment = indexes[i] == range.location;
     BOOL continuesCharacter = startsAttachment && (i > 0 ? indexes[i - 1] == indexes[i] : continuesFirstCharacter);
@@ -193,7 +198,7 @@ static char ENRMPillGlyphTailKey;
       replacementProperties[i] = NSGlyphPropertyNull;
     }
   }
-  if (!changed)
+  if (!glyphData)
     return 0;
   [manager setGlyphs:replacement
             properties:replacementProperties
@@ -207,12 +212,15 @@ static char ENRMPillGlyphTailKey;
 {
   if (index >= manager.textStorage.length)
     return YES;
+  id attachment = [manager.textStorage attribute:NSAttachmentAttributeName atIndex:index effectiveRange:NULL];
+  if (![attachment isKindOfClass:ENRMLinkPillAttachment.class])
+    return YES;
   NSRange range;
-  id attachment = [manager.textStorage attribute:NSAttachmentAttributeName
-                                         atIndex:index
-                           longestEffectiveRange:&range
-                                         inRange:NSMakeRange(0, manager.textStorage.length)];
-  return ![attachment isKindOfClass:ENRMLinkPillAttachment.class] || index == range.location;
+  [manager.textStorage attribute:NSAttachmentAttributeName
+                         atIndex:index
+           longestEffectiveRange:&range
+                         inRange:NSMakeRange(0, manager.textStorage.length)];
+  return index == range.location;
 }
 @end
 

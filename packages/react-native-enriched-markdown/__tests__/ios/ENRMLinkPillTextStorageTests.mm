@@ -37,6 +37,7 @@
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *writtenGlyphs;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *writtenProperties;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *sourceIndexes;
+@property (nonatomic) NSUInteger surroundingGlyphReads;
 @end
 
 @implementation ENRMPillGlyphRecorder
@@ -65,8 +66,24 @@
 }
 - (NSUInteger)characterIndexForGlyphAtIndex:(NSUInteger)index
 {
+  self.surroundingGlyphReads++;
   NSNumber *source = self.sourceIndexes[@(index)];
   return source ? source.unsignedIntegerValue : NSNotFound;
+}
+@end
+
+@interface ENRMPillQueryStorage : ENRMLinkPillTextStorage
+@property (nonatomic) NSUInteger longestAttachmentQueries;
+@end
+@implementation ENRMPillQueryStorage
+- (id)attribute:(NSAttributedStringKey)name
+                  atIndex:(NSUInteger)index
+    longestEffectiveRange:(NSRangePointer)range
+                  inRange:(NSRange)limit
+{
+  if ([name isEqualToString:NSAttachmentAttributeName])
+    self.longestAttachmentQueries++;
+  return [super attribute:name atIndex:index longestEffectiveRange:range inRange:limit];
 }
 @end
 
@@ -298,7 +315,42 @@
   }
   XCTAssertEqualObjects(storage.string, label.string);
   XCTAssertFalse([storage.string containsString:@"\uFFFC"]);
+  XCTAssertEqual(manager.surroundingGlyphReads, 0u);
   [storage removeLayoutManager:manager];
+}
+
+- (void)testOrdinaryAndUnrelatedAttachmentRunsAvoidLongestRangeQueriesAndGlyphReplacement
+{
+  for (NSNumber *hasOtherAttachment in @[ @NO, @YES ]) {
+    NSMutableAttributedString *text = [[NSMutableAttributedString alloc]
+        initWithString:hasOtherAttachment.boolValue ? @"\uFFFC ordinary text" : @"ordinary text"];
+    [self fragmentLabelAttributes:text];
+    if (hasOtherAttachment.boolValue)
+      [text addAttribute:NSAttachmentAttributeName value:[NSTextAttachment new] range:NSMakeRange(0, 1)];
+    ENRMPillQueryStorage *storage = [[ENRMPillQueryStorage alloc] initWithAttributedString:text];
+    ENRMPillGlyphRecorder *manager = [ENRMPillGlyphRecorder new];
+    [storage addLayoutManager:manager];
+    NSAttributedString *before = [storage copy];
+    storage.longestAttachmentQueries = 0;
+    CGGlyph glyphs[] = {1, 2, 3, 4};
+    NSGlyphProperty properties[] = {0, 0, 0, 0};
+    NSUInteger indexes[] = {0, 1, 2, 3};
+    XCTAssertEqual([ENRMLinkPillLayoutDelegate.shared layoutManager:manager
+                                               shouldGenerateGlyphs:glyphs
+                                                         properties:properties
+                                                   characterIndexes:indexes
+                                                               font:[UIFont systemFontOfSize:16]
+                                                      forGlyphRange:NSMakeRange(0, 4)],
+                   0u);
+    for (NSUInteger i = 0; i < 4; i++)
+      XCTAssertTrue([ENRMLinkPillLayoutDelegate.shared layoutManager:manager
+                         shouldBreakLineByWordBeforeCharacterAtIndex:i]);
+    XCTAssertEqual(storage.longestAttachmentQueries, 0u);
+    XCTAssertEqual(manager.writtenGlyphs.count, 0u);
+    XCTAssertEqual(manager.surroundingGlyphReads, 0u);
+    XCTAssertTrue([storage isEqualToAttributedString:before]);
+    [storage removeLayoutManager:manager];
+  }
 }
 
 - (void)testVisibleTextViewRetainsCustomStorageAcrossStreamingReplacements
