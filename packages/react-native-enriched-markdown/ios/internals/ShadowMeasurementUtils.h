@@ -59,7 +59,8 @@ static inline Size ENRMClampMeasuredSize(CGSize size, const LayoutConstraints &l
 template <typename PropsT>
 static inline bool ENRMPropsNeedExactStreamingMeasurement(const PropsT &oldProps, const PropsT &newProps)
 {
-  return oldProps.streamingAnimation != newProps.streamingAnimation ||
+  return ENRMImageSourcesFingerprint(oldProps) != ENRMImageSourcesFingerprint(newProps) ||
+         oldProps.streamingAnimation != newProps.streamingAnimation ||
          oldProps.allowFontScaling != newProps.allowFontScaling ||
          oldProps.maxFontSizeMultiplier != newProps.maxFontSizeMultiplier ||
          oldProps.allowTrailingMargin != newProps.allowTrailingMargin ||

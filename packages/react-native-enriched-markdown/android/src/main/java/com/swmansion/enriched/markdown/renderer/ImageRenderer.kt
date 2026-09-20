@@ -29,6 +29,7 @@ class ImageRenderer : NodeRenderer {
         imageUrl = imageUrl,
         isInline = isInline,
         altText = altText,
+        imageSource = node.imageSource,
       )
 
     builder.setSpan(

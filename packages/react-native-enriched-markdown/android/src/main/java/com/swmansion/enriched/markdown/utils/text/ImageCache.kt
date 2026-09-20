@@ -3,6 +3,7 @@ package com.swmansion.enriched.markdown.utils.text
 import android.graphics.Bitmap
 import android.util.LruCache
 import java.security.MessageDigest
+import java.util.Locale
 
 object ImageCache {
   private const val ORIGINAL_CACHE_SIZE = 20 * 1024 * 1024
@@ -23,7 +24,9 @@ object ImageCache {
   ): String {
     if (headers.isEmpty()) return url
     val joined =
-      headers.entries
+      headers
+        .mapKeys { it.key.lowercase(Locale.ROOT) }
+        .entries
         .sortedBy { it.key }
         .joinToString(separator = "\n") { "${it.key}:${it.value}" }
     val digest = MessageDigest.getInstance("SHA-256").digest(joined.toByteArray())

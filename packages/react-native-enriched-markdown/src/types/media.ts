@@ -28,6 +28,11 @@ export interface MarkdownLinkAsset extends MarkdownAssetDescriptor {
 
 export type MarkdownDocumentAsset = MarkdownMediaAsset | MarkdownLinkAsset;
 
+export interface MarkdownImageSource {
+  uri: string;
+  headers?: Record<string, string>;
+}
+
 export interface DocumentAssetsEvent {
   revision: number;
   assets: MarkdownDocumentAsset[];

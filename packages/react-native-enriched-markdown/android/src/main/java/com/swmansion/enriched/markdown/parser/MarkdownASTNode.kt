@@ -1,11 +1,22 @@
 package com.swmansion.enriched.markdown.parser
 
+import com.swmansion.enriched.markdown.media.ImageSourceTransport
+
 data class MarkdownASTNode(
   val type: NodeType,
   val content: String = "",
   val attributes: Map<String, String> = emptyMap(),
   val children: List<MarkdownASTNode> = emptyList(),
+  val imageSource: ImageSourceTransport? = null,
 ) {
+  // Preserve the exact four-argument constructor used by the JNI parser.
+  constructor(
+    type: NodeType,
+    content: String,
+    attributes: Map<String, String>,
+    children: List<MarkdownASTNode>,
+  ) : this(type, content, attributes, children, null)
+
   enum class NodeType {
     Document,
     Paragraph,

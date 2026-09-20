@@ -52,6 +52,7 @@ export type {
 export type {
   MarkdownAssetPlacement,
   MarkdownMediaAsset,
+  MarkdownImageSource,
   MarkdownLinkAsset,
   MarkdownDocumentAsset,
   DocumentAssetsEvent,

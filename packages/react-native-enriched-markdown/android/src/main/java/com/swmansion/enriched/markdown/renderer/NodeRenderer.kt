@@ -5,6 +5,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.MetricAffectingSpan
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
+import com.swmansion.enriched.markdown.media.ImageSourceTransport
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.spans.ImageSpan
 import com.swmansion.enriched.markdown.styles.StyleConfig
@@ -100,6 +101,7 @@ class RendererFactory(
     imageUrl: String,
     isInline: Boolean,
     altText: String,
+    imageSource: ImageSourceTransport? = null,
   ): ImageSpan =
     ImageSpan(
       context = context,
@@ -107,6 +109,7 @@ class RendererFactory(
       styleConfig = config.style,
       isInline = isInline,
       altText = altText,
+      imageSource = imageSource,
     )
 
   private val textRenderer = TextRenderer()
