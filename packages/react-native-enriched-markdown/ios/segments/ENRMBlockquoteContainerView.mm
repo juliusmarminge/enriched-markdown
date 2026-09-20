@@ -2,6 +2,7 @@
 #import "ENRMAdmonitionIcons.h"
 #import "ENRMCodeBlockContainerView.h"
 #import "ENRMFeatureFlags.h"
+#import "ENRMMediaSlotView.h"
 #import "ENRMSegmentHeightMeasurer.h"
 #import "ENRMTextInteractionUtils.h"
 #import "ENRMTextRenderer.h"
@@ -312,6 +313,18 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
                           }]];
 #endif
 
+  [handlers addObject:[ENRMSegmentViewHandler handlerWithKind:ENRMSegmentKindMediaSlot
+                          matchesView:^BOOL(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            return [view isKindOfClass:[ENRMMediaSlotView class]];
+                          }
+                          createView:^RCTUIView *(ENRMRenderedSegment *segment) {
+                            ENRMMediaSlotView *view = [[ENRMMediaSlotView alloc] init];
+                            view.mediaNode = segment.mediaSlotNode;
+                            return view;
+                          }
+                          updateView:^(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            ((ENRMMediaSlotView *)view).mediaNode = segment.mediaSlotNode;
+                          }]];
   return [[ENRMSegmentViewRegistry alloc] initWithHandlers:handlers];
 }
 

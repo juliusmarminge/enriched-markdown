@@ -1,7 +1,9 @@
 #import "ENRMContainerNodeView.h"
 #import "ENRMBlockquoteContainerView.h"
 #import "ENRMCodeBlockContainerView.h"
+#import "ENRMDocumentAssets.h"
 #import "ENRMFeatureFlags.h"
+#import "ENRMMediaSlotView.h"
 #import "EnrichedMarkdownInternalText.h"
 #import "SegmentReconciler.h"
 #import "TableContainerView.h"
@@ -66,6 +68,11 @@
 
 - (CGFloat)marginTopForView:(RCTUIView *)view
 {
+  if ([view isKindOfClass:[ENRMMediaSlotView class]]) {
+    MarkdownASTNode *node = ((ENRMMediaSlotView *)view).mediaNode;
+    return [node.attributes[@"_enrmMediaKind"] isEqualToString:@"video"] ? _config.videoMarginTop
+                                                                         : _config.imageMarginTop;
+  }
   if ([view isKindOfClass:[TableContainerView class]]) {
     return _config.tableMarginTop;
   }
@@ -92,6 +99,11 @@
 
 - (CGFloat)marginBottomForView:(RCTUIView *)view
 {
+  if ([view isKindOfClass:[ENRMMediaSlotView class]]) {
+    MarkdownASTNode *node = ((ENRMMediaSlotView *)view).mediaNode;
+    return [node.attributes[@"_enrmMediaKind"] isEqualToString:@"video"] ? _config.videoMarginBottom
+                                                                         : _config.imageMarginBottom;
+  }
   if ([view isKindOfClass:[TableContainerView class]]) {
     return _config.tableMarginBottom;
   }
@@ -116,6 +128,8 @@
 
 - (CGFloat)heightForView:(RCTUIView *)view atWidth:(CGFloat)width shouldAddBottomMargin:(BOOL)shouldAddBottomMargin
 {
+  if ([view isKindOfClass:[ENRMMediaSlotView class]])
+    return ENRMMediaSlotHeight(((ENRMMediaSlotView *)view).mediaNode, width, _config);
   if ([view isKindOfClass:[EnrichedMarkdownInternalText class]]) {
     EnrichedMarkdownInternalText *textView = (EnrichedMarkdownInternalText *)view;
     textView.allowTrailingMargin = shouldAddBottomMargin;
@@ -176,6 +190,32 @@
 
   yOffset += _contentInsets.bottom;
   return CGSizeMake(outerWidth, yOffset);
+}
+
+- (void)appendMediaFrames:(NSMutableArray<NSDictionary *> *)frames relativeToView:(RCTUIView *)rootView
+{
+  // The layout helper leaves child frames untouched when no inner width exists.
+  // Never publish those rectangles from the previous positive-width layout.
+  if (self.bounds.size.width - _contentInsets.left - _contentInsets.right <= 0)
+    return;
+  // Apply nested frames now rather than relying on UIKit's later subview pass:
+  // the root publishes this batch immediately after its own segment layout.
+  [self layoutChildrenForOuterWidth:self.bounds.size.width applyFrames:YES];
+  for (RCTUIView *view in _segmentViews) {
+    if ([view isKindOfClass:[ENRMMediaSlotView class]]) {
+      MarkdownASTNode *node = ((ENRMMediaSlotView *)view).mediaNode;
+      CGRect rect = [rootView convertRect:view.bounds fromView:view];
+      [frames addObject:@{
+        @"id" : node.attributes[@"_enrmMediaSlot"],
+        @"x" : @(rect.origin.x),
+        @"y" : @(rect.origin.y),
+        @"width" : @(rect.size.width),
+        @"height" : @(rect.size.height)
+      }];
+    } else if ([view isKindOfClass:[ENRMContainerNodeView class]]) {
+      [(ENRMContainerNodeView *)view appendMediaFrames:frames relativeToView:rootView];
+    }
+  }
 }
 
 - (CGFloat)computeContentHeightForWidth:(CGFloat)contentWidth

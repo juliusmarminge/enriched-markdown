@@ -480,15 +480,6 @@ static char kENRMSegmentFadeAnimatorKey;
       yOffset += video ? _config.videoMarginTop : _config.imageMarginTop;
       segmentHeight = ENRMMediaSlotHeight(node, width, _config);
       maxContentWidth = width;
-      if (applyFrames) {
-        [mediaFrames addObject:@{
-          @"id" : node.attributes[@"_enrmMediaSlot"],
-          @"x" : @0,
-          @"y" : @(yOffset),
-          @"width" : @(width),
-          @"height" : @(segmentHeight)
-        }];
-      }
     } else if ([segment isKindOfClass:[EnrichedMarkdownInternalText class]]) {
       EnrichedMarkdownInternalText *textView = (EnrichedMarkdownInternalText *)segment;
       textView.allowTrailingMargin = shouldAddBottomMargin;
@@ -574,6 +565,23 @@ static char kENRMSegmentFadeAnimatorKey;
 #endif
   }];
 
+  if (applyFrames && _enableMediaSlots && _renderedDocumentRevision == _documentRevision) {
+    for (RCTUIView *view in _segmentViews) {
+      if ([view isKindOfClass:[ENRMMediaSlotView class]]) {
+        MarkdownASTNode *node = ((ENRMMediaSlotView *)view).mediaNode;
+        CGRect rect = [self convertRect:view.bounds fromView:view];
+        [mediaFrames addObject:@{
+          @"id" : node.attributes[@"_enrmMediaSlot"],
+          @"x" : @(rect.origin.x),
+          @"y" : @(rect.origin.y),
+          @"width" : @(rect.size.width),
+          @"height" : @(rect.size.height)
+        }];
+      } else if ([view isKindOfClass:[ENRMContainerNodeView class]]) {
+        [(ENRMContainerNodeView *)view appendMediaFrames:mediaFrames relativeToView:self];
+      }
+    }
+  }
   if (applyFrames && _enableMediaSlots && _renderedDocumentRevision == _documentRevision &&
       ![_lastMediaFrames isEqualToArray:mediaFrames]) {
     _lastMediaFrames = [mediaFrames copy];

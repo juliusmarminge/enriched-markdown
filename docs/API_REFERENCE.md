@@ -71,7 +71,7 @@ Callback when a link is long pressed. Access URL via `event.url`. On iOS, automa
 
 ### `renderMedia`
 
-Optional callback for GitHub flavor on iOS and Android. It receives an eligible `MarkdownMediaAsset` from the accepted native document manifest and returns React content for that occurrence. Standalone root image paragraphs and direct root video blocks support replacement. Inline, list, table, linked, and quote images retain native rendering. Returning null, undefined, or a boolean also keeps native rendering.
+Optional callback for GitHub flavor on iOS and Android. It receives an eligible `MarkdownMediaAsset` from the accepted native document manifest and returns React content for that occurrence. Standalone image paragraphs and direct video blocks support replacement at the document root or in recursive quote/admonition segment containers. Inline, list, table, and linked images retain native rendering. Quotes beneath unsupported ancestors remain ineligible. Native quote insets, borders, and admonition headers determine indentation and frames. Returning null, undefined, or a boolean also keeps native rendering.
 
 ```tsx
 <EnrichedMarkdownText
@@ -96,7 +96,7 @@ This API adds no player or source resolver. Existing native media handles unsupp
 
 Optional callback for GitHub flavor on iOS and Android. It receives `{ revision, assets }` directly, like `onImagePress`. The native renderer collects image, video, and link occurrences from the same accepted AST it renders. JavaScript does not parse the Markdown again. Omitted callbacks disable collection.
 
-Each `MarkdownDocumentAsset` has `id`, `kind`, `url`, `altText`, `title`, `placement`, and `eligible`. `kind` is `image`, `video`, or `link`; `placement` is `block`, `inline`, `list`, `table`, or `blockquote`. `eligible` identifies standalone root image paragraphs and root video blocks; links and other placements have `eligible: false`. All occurrences remain in the manifest. Missing native titles are empty strings.
+Each `MarkdownDocumentAsset` has `id`, `kind`, `url`, `altText`, `title`, `placement`, and `eligible`. `kind` is `image`, `video`, or `link`; `placement` is `block`, `inline`, `list`, `table`, or `blockquote`. `eligible` identifies standalone image paragraphs and direct video blocks at the root or in recursive quote/admonition segment containers; links and other placements have `eligible: false`. All occurrences remain in the manifest. Missing native titles are empty strings.
 
 IDs distinguish occurrences, including duplicate URLs, and are scoped to one component and document lineage. Ordinary trailing appends preserve existing IDs while the parsed asset prefix is unchanged. Edits or reference-definition reclassification can renumber them. `revision` follows the component's parser inputs. Stale native events are ignored, repeated reports are deduplicated, and empty documents report an empty asset list. Streaming reports describe the accepted renderable document, which may withhold incomplete blocks.
 

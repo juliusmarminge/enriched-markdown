@@ -639,7 +639,7 @@ class EnrichedMarkdown(
         }
 
         is RenderedSegment.Blockquote -> {
-          (view as BlockquoteContainerView).applyBlockquoteNode(segment.node)
+          (view as BlockquoteContainerView).applyBlockquoteNode(segment.node, segment.mediaSlots, segment.assets)
         }
 
         is RenderedSegment.Video -> {
@@ -744,20 +744,20 @@ class EnrichedMarkdown(
 
   private fun publishMediaFrames() {
     if (acceptedRevision != documentRevision || width <= 0) return
-    val slots = segmentViews.filterIsInstance<MediaSlotView>()
+    val slots = mediaSlotFrames()
     val key =
       "$acceptedRevision:" +
         slots.joinToString(";") {
-          "${it.slot.asset.id},${it.left},${it.top},${it.width},${it.height}"
+          "${it.id},${it.x},${it.y},${it.width},${it.height}"
         }
     if (lastMediaFrames == key) return
     val frames = Arguments.createArray()
     slots.forEach { view ->
       frames.pushMap(
         Arguments.createMap().apply {
-          putString("id", view.slot.asset.id)
-          putDouble("x", PixelUtil.toDIPFromPixel(view.left.toFloat()).toDouble())
-          putDouble("y", PixelUtil.toDIPFromPixel(view.top.toFloat()).toDouble())
+          putString("id", view.id)
+          putDouble("x", PixelUtil.toDIPFromPixel(view.x.toFloat()).toDouble())
+          putDouble("y", PixelUtil.toDIPFromPixel(view.y.toFloat()).toDouble())
           putDouble("width", PixelUtil.toDIPFromPixel(view.width.toFloat()).toDouble())
           putDouble("height", PixelUtil.toDIPFromPixel(view.height.toFloat()).toDouble())
         },

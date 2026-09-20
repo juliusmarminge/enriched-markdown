@@ -602,7 +602,15 @@ object MeasurementStore {
 
           is RenderedSegment.Blockquote -> {
             totalHeightPx += style.blockquoteStyle.marginTop
-            totalHeightPx += BlockquoteContainerView.measureBlockquoteNodeHeight(segment.node, style, context, width)
+            totalHeightPx +=
+              BlockquoteContainerView.measureBlockquoteNodeHeight(
+                segment.node,
+                style,
+                context,
+                width,
+                segment.mediaSlots,
+                segment.assets,
+              )
             maxContentWidthPx = width
             if (includeBottomMargin) {
               totalHeightPx += style.blockquoteStyle.marginBottom

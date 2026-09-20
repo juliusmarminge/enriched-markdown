@@ -14,6 +14,9 @@ import androidx.core.graphics.withSave
 import com.facebook.react.common.ReactConstants
 import com.facebook.react.views.text.ReactTypefaceUtils.applyStyles
 import com.swmansion.enriched.markdown.EnrichedMarkdownInternalText
+import com.swmansion.enriched.markdown.media.DocumentAssets
+import com.swmansion.enriched.markdown.media.MediaSlot
+import com.swmansion.enriched.markdown.media.MediaSlotView
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.styles.BlockquoteStyle
 import com.swmansion.enriched.markdown.styles.StyleConfig
@@ -115,7 +118,11 @@ class BlockquoteContainerView(
     setOnLongClickListener { view -> showContextMenu(view) }
   }
 
-  fun applyBlockquoteNode(node: MarkdownASTNode) {
+  fun applyBlockquoteNode(
+    node: MarkdownASTNode,
+    mediaSlots: Map<String, MediaSlot> = emptyMap(),
+    assets: DocumentAssets? = null,
+  ) {
     admonitionType =
       if (node.type == MarkdownASTNode.NodeType.Admonition) {
         node.getAttribute("admonitionType")?.takeIf { it.isNotEmpty() } ?: "note"
@@ -128,7 +135,7 @@ class BlockquoteContainerView(
     cachedMarkdown = MarkdownASTSerializer.serializeBlockquote(node)
     cachedPlainText = MarkdownASTSerializer.plainText(node)
 
-    val segments = splitASTIntoSegments(node)
+    val segments = splitASTIntoSegments(node, mediaSlots, assets)
     val rendered =
       MarkdownSegmentRenderer.render(
         segments,
@@ -276,12 +283,35 @@ class BlockquoteContainerView(
       segment: RenderedSegment,
     ): Boolean =
       when (segment) {
-        is RenderedSegment.Text -> view is EnrichedMarkdownInternalText
-        is RenderedSegment.Table -> view is TableContainerView
-        is RenderedSegment.Math -> SegmentViewCreators.isMathContainerView(view)
-        is RenderedSegment.CodeBlock -> view is CodeBlockContainerView
-        is RenderedSegment.Blockquote -> view is BlockquoteContainerView
-        is RenderedSegment.Video -> SegmentViewCreators.isVideoContainerView(view)
+        is RenderedSegment.Text -> {
+          view is EnrichedMarkdownInternalText
+        }
+
+        is RenderedSegment.Table -> {
+          view is TableContainerView
+        }
+
+        is RenderedSegment.Math -> {
+          SegmentViewCreators.isMathContainerView(view)
+        }
+
+        is RenderedSegment.CodeBlock -> {
+          view is CodeBlockContainerView
+        }
+
+        is RenderedSegment.Blockquote -> {
+          view is BlockquoteContainerView
+        }
+
+        is RenderedSegment.Video -> {
+          if (segment.mediaSlot !=
+            null
+          ) {
+            view is MediaSlotView
+          } else {
+            SegmentViewCreators.isVideoContainerView(view)
+          }
+        }
       }
 
     override fun createView(segment: RenderedSegment): View =
@@ -316,12 +346,33 @@ class BlockquoteContainerView(
       segment: RenderedSegment,
     ) {
       when (segment) {
-        is RenderedSegment.Text -> SegmentViewCreators.updateTextView(view as EnrichedMarkdownInternalText, segment)
-        is RenderedSegment.Table -> (view as TableContainerView).applyTableNode(segment.node)
-        is RenderedSegment.Math -> SegmentViewCreators.updateMathView(view, segment)
-        is RenderedSegment.CodeBlock -> (view as CodeBlockContainerView).applyCodeBlockNode(segment.node)
-        is RenderedSegment.Blockquote -> (view as BlockquoteContainerView).applyBlockquoteNode(segment.node)
-        is RenderedSegment.Video -> SegmentViewCreators.updateVideoView(view, segment)
+        is RenderedSegment.Text -> {
+          SegmentViewCreators.updateTextView(view as EnrichedMarkdownInternalText, segment)
+        }
+
+        is RenderedSegment.Table -> {
+          (view as TableContainerView).applyTableNode(segment.node)
+        }
+
+        is RenderedSegment.Math -> {
+          SegmentViewCreators.updateMathView(view, segment)
+        }
+
+        is RenderedSegment.CodeBlock -> {
+          (view as CodeBlockContainerView).applyCodeBlockNode(segment.node)
+        }
+
+        is RenderedSegment.Blockquote -> {
+          (view as BlockquoteContainerView).applyBlockquoteNode(
+            segment.node,
+            segment.mediaSlots,
+            segment.assets,
+          )
+        }
+
+        is RenderedSegment.Video -> {
+          SegmentViewCreators.updateVideoView(view, segment)
+        }
       }
     }
 
@@ -359,6 +410,8 @@ class BlockquoteContainerView(
       config: StyleConfig,
       context: Context,
       width: Float,
+      mediaSlots: Map<String, MediaSlot> = emptyMap(),
+      assets: DocumentAssets? = null,
     ): Float {
       val style = config.blockquoteStyle
       val leftInset = ceil(style.borderWidth + style.gapWidth + style.padding).toInt()
@@ -370,9 +423,9 @@ class BlockquoteContainerView(
         } else {
           0f
         }
-      val innerWidth = (width - leftInset - rightInset).coerceAtLeast(1f)
+      val innerWidth = (ceil(width) - leftInset - rightInset).coerceAtLeast(1f)
 
-      val segments = splitASTIntoSegments(node)
+      val segments = splitASTIntoSegments(node, mediaSlots, assets)
       val rendered = MarkdownSegmentRenderer.render(segments, config, context, null, null, style)
 
       val fontSize = style.fontSize

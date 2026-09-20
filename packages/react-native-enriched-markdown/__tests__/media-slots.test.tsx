@@ -485,3 +485,130 @@ it('rejects an old-width measurement during an append before its manifest arrive
     height: 180,
   });
 });
+
+it('positions nested quote slots in root coordinates and measures each inner width independently', () => {
+  const renderMedia = jest.fn((asset: MarkdownMediaAsset) =>
+    asset.id === 'asset-2' ? null : <View testID={asset.id} />
+  );
+  const { root, native, manifest } = setup(
+    <EnrichedMarkdownText
+      markdown={
+        '> ![a](same)\n>\n> > <video src="same"></video>\n>\n> ![fallback](same)'
+      }
+      flavor="github"
+      renderMedia={renderMedia}
+    />
+  );
+  const revision = native().props.documentRevision;
+  const assets = [
+    { ...image('asset-0'), placement: 'blockquote' as const, anchor: '0.0.0' },
+    {
+      ...image('asset-1'),
+      kind: 'video' as const,
+      placement: 'blockquote' as const,
+      anchor: '0.0.1.0',
+    },
+    { ...image('asset-2'), placement: 'blockquote' as const, anchor: '0.0.2' },
+  ];
+  manifest(revision, assets);
+  act(() =>
+    native().props.onLayout({
+      nativeEvent: { layout: { x: 5, y: 9, width: 340, height: 450 } },
+    })
+  );
+  const frames = [
+    { id: 'asset-0', x: 20, y: 32, width: 308, height: 1 },
+    { id: 'asset-1', x: 40, y: 200, width: 276, height: 1 },
+  ];
+  const report = (next = frames) =>
+    act(() =>
+      native().props.onMediaLayout({
+        nativeEvent: { revision, frames: next },
+      })
+    );
+  report();
+  const slots = () =>
+    root.container.queryAll((entry) => entry.props.collapsable === false);
+  expect(slots()).toHaveLength(2);
+  expect(slots()[0]!.props.style[1]).toEqual({ left: 25, top: 41, width: 308 });
+  expect(slots()[1]!.props.style[1]).toEqual({
+    left: 45,
+    top: 209,
+    width: 276,
+  });
+  act(() =>
+    slots()[0]!.props.onLayout({
+      nativeEvent: { layout: { width: 308, height: 150 } },
+    })
+  );
+  act(() =>
+    slots()[1]!.props.onLayout({
+      nativeEvent: { layout: { width: 276, height: 230 } },
+    })
+  );
+  expect(native().props.mediaOverrides).toMatchObject([
+    { id: 'asset-0', width: 308, height: 150, anchor: '0.0.0', kind: 'image' },
+    {
+      id: 'asset-1',
+      width: 276,
+      height: 230,
+      anchor: '0.0.1.0',
+      kind: 'video',
+    },
+  ]);
+  // A native reflow moves the nested sibling but keeps intrinsic React height.
+  report([frames[0]!, { ...frames[1]!, y: 350 }]);
+  expect(slots()[1]!.props.style[1].top).toBe(359);
+  expect(native().props.mediaOverrides[1].height).toBe(230);
+  // A collapsed nested ancestor withdraws its frames; no stale slot stays visible.
+  report([frames[0]!]);
+  expect(slots()).toHaveLength(1);
+  expect(native().props.mediaOverrides[1]).toMatchObject({
+    width: 0,
+    height: 1,
+  });
+  report([frames[0]!, { ...frames[1]!, y: 350 }]);
+  expect(slots()).toHaveLength(2);
+  expect(native().props.mediaOverrides[1].height).toBe(230);
+  const oldWidthLayout = slots()[1]!.props.onLayout;
+  report([frames[0]!, { ...frames[1]!, width: 220 }]);
+  act(() =>
+    oldWidthLayout({ nativeEvent: { layout: { width: 276, height: 999 } } })
+  );
+  expect(native().props.mediaOverrides[1]).toMatchObject({
+    width: 0,
+    height: 1,
+  });
+  expect(native().props.mediaOverrides[0].height).toBe(150);
+  // Same URL and ordinal at a different native occurrence cannot inherit height/frame.
+  act(() =>
+    root.render(
+      <EnrichedMarkdownText
+        markdown={
+          '> ![a](same)\n>\n> > <video src="same"></video>\n>\n> ![fallback](same)\n> appended'
+        }
+        flavor="github"
+        renderMedia={renderMedia}
+      />
+    )
+  );
+  manifest(native().props.documentRevision, [
+    { ...assets[0]!, anchor: '0.0.3' },
+    assets[1]!,
+    assets[2]!,
+  ]);
+  expect(native().props.mediaOverrides[0]).toMatchObject({
+    width: 0,
+    height: 1,
+    anchor: '0.0.3',
+  });
+  expect(slots()).toHaveLength(1);
+  expect(
+    renderMedia.mock.calls.some(
+      ([asset]) => asset.kind === 'video' && asset.placement === 'blockquote'
+    )
+  ).toBe(true);
+  expect(renderMedia.mock.calls.every(([asset]) => !('anchor' in asset))).toBe(
+    true
+  );
+});

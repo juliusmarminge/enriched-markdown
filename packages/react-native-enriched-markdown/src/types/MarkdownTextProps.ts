@@ -126,8 +126,9 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
   markdown: string;
   /**
    * Render an eligible native media occurrence as a React sibling. Returning
-   * null keeps native rendering. Supported for top-level standalone images and
-   * videos in GitHub flavor on iOS and Android. React content owns interaction
+   * null keeps native rendering. Supports standalone image paragraphs and direct
+   * videos at the document root or in recursive quote/admonition containers in
+   * GitHub flavor on iOS and Android. React content owns interaction
    * and accessibility; its intrinsic height reserves native layout space.
    */
   renderMedia?: (asset: MarkdownMediaAsset) => ReactNode | null;
