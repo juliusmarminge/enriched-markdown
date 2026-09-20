@@ -406,7 +406,36 @@ interface StreamingConfigInternal {
   codeBlockMode: string;
 }
 
+export interface DocumentAssetInternal {
+  anchor: string;
+  id: string;
+  kind: string;
+  url: string;
+  altText: string;
+  title: string;
+  placement: string;
+  eligible: boolean;
+}
+
+export interface DocumentAssetsEventInternal {
+  revision: CodegenTypes.Int32;
+  assets: {
+    anchor: string;
+    id: string;
+    kind: string;
+    url: string;
+    altText: string;
+    title: string;
+    placement: string;
+    eligible: boolean;
+  }[];
+}
+
 export interface NativeProps extends ViewProps {
+  documentRevision?: CodegenTypes.WithDefault<CodegenTypes.Int32, 0>;
+  enableDocumentAssets?: CodegenTypes.WithDefault<boolean, false>;
+  onDocumentAssets?: CodegenTypes.DirectEventHandler<DocumentAssetsEventInternal>;
+
   /**
    * Markdown content to render.
    */

@@ -112,7 +112,26 @@ class EnrichedMarkdownManager :
     MeasurementStore.clearFontScalingSettings(view.id)
   }
 
-  override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> = markdownEventTypeConstants()
+  override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> =
+    markdownEventTypeConstants().apply {
+      put("onDocumentAssets", mapOf("registrationName" to "onDocumentAssets"))
+    }
+
+  @ReactProp(name = "documentRevision", defaultInt = 0)
+  override fun setDocumentRevision(
+    view: EnrichedMarkdown?,
+    value: Int,
+  ) {
+    view?.setDocumentRevision(value)
+  }
+
+  @ReactProp(name = "enableDocumentAssets", defaultBoolean = false)
+  override fun setEnableDocumentAssets(
+    view: EnrichedMarkdown?,
+    value: Boolean,
+  ) {
+    view?.setEnableDocumentAssets(value)
+  }
 
   @ReactProp(name = "markdown")
   override fun setMarkdown(

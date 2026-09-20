@@ -69,6 +69,27 @@ Callback when a link is long pressed. Access URL via `event.url`. On iOS, automa
 />
 ```
 
+### `onDocumentAssets`
+
+Optional callback for GitHub flavor on iOS and Android. It receives `{ revision, assets }` directly, like `onImagePress`. The native renderer collects image, video, and link occurrences from the same accepted AST it renders. JavaScript does not parse the Markdown again. Omitted callbacks disable collection.
+
+Each `MarkdownDocumentAsset` has `id`, `kind`, `url`, `altText`, `title`, `placement`, and `eligible`. `kind` is `image`, `video`, or `link`; `placement` is `block`, `inline`, `list`, `table`, or `blockquote`. `eligible` identifies standalone root image paragraphs and root video blocks; links and other placements have `eligible: false`. All occurrences remain in the manifest. Missing native titles are empty strings.
+
+IDs distinguish occurrences, including duplicate URLs, and are scoped to one component and document lineage. Ordinary trailing appends preserve existing IDs while the parsed asset prefix is unchanged. Edits or reference-definition reclassification can renumber them. `revision` follows the component's parser inputs. Stale native events are ignored, repeated reports are deduplicated, and empty documents report an empty asset list. Streaming reports describe the accepted renderable document, which may withhold incomplete blocks.
+
+```tsx
+<EnrichedMarkdownText
+  markdown={markdown}
+  flavor="github"
+  onDocumentAssets={({ assets }) => {
+    const links = assets.filter((asset) => asset.kind === 'link');
+    updateLinkMetadata(links);
+  }}
+/>
+```
+
+`DocumentAssetsEvent`, `MarkdownDocumentAsset`, `MarkdownMediaAsset`, `MarkdownLinkAsset`, and `MarkdownAssetPlacement` are exported types. This callback does not change native rendering, selection, copy, or press handling. CommonMark and web do not emit it.
+
 ### `onImagePress`
 
 Callback when a rendered image is tapped or clicked. Access the image URL via `event.url` and its Markdown alt text via `event.altText` (`""` when the image has no alt text). Use it to open a lightbox or full-screen viewer.

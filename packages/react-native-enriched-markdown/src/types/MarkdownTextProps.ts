@@ -1,3 +1,4 @@
+import type { DocumentAssetsEvent } from './media';
 import type { ColorValue, ViewProps, ViewStyle, TextStyle } from 'react-native';
 import type { MarkdownStyle, Md4cFlags } from './MarkdownStyle';
 import type { AccessibilityLabels } from './AccessibilityLabels';
@@ -122,6 +123,10 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * @platform ios, android, web
    */
   markdown: string;
+  /** Native parsed media and link occurrences, including inline/list/table placements.
+   * Receives the payload directly, like onImagePress. GitHub flavor on iOS/Android.
+   */
+  onDocumentAssets?: (event: DocumentAssetsEvent) => void;
   /**
    * Style configuration for markdown elements.
    * @platform ios, android, web
