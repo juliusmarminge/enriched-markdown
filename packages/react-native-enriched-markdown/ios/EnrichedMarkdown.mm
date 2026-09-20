@@ -3,6 +3,7 @@
 #import "ENRMAccessibilityLabels.h"
 #import "ENRMAsyncRenderCoordinator.h"
 #import "ENRMAtomicSize.h"
+#import "ENRMDocumentAssets.h"
 #import "ENRMImageAttachment.h"
 #import "ENRMLatexErrorCoordinator.h"
 #import "ENRMLinkContextMenus.h"
@@ -81,6 +82,7 @@ static char kENRMSegmentFadeAnimatorKey;
 
 @interface EnrichedMarkdown () <RCTEnrichedMarkdownViewProtocol, UITextViewDelegate, ENRMImageLayoutObserver>
 + (ENRMMd4cFlags *)flagsFromProps:(const EnrichedMarkdownMd4cFlagsStruct &)props;
+- (void)emitDocumentAssets;
 - (void)emitLinkPress:(NSString *)url;
 - (void)emitLinkLongPress:(NSString *)url;
 - (void)emitLinkContextMenuItemPress:(NSString *)itemText pattern:(NSString *)pattern url:(NSString *)url;
@@ -151,6 +153,12 @@ static char kENRMSegmentFadeAnimatorKey;
   NSWritingDirection _resolvedLayoutDirection;
 
   ENRMAtomicSize _lastCommittedSize;
+  NSInteger _documentRevision;
+  NSInteger _renderedDocumentRevision;
+  BOOL _enableDocumentAssets;
+  NSArray<NSDictionary *> *_documentAssets;
+  NSArray<NSDictionary *> *_lastEmittedAssets;
+  NSInteger _lastEmittedAssetsRevision;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -182,6 +190,8 @@ static char kENRMSegmentFadeAnimatorKey;
     _parser = [[ENRMMarkdownParser alloc] init];
     _md4cFlags = [EnrichedMarkdown flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
+    _renderedDocumentRevision = -1;
+    _lastEmittedAssetsRevision = -1;
     _segmentViews = [NSMutableArray array];
     _segmentSignatures = [NSMutableArray array];
     __weak __typeof(self) weakLatexSelf = self;
@@ -736,6 +746,9 @@ static char kENRMSegmentFadeAnimatorKey;
   ENRMWritingDirectionMode writingDirectionMode = _writingDirectionMode;
   NSWritingDirection resolvedLayoutDirection = _resolvedLayoutDirection;
 
+  NSInteger revision = _documentRevision;
+  BOOL enableDocumentAssets = _enableDocumentAssets;
+  __block NSArray<NSDictionary *> *documentAssets = @[];
   __block NSArray<ENRMRenderedSegment *> *renderedSegments = nil;
   __block NSString *renderableMarkdown = nil;
   __block BOOL endsInsideOpenCodeFence = NO;
@@ -756,6 +769,8 @@ static char kENRMSegmentFadeAnimatorKey;
         if (!ast)
           return NO;
 
+        if (enableDocumentAssets)
+          documentAssets = ENRMPrepareDocumentAssets(ast);
         renderedSegments = ENRMRenderSegmentsFromAST(ast, config, allowTrailingMargin, allowFontScaling,
                                                      maxFontSizeMultiplier, lineBreakStrategy,
                                                      /*blockquoteContent*/ NO);
@@ -768,6 +783,11 @@ static char kENRMSegmentFadeAnimatorKey;
         return YES;
       }
       apply:^{
+        if (revision != self->_documentRevision)
+          return;
+        self->_renderedDocumentRevision = revision;
+        self->_documentAssets = documentAssets;
+        [self emitDocumentAssets];
         self->_renderedStyleFingerprint = self->_pendingStyleFingerprint;
         [self applyRenderedSegments:renderedSegments
                    renderedMarkdown:renderableMarkdown
@@ -1085,6 +1105,15 @@ static char kENRMSegmentFadeAnimatorKey;
     _dirtyFlags |= ENRMDirtyRender;
   }
 
+  if (_documentRevision != newViewProps.documentRevision ||
+      _enableDocumentAssets != newViewProps.enableDocumentAssets) {
+    _documentRevision = newViewProps.documentRevision;
+    if (_enableDocumentAssets != newViewProps.enableDocumentAssets)
+      _lastEmittedAssets = nil;
+    _enableDocumentAssets = newViewProps.enableDocumentAssets;
+    _dirtyFlags |= ENRMDirtyRender;
+  }
+
   if (_config == nil) {
     _config = [[StyleConfig alloc] init];
     [_config setFontScaleMultiplier:_fontScaleObserver.effectiveFontScale];
@@ -1335,6 +1364,12 @@ static char kENRMSegmentFadeAnimatorKey;
 
   _cachedMarkdown = nil;
   _renderedMarkdown = nil;
+  _documentAssets = nil;
+  _lastEmittedAssets = nil;
+  _lastEmittedAssetsRevision = -1;
+  _renderedDocumentRevision = -1;
+  _documentRevision = 0;
+  _enableDocumentAssets = NO;
   _config = nil;
   _md4cFlags = [EnrichedMarkdown flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
@@ -1435,6 +1470,33 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
 }
 #endif
 
+- (void)emitDocumentAssets
+{
+  if (!_enableDocumentAssets || _renderedDocumentRevision != _documentRevision ||
+      (_lastEmittedAssetsRevision == _renderedDocumentRevision && [_lastEmittedAssets isEqualToArray:_documentAssets]))
+    return;
+  auto emitter = std::static_pointer_cast<EnrichedMarkdownEventEmitter const>(_eventEmitter);
+  if (!emitter)
+    return;
+  EnrichedMarkdownEventEmitter::OnDocumentAssets event{};
+  event.revision = (int)_renderedDocumentRevision;
+  for (NSDictionary *asset in _documentAssets) {
+    decltype(event.assets)::value_type item{};
+    item.id = std::string([asset[@"id"] UTF8String]);
+    item.anchor = std::string([asset[@"anchor"] UTF8String]);
+    item.kind = std::string([asset[@"kind"] UTF8String]);
+    item.url = std::string([asset[@"url"] UTF8String]);
+    item.altText = std::string([asset[@"altText"] UTF8String]);
+    item.title = std::string([asset[@"title"] UTF8String]);
+    item.placement = std::string([asset[@"placement"] UTF8String]);
+    item.eligible = [asset[@"eligible"] boolValue];
+    event.assets.push_back(item);
+  }
+  _lastEmittedAssetsRevision = _renderedDocumentRevision;
+  _lastEmittedAssets = [_documentAssets copy];
+  emitter->onDocumentAssets(event);
+}
+
 - (void)emitLinkPress:(NSString *)url
 {
   auto emitter = std::static_pointer_cast<EnrichedMarkdownEventEmitter const>(_eventEmitter);
@@ -1508,6 +1570,7 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
 {
   [super updateEventEmitter:eventEmitter];
   [_latexErrorCoordinator flushPending];
+  [self emitDocumentAssets];
 }
 
 - (void)textTapped:(ENRMTapRecognizer *)recognizer
