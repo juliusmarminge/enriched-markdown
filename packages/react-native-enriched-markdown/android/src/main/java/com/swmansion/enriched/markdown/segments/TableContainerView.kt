@@ -446,6 +446,8 @@ class TableContainerView(
       text: CharSequence,
       widthPx: Int,
     ) {
+      com.swmansion.enriched.markdown.spans.LinkPillSpan
+        .prepareForMeasurement(text, widthPx)
       if (widthPx <= 1) return
       val spanned = text as? Spanned ?: return
       spanned
@@ -476,6 +478,8 @@ class TableContainerView(
       val columnWidths = FloatArray(texts.maxOfOrNull { it.size } ?: 0)
       texts.forEach { row ->
         row.forEachIndexed { colIndex, cellText ->
+          com.swmansion.enriched.markdown.spans.LinkPillSpan
+            .prepareForMeasurement(cellText, maxColumnWidth.toInt())
           val layout =
             StaticLayout.Builder
               .obtain(cellText, 0, cellText.length, paint, maxColumnWidth.toInt())

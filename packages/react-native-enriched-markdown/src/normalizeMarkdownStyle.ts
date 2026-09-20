@@ -7,7 +7,10 @@ import type {
   MarkdownStyleInternal,
 } from './types/MarkdownStyleInternal';
 import { isStyleEqual, normalizeColor, mergeSubStyle } from './styleUtils';
-import { normalizeLinkVariantEntries } from './linkVariantUtils';
+import {
+  normalizeLinkVariantEntries,
+  normalizeLinkPillStyle,
+} from './linkVariantUtils';
 import { resolveAdmonitionColors } from './admonitionDefaults';
 import {
   DEFAULT_HEADING_FONT_WEIGHT,
@@ -339,7 +342,10 @@ export const normalizeMarkdownStyle = (
     ([pattern, override]): LinkVariantEntryInternal => {
       return {
         pattern,
+        ...normalizeLinkPillStyle(override),
         fontFamily: override.fontFamily ?? linkBase.fontFamily,
+        borderColor: (normalizeColor(override.borderColor ?? 'transparent') ??
+          transparent) as string,
         color: ((override.color ? normalizeColor(override.color) : null) ??
           linkBase.color) as string,
         underline: override.underline ?? linkBase.underline,

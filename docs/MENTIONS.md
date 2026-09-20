@@ -73,6 +73,56 @@ linkVariants: {
 
 Each key is a regex tested against the link URL. First match wins. Unspecified properties inherit from the base `link` style. Patterns are auto-sorted longest-first.
 
+## Native link pills
+
+Readonly `EnrichedMarkdownText` supports optional pill presentation on iOS and Android through the same `markdownStyle.linkVariants` map. It also works for links in GFM table cells. This does not change the text-input mention API.
+
+```tsx
+<EnrichedMarkdownText
+  markdown="See [original label](https://example.com/document)."
+  markdownStyle={{
+    linkVariants: {
+      '^https://example\\.com/document$': {
+        pill: true,
+        label: 'Document',
+        iconUri: 'file:///path/to/bundled-icon.png',
+        fontFamily: 'CustomFont',
+        color: '#1264A3',
+        underline: false,
+        backgroundColor: '#E8F5FB',
+        borderRadius: 8,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderWidth: 1,
+        borderColor: '#B8DDF0',
+        maxWidth: 180,
+      },
+    },
+  }}
+/>
+```
+
+`pill` defaults to `false`. The presentation `label` never replaces the original link text used for plain copy, Markdown extraction, selection, or accessibility. Missing or empty labels use the original text. Tap and long-press callbacks still receive the original URL, and existing link menus continue to work.
+
+| Field               | Default            | Meaning                                                               |
+| ------------------- | ------------------ | --------------------------------------------------------------------- |
+| `fontFamily`        | Base link family   | Link font family, including ordinary links.                           |
+| `pill`              | `false`            | Opt into atomic native presentation.                                  |
+| `label`             | Original link text | Presentation label.                                                   |
+| `iconUri`           | No icon            | Local `file://` image URI. Unreadable files are ignored.              |
+| `borderRadius`      | `8`                | Corner radius in points/DIP.                                          |
+| `paddingHorizontal` | `6`                | Horizontal inset in points/DIP.                                       |
+| `paddingVertical`   | `2`                | Vertical inset in points/DIP.                                         |
+| `borderWidth`       | `0`                | Border width in points/DIP.                                           |
+| `borderColor`       | Transparent        | Border color.                                                         |
+| `maxWidth`          | `0`                | Positive maximum width in points/DIP. Zero uses available text width. |
+
+The existing `color`, `underline`, and `backgroundColor` fields still apply. Pill labels truncate at the tail and wrap as one unit. The width limit also accounts for native container width and block indentation. Nonfinite dimensions use defaults and negative dimensions clamp to zero.
+
+Pill presentation is currently native only. Web renders ordinary links and retains their original labels. Links containing image or math attachments retain their existing native rendering. Only local `file://` icon URIs are supported. Missing or unreadable files render no icon.
+
+Icon decoding is downsampled to approximately 512 pixels. Each native cache retains at most 64 images and 8 MiB of decoded pixels; images held by visible pills are separate from this cache budget. File metadata changes invalidate cached icons.
+
 ## Positioning the Suggestion List
 
 Use `onCaretRectChange` to get the caret's `{ x, y, width, height }` relative to the input. Combine with the input's position (via `onLayout`) to place a floating popup:

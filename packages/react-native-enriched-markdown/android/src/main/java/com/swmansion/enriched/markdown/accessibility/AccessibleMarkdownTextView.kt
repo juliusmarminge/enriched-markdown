@@ -17,6 +17,23 @@ abstract class AccessibleMarkdownTextView
   ) : AppCompatTextView(context, attrs, defStyleAttr) {
     val accessibilityHelper = MarkdownAccessibilityHelper(this)
 
+    override fun onMeasure(
+      widthMeasureSpec: Int,
+      heightMeasureSpec: Int,
+    ) {
+      if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+        val width = (MeasureSpec.getSize(widthMeasureSpec) - compoundPaddingLeft - compoundPaddingRight).coerceAtLeast(1)
+        if (com.swmansion.enriched.markdown.spans.LinkPillSpan
+            .prepareForMeasurement(text, width)
+        ) {
+          // TextView can reuse a layout at the same width after a style or label change.
+          val current = text
+          text = current
+        }
+      }
+      super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
     override fun dispatchHoverEvent(event: MotionEvent): Boolean =
       accessibilityHelper.dispatchHoverEvent(event) || super.dispatchHoverEvent(event)
 

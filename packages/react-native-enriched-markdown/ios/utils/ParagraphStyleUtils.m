@@ -1,6 +1,7 @@
 #import "ParagraphStyleUtils.h"
 #import "ENRMFeatureFlags.h"
 #import "ENRMImageAttachment.h"
+#import "ENRMLinkPillAttachment.h"
 #import "LastElementUtils.h"
 #import <React/RCTI18nUtil.h>
 
@@ -299,12 +300,24 @@ void applyLineHeight(NSMutableAttributedString *output, NSRange range, CGFloat l
                   }];
 #endif
 
+  __block BOOL hasPill = NO;
+#if !TARGET_OS_OSX
+  [output enumerateAttribute:NSAttachmentAttributeName
+                     inRange:range
+                     options:0
+                  usingBlock:^(id value, NSRange subrange, BOOL *stop) {
+                    if ([value isKindOfClass:ENRMLinkPillAttachment.class]) {
+                      hasPill = YES;
+                      *stop = YES;
+                    }
+                  }];
+#endif
   BOOL hasBlockImage = ENRMRangeContainsBlockImage(output, range);
 
   NSMutableParagraphStyle *style = getOrCreateParagraphStyle(output, range.location);
 
   style.minimumLineHeight = lineHeight;
-  style.maximumLineHeight = (hasMath || hasBlockImage) ? 0 : lineHeight;
+  style.maximumLineHeight = (hasMath || hasBlockImage || hasPill) ? 0 : lineHeight;
 
   [output addAttribute:NSParagraphStyleAttributeName value:style range:range];
 }
@@ -358,6 +371,17 @@ void applyBaselineOffset(NSMutableAttributedString *output, NSRange range)
                           }];
 
   CGFloat contentLineHeight = textLineHeight;
+#if !TARGET_OS_OSX
+  __block CGFloat pillBoxHeight = 0;
+  [output enumerateAttribute:NSAttachmentAttributeName
+                     inRange:range
+                     options:0
+                  usingBlock:^(id value, NSRange subrange, BOOL *stop) {
+                    if ([value isKindOfClass:ENRMLinkPillAttachment.class])
+                      pillBoxHeight = MAX(pillBoxHeight, ((ENRMLinkPillAttachment *)value).boxHeight);
+                  }];
+  contentLineHeight = MAX(contentLineHeight, pillBoxHeight);
+#endif
 
 #if ENRICHED_MARKDOWN_MATH
   // Math only grows the content height, so measure it (parsing LaTeX) only when text
@@ -372,7 +396,7 @@ void applyBaselineOffset(NSMutableAttributedString *output, NSRange range)
                         mathBoxHeight = MAX(((ENRMMathInlineAttachment *)value).boxHeight, mathBoxHeight);
                       }
                     }];
-    contentLineHeight = MAX(textLineHeight, mathBoxHeight);
+    contentLineHeight = MAX(contentLineHeight, mathBoxHeight);
   }
 #endif
 

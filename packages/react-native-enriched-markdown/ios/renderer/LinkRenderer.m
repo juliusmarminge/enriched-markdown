@@ -1,4 +1,5 @@
 #import "LinkRenderer.h"
+#import "ENRMLinkPillAttachment.h"
 #import "FontUtils.h"
 #import "RenderContext.h"
 #import "RendererFactory.h"
@@ -78,6 +79,29 @@
     [output addAttribute:NSBackgroundColorAttributeName value:backgroundColor range:range];
   }
 
+#if !TARGET_OS_OSX
+  if (variant.pill) {
+    __block BOOL hasAttachment = NO;
+    [output enumerateAttribute:NSAttachmentAttributeName
+                       inRange:range
+                       options:0
+                    usingBlock:^(id value, NSRange subrange, BOOL *stop) {
+                      if (value) {
+                        hasAttachment = YES;
+                        *stop = YES;
+                      }
+                    }];
+    if (!hasAttachment) {
+      UIFont *font = [output attribute:NSFontAttributeName atIndex:range.location effectiveRange:NULL];
+      ENRMLinkPillAttachment *pill =
+          [[ENRMLinkPillAttachment alloc] initWithLabel:[output.string substringWithRange:range]
+                                                variant:variant
+                                                   font:font ?: [context getBlockStyle].cachedFont];
+      [output removeAttribute:NSBackgroundColorAttributeName range:range];
+      [output addAttribute:NSAttachmentAttributeName value:pill range:range];
+    }
+  }
+#endif
   [context registerLinkRange:range url:url];
 }
 

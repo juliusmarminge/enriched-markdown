@@ -53,24 +53,49 @@ class CodeBackgroundSpan(
     val spanEnd = text.getSpanEnd(this)
     if (spanStart !in 0 until spanEnd) return
 
-    // 1. Determine relative positioning
-    val isFirst = spanStart >= start
-    val isLast = spanEnd <= end
+    // Keep CodeSpan and this background span intact for semantic extraction. Draw only
+    // portions outside replacement pills, including code surrounding a partially covered run.
+    fun drawUncoveredRange(
+      rangeStart: Int,
+      rangeEnd: Int,
+    ) {
+      if (max(rangeStart, start) >= min(rangeEnd, end)) return
+      // 1. Determine relative positioning
+      val isFirst = rangeStart >= start
+      val isLast = rangeEnd <= end
 
-    // 2. Calculate coordinates
-    val finalBottom = adjustBottomForMargin(text, end, bottom)
-    val leadingMargin = leadingMarginAt(text, start)
-    val startX = if (isFirst) getHorizontalOffset(text, start, end, spanStart, p, leadingMargin) + left else left.toFloat() + leadingMargin
-    val endX = if (isLast) getHorizontalOffset(text, start, end, spanEnd, p, leadingMargin) + left else right.toFloat()
+      // 2. Calculate coordinates
+      val finalBottom = adjustBottomForMargin(text, end, bottom)
+      val leadingMargin = leadingMarginAt(text, start)
+      val startX =
+        if (isFirst) {
+          getHorizontalOffset(text, start, end, rangeStart, p, leadingMargin) + left
+        } else {
+          left.toFloat() +
+            leadingMargin
+        }
+      val endX = if (isLast) getHorizontalOffset(text, start, end, rangeEnd, p, leadingMargin) + left else right.toFloat()
 
-    rect.set(min(startX, endX), top.toFloat(), max(startX, endX), finalBottom.toFloat())
+      rect.set(min(startX, endX), top.toFloat(), max(startX, endX), finalBottom.toFloat())
 
-    // 3. Apply Style
-    val codeStyle = styleConfig.codeStyle
-    sharedBackgroundPaint.color = codeStyle.backgroundColor
-    sharedBorderPaint.color = codeStyle.borderColor
+      // 3. Apply Style
+      val codeStyle = styleConfig.codeStyle
+      sharedBackgroundPaint.color = codeStyle.backgroundColor
+      sharedBorderPaint.color = codeStyle.borderColor
 
-    drawShapes(canvas, isFirst, isLast)
+      drawShapes(canvas, isFirst, isLast)
+    }
+
+    var cursor = spanStart
+    val pills = text.getSpans(spanStart, spanEnd, LinkPillSpan::class.java).sortedBy { text.getSpanStart(it) }
+    for (pill in pills) {
+      val coveredStart = max(spanStart, text.getSpanStart(pill))
+      val coveredEnd = min(spanEnd, text.getSpanEnd(pill))
+      if (coveredStart >= coveredEnd) continue
+      if (cursor < coveredStart) drawUncoveredRange(cursor, coveredStart)
+      cursor = max(cursor, coveredEnd)
+    }
+    drawUncoveredRange(cursor, spanEnd)
   }
 
   /**

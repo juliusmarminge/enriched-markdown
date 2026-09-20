@@ -618,6 +618,8 @@ object MeasurementStore {
     text: CharSequence?,
     widthPx: Int,
   ) {
+    com.swmansion.enriched.markdown.spans.LinkPillSpan
+      .prepareForMeasurement(text, widthPx)
     // widthPx == 1 is the coerceAtLeast(1) fallback for a not-yet-measured view
     if (widthPx <= 1) return
     val spanned = text as? android.text.Spanned ?: return

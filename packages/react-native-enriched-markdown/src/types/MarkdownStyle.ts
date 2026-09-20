@@ -122,11 +122,23 @@ export interface LinkStyle {
   backgroundColor?: string;
 }
 
-/**
- * Per-variant link override. Structurally identical to {@link LinkStyle}:
- * every field is optional and inherits from the base `link` style when omitted.
- */
-export type LinkVariantStyle = LinkStyle;
+/** Per-variant overrides inherit the base link styling. */
+export type LinkVariantStyle = LinkStyle & {
+  /** Render the link as one native pill. Original text and URL remain selectable. */
+  pill?: boolean;
+  /** Presentation label only. Missing or empty uses the original link text. */
+  label?: string;
+  /** Local file:// image URI. Unreadable files are ignored. Native pills only. */
+  iconUri?: string;
+  borderRadius?: number;
+  paddingHorizontal?: number;
+  paddingVertical?: number;
+  borderWidth?: number;
+  borderColor?: string;
+  /** Maximum pill width in points/DIP. 0 uses the available text width. */
+  maxWidth?: number;
+};
+
 
 interface StrongStyle {
   fontFamily?: string;
@@ -359,6 +371,7 @@ export interface MarkdownStyle {
    * `color` and `underline` inherit from the base `link` style when omitted.
    * `backgroundColor` defaults to `transparent`.
    * `fontFamily` inherits the base `link` family and can be overridden per variant.
+   * `pill: true` enables atomic native presentation with optional label, icon, and geometry.
    *
    * @example
    * linkVariants: {
