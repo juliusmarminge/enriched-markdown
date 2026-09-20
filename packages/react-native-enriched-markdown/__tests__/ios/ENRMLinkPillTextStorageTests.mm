@@ -25,8 +25,10 @@
 }
 - (UIImage *)imageForBounds:(CGRect)bounds textContainer:(NSTextContainer *)container characterIndex:(NSUInteger)index
 {
-  self.imageCalls++;
-  return [super imageForBounds:bounds textContainer:container characterIndex:index];
+  UIImage *image = [super imageForBounds:bounds textContainer:container characterIndex:index];
+  if (image)
+    self.imageCalls++;
+  return image;
 }
 @end
 
@@ -312,6 +314,33 @@
     XCTAssertGreaterThan(pill.boundsCalls, 0u);
     XCTAssertEqual([view.textStorage attribute:NSAttachmentAttributeName atIndex:0 effectiveRange:NULL], pill);
     XCTAssertEqualObjects(view.text, @"src/a/long/original/path/file.ts");
+  }
+}
+
+- (void)testVisibleTextViewMeasuresOriginalCharactersAsOnePillAcrossStreamingReplacements
+{
+  UITextView *referenceView = ENRMCreateMarkdownTextView();
+  UITextView *view = ENRMCreateMarkdownTextView();
+  ENRMAttachLayoutManager(referenceView, [StyleConfig new]);
+  ENRMAttachLayoutManager(view, [StyleConfig new]);
+  for (NSUInteger pass = 0; pass < 3; pass++) {
+    NSMutableAttributedString *reference = [self labelWithPill:self.pill];
+    [reference replaceCharactersInRange:NSMakeRange(0, reference.length) withString:@"\uFFFC"];
+    referenceView.attributedText = reference;
+    NSMutableAttributedString *original = [self labelWithPill:self.pill];
+    [self fragmentLabelAttributes:original];
+    view.attributedText = original;
+    for (UITextView *textView in @[ referenceView, view ]) {
+      textView.textContainer.size = CGSizeMake(140, 200);
+      [textView.layoutManager ensureLayoutForTextContainer:textView.textContainer];
+    }
+    CGRect expected = [referenceView.layoutManager usedRectForTextContainer:referenceView.textContainer];
+    CGRect actual = [view.layoutManager usedRectForTextContainer:view.textContainer];
+    XCTAssertEqualWithAccuracy(actual.size.width, expected.size.width, 0.01);
+    XCTAssertEqualWithAccuracy(actual.size.height, expected.size.height, 0.01);
+    XCTAssertEqualObjects(view.text, original.string);
+    XCTAssertEqualObjects(extractMarkdownFromAttributedString(view.textStorage, NSMakeRange(0, original.length)),
+                          extractMarkdownFromAttributedString(original, NSMakeRange(0, original.length)));
   }
 }
 @end

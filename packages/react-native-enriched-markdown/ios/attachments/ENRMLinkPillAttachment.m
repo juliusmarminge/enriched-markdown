@@ -41,11 +41,30 @@
   return MAX(1, MIN(natural, limit));
 }
 
+- (BOOL)startsAttachmentInTextContainer:(NSTextContainer *)container characterIndex:(NSUInteger)index
+{
+  NSTextStorage *storage = container.layoutManager.textStorage;
+  if (!storage)
+    return YES;
+  if (index >= storage.length)
+    return NO;
+  NSRange range;
+  id attachment = [storage attribute:NSAttachmentAttributeName
+                             atIndex:index
+               longestEffectiveRange:&range
+                             inRange:NSMakeRange(0, storage.length)];
+  return attachment == self && index == range.location;
+}
+
 - (CGRect)attachmentBoundsForTextContainer:(NSTextContainer *)container
                       proposedLineFragment:(CGRect)lineFragment
                              glyphPosition:(CGPoint)position
                             characterIndex:(NSUInteger)characterIndex
 {
+  // TextKit can query attachments directly, bypassing the glyph delegate for
+  // attachment characters. Only the first source character owns the pill box.
+  if (![self startsAttachmentInTextContainer:container characterIndex:characterIndex])
+    return CGRectZero;
   // Use the full container width, not the remainder of the current line. TextKit then moves
   // the whole attachment to the next line if it doesn't fit the remainder.
   NSParagraphStyle *paragraph = [container.layoutManager.textStorage attribute:NSParagraphStyleAttributeName
@@ -60,6 +79,9 @@
 
 - (UIImage *)imageForBounds:(CGRect)bounds textContainer:(NSTextContainer *)container characterIndex:(NSUInteger)index
 {
+  if (bounds.size.width <= 0 || bounds.size.height <= 0 ||
+      ![self startsAttachmentInTextContainer:container characterIndex:index])
+    return nil;
   CGSize size = bounds.size;
   UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
   format.opaque = NO;
