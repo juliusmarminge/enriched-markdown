@@ -2,6 +2,7 @@
 #import "ENRMLinkPillIconCache.h"
 #import "ENRMLinkPillTextStorage.h"
 #import "StyleConfig.h"
+#import <objc/runtime.h>
 
 #if !TARGET_OS_OSX
 
@@ -126,6 +127,15 @@
 }
 @end
 
+@interface ENRMPillGlyphTail : NSObject
+@property (nonatomic) NSUInteger glyphEnd;
+@property (nonatomic) NSUInteger characterIndex;
+@end
+@implementation ENRMPillGlyphTail
+@end
+
+static char ENRMPillGlyphTailKey;
+
 @implementation ENRMLinkPillLayoutDelegate
 + (instancetype)shared
 {
@@ -143,6 +153,18 @@
               forGlyphRange:(NSRange)glyphRange
 {
   NSUInteger count = glyphRange.length;
+  if (count == 0)
+    return 0;
+  ENRMPillGlyphTail *tail = objc_getAssociatedObject(manager, &ENRMPillGlyphTailKey);
+  BOOL continuesFirstCharacter = tail && tail.glyphEnd == glyphRange.location && tail.characterIndex == indexes[0];
+  if (!tail) {
+    tail = [ENRMPillGlyphTail new];
+    objc_setAssociatedObject(manager, &ENRMPillGlyphTailKey, tail, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  }
+  // Remember only the immediately preceding callback. Querying surrounding glyphs
+  // during generation can recurse into this delegate before those glyphs exist.
+  tail.glyphEnd = NSMaxRange(glyphRange);
+  tail.characterIndex = indexes[count - 1];
   NSMutableData *glyphData = [NSMutableData dataWithBytes:glyphs length:count * sizeof(CGGlyph)];
   NSMutableData *propertyData = [NSMutableData dataWithBytes:properties length:count * sizeof(NSGlyphProperty)];
   CGGlyph *replacement = glyphData.mutableBytes;
@@ -160,12 +182,8 @@
       continue;
     changed = YES;
     // A character can have multiple glyphs, even across font/callback boundaries.
-    // The preceding glyph is outside this callback's range and is already generated.
     BOOL startsAttachment = indexes[i] == range.location;
-    BOOL continuesCharacter =
-        startsAttachment && (i > 0 ? indexes[i - 1] == indexes[i]
-                                   : glyphRange.location > 0 &&
-                                         [manager characterIndexForGlyphAtIndex:glyphRange.location - 1] == indexes[i]);
+    BOOL continuesCharacter = startsAttachment && (i > 0 ? indexes[i - 1] == indexes[i] : continuesFirstCharacter);
     if (startsAttachment && !continuesCharacter) {
       // TextKit's attachment glyph exists only in the glyph buffer, never in text storage.
       replacement[i] = 0xFFFC;
