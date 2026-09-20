@@ -112,7 +112,7 @@ Each item has `text`, `onPress({ url })`, and optional `icon`, `visible`, `disab
 
 Works in CommonMark text and GitHub-flavor text segments, including blockquotes and table cells. The text-selection menu stays controlled by `contextMenuItems` and `selectionMenuConfig`, and block copy menus by `enableBlockContextMenu`. Android, macOS and iOS below 17 ignore this prop; use `onLinkLongPress` there.
 ### `renderMedia`
-Optional callback for GitHub flavor on iOS and Android. It receives an eligible `MarkdownMediaAsset` from the accepted native document manifest and returns React content for that occurrence. Standalone root image paragraphs and direct root video blocks support replacement. Inline, list, table, linked, and quote images retain native rendering. Returning null, undefined, or a boolean also keeps native rendering.
+Optional callback for GitHub flavor on iOS and Android. It receives an eligible `MarkdownMediaAsset` from the accepted native document manifest and returns React content for that occurrence. Standalone image paragraphs and direct video blocks support replacement at the document root or inside recursive quotes and admonitions. Inline, list, table, and linked images retain native rendering. Quotes beneath unsupported ancestors remain ineligible. Returning null, undefined, or a boolean also keeps native rendering.
   markdown={markdown}
   flavor="github"
   renderMedia={(asset) =>

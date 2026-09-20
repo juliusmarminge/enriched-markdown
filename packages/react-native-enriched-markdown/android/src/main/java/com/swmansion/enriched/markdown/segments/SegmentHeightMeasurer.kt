@@ -79,7 +79,15 @@ object SegmentHeightMeasurer {
           // A quote encountered here is always nested inside another quote, so it
           // carries no vertical margin (only the outermost quote does, added by
           // MeasurementStore); this mirrors BlockquoteContainerView.nested.
-          totalHeightPx += BlockquoteContainerView.measureBlockquoteNodeHeight(segment.node, style, context, contentWidthPx)
+          totalHeightPx +=
+            BlockquoteContainerView.measureBlockquoteNodeHeight(
+              segment.node,
+              style,
+              context,
+              contentWidthPx,
+              segment.mediaSlots,
+              segment.assets,
+            )
         }
 
         is RenderedSegment.Video -> {
@@ -87,12 +95,14 @@ object SegmentHeightMeasurer {
             segment.mediaSlot?.let {
               com.swmansion.enriched.markdown.media.MediaSlotView
                 .marginTop(it, style)
+                .let { margin -> ceil(margin) }
             }
               ?: style.videoStyle.marginTop
           totalHeightPx +=
             segment.mediaSlot?.let {
               com.swmansion.enriched.markdown.media.MediaSlotView
-                .heightPx(it, style, contentWidthPx)
+                .heightPx(it, style, widthPx.toFloat())
+                .let { height -> ceil(height) }
             }
               ?: (contentWidthPx / style.videoStyle.resolvedAspectRatio)
           if (includeBottomMargin) {
@@ -100,6 +110,7 @@ object SegmentHeightMeasurer {
               segment.mediaSlot?.let {
                 com.swmansion.enriched.markdown.media.MediaSlotView
                   .marginBottom(it, style)
+                  .let { margin -> ceil(margin) }
               }
                 ?: style.videoStyle.marginBottom
           }

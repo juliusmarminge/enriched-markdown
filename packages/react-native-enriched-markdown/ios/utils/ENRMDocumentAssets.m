@@ -10,8 +10,8 @@ static NSString *ENRMAssetText(MarkdownASTNode *node)
 }
 
 static void ENRMVisitAssets(MarkdownASTNode *node, MarkdownASTNode *parent, MarkdownASTNode *root, NSString *placement,
-                            NSString *anchor, NSMutableArray *assets, BOOL enableSlots, BOOL decisionsAccepted,
-                            NSDictionary *overrides)
+                            NSString *anchor, BOOL segmentChild, BOOL parentIsSegmentChild, NSMutableArray *assets,
+                            BOOL enableSlots, BOOL decisionsAccepted, NSDictionary *overrides)
 {
   if (node.type == MarkdownNodeTypeTable)
     placement = @"table";
@@ -23,11 +23,11 @@ static void ENRMVisitAssets(MarkdownASTNode *node, MarkdownASTNode *parent, Mark
   BOOL isImage = node.type == MarkdownNodeTypeImage;
   BOOL isVideo = node.type == MarkdownNodeTypeVideo;
   if (isImage || isVideo || node.type == MarkdownNodeTypeLink) {
-    BOOL blockImage = isImage && parent.type == MarkdownNodeTypeParagraph && parent.children.count == 1 &&
-                      [root.children containsObject:parent];
-    BOOL eligible = blockImage || (isVideo && parent == root);
+    BOOL blockImage =
+        isImage && parent.type == MarkdownNodeTypeParagraph && parent.children.count == 1 && parentIsSegmentChild;
+    BOOL eligible = blockImage || (isVideo && segmentChild);
     NSString *identifier = [NSString stringWithFormat:@"asset-%lu", (unsigned long)assets.count];
-    NSString *assetPlacement = eligible ? @"block" : placement;
+    NSString *assetPlacement = eligible && ![placement isEqualToString:@"blockquote"] ? @"block" : placement;
     NSString *assetAnchor =
         blockImage ? [anchor substringToIndex:[anchor rangeOfString:@"." options:NSBackwardsSearch].location] : anchor;
     NSString *kind = isImage ? @"image" : (isVideo ? @"video" : @"link");
@@ -59,10 +59,16 @@ static void ENRMVisitAssets(MarkdownASTNode *node, MarkdownASTNode *parent, Mark
       }
     }
   }
+  // Only document/quote segment containers can host slots. Once traversal enters
+  // a list, table, paragraph, or link, descendant quotes stay in the text path.
+  BOOL childrenAreSegmentChildren =
+      node == root ||
+      (segmentChild && (node.type == MarkdownNodeTypeBlockquote || node.type == MarkdownNodeTypeAdmonition));
   [node.children enumerateObjectsUsingBlock:^(MarkdownASTNode *child, NSUInteger index, BOOL *stop) {
     NSString *childAnchor = anchor.length > 0 ? [anchor stringByAppendingFormat:@".%lu", (unsigned long)index]
                                               : [NSString stringWithFormat:@"%lu", (unsigned long)index];
-    ENRMVisitAssets(child, node, root, placement, childAnchor, assets, enableSlots, decisionsAccepted, overrides);
+    ENRMVisitAssets(child, node, root, placement, childAnchor, childrenAreSegmentChildren, segmentChild, assets,
+                    enableSlots, decisionsAccepted, overrides);
   }];
 }
 
@@ -70,7 +76,7 @@ NSArray<NSDictionary *> *ENRMPrepareDocumentAssets(MarkdownASTNode *ast, BOOL en
                                                    NSDictionary *overrides)
 {
   NSMutableArray *assets = [NSMutableArray array];
-  ENRMVisitAssets(ast, nil, ast, @"inline", @"0", assets, enableMediaSlots, decisionsAccepted, overrides);
+  ENRMVisitAssets(ast, nil, ast, @"inline", @"0", NO, NO, assets, enableMediaSlots, decisionsAccepted, overrides);
   return assets;
 }
 

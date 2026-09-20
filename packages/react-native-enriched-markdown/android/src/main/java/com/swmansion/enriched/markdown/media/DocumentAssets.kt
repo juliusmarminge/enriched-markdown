@@ -35,6 +35,8 @@ class DocumentAssets private constructor(
         placement: String,
         path: String,
         parentPath: String,
+        parentIsSegmentContainer: Boolean,
+        parentIsSegmentParagraph: Boolean,
       ) {
         val nestedPlacement =
           when (node.type) {
@@ -50,6 +52,12 @@ class DocumentAssets private constructor(
 
             else -> placement
           }
+        val isSegmentContainer =
+          node === root ||
+            (
+              parentIsSegmentContainer &&
+                (node.type == MarkdownASTNode.NodeType.Blockquote || node.type == MarkdownASTNode.NodeType.Admonition)
+            )
         val kind =
           when (node.type) {
             MarkdownASTNode.NodeType.Image -> "image"
@@ -60,8 +68,8 @@ class DocumentAssets private constructor(
         if (kind != null) {
           val standaloneImage =
             kind == "image" && parent?.type == MarkdownASTNode.NodeType.Paragraph &&
-              parent.children.size == 1 && root.children.any { it === parent }
-          val eligible = standaloneImage || (kind == "video" && parent === root)
+              parent.children.size == 1 && parentIsSegmentParagraph
+          val eligible = standaloneImage || (kind == "video" && parentIsSegmentContainer)
           val asset =
             DocumentAsset(
               id = "asset-${assets.size}",
@@ -70,7 +78,7 @@ class DocumentAssets private constructor(
               altText = text(node).trim(),
               title = node.getAttribute("title") ?: "",
               placement =
-                if (eligible) {
+                if (eligible && nestedPlacement == "block") {
                   "block"
                 } else if (nestedPlacement == "block") {
                   "inline"
@@ -83,9 +91,19 @@ class DocumentAssets private constructor(
           assets.add(asset)
           byNode[node] = asset
         }
-        node.children.forEachIndexed { index, child -> visit(child, node, nestedPlacement, "$path.$index", path) }
+        node.children.forEachIndexed { index, child ->
+          visit(
+            child,
+            node,
+            nestedPlacement,
+            "$path.$index",
+            path,
+            isSegmentContainer,
+            node.type == MarkdownASTNode.NodeType.Paragraph && parentIsSegmentContainer,
+          )
+        }
       }
-      visit(root, null, "block", "0", "")
+      visit(root, null, "block", "0", "", false, false)
       return DocumentAssets(assets, byNode)
     }
   }

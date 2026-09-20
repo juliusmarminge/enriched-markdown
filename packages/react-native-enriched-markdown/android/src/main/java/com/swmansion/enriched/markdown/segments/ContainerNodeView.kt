@@ -3,6 +3,8 @@ package com.swmansion.enriched.markdown.segments
 import android.content.Context
 import android.view.View
 import android.widget.FrameLayout
+import com.swmansion.enriched.markdown.media.MediaSlotFrame
+import com.swmansion.enriched.markdown.media.MediaSlotView
 import kotlin.math.ceil
 import kotlin.math.max
 
@@ -78,6 +80,20 @@ open class ContainerNodeView(
     segmentSignatures.addAll(result.signatures)
 
     return result.viewsToAttach.isNotEmpty() || result.viewsToRemove.isNotEmpty()
+  }
+
+  /** Slot rectangles include every quote inset and header, in this container's coordinates. */
+  fun mediaSlotFrames(): List<MediaSlotFrame> {
+    // A zero-width nested quote leaves its descendants' prior frames intact.
+    // Stop at that ancestor rather than publishing stale positive-width slots.
+    if (width - paddingLeft - paddingRight <= 0) return emptyList()
+    return segmentViews.flatMap { view ->
+      when (view) {
+        is MediaSlotView -> listOf(MediaSlotFrame(view.slot.asset.id, view.left, view.top, view.width, view.height))
+        is ContainerNodeView -> view.mediaSlotFrames().map { it.translated(view.left, view.top) }
+        else -> emptyList()
+      }
+    }
   }
 
   protected fun layoutSegments() {

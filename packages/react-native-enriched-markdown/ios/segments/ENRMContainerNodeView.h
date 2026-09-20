@@ -47,6 +47,9 @@ NS_ASSUME_NONNULL_BEGIN
 // i.e. bounds width minus horizontal insets), including the vertical insets.
 - (CGFloat)computeContentHeightForWidth:(CGFloat)contentWidth;
 
+// Lays out nested children and appends accepted slot rectangles in root space.
+- (void)appendMediaFrames:(NSMutableArray<NSDictionary *> *)frames relativeToView:(RCTUIView *)rootView;
+
 @end
 
 NS_ASSUME_NONNULL_END
