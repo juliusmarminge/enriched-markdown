@@ -80,6 +80,9 @@ jobs:
       - name: Run unit tests
         run: yarn test
 
+      - name: Check embedded MD4C coexistence
+        run: bash scripts/test-md4c-isolation.sh
+
   rn-build-library:
     needs: changes
     if: needs.changes.outputs.react-native == 'true'

@@ -26,6 +26,9 @@
 #ifndef MD4C_H
 #define MD4C_H
 
+/* Isolate the embedded parser from other libraries linking their own MD4C. */
+#define md_parse enrm_md_parse
+
 #ifdef __cplusplus
 extern "C" {
 #endif

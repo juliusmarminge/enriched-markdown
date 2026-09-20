@@ -20,3 +20,11 @@ Author handles and the New Contributors section are resolved through an authenti
 ## fetch-md4c.sh
 
 Syncs `packages/core/cpp/md4c` from upstream [mity/md4c](https://github.com/mity/md4c). Run via `yarn workspace react-native-enriched-markdown sync-md4c`.
+
+Restores Enriched's `md_parse` → `enrm_md_parse` alias after fetching so another embedded MD4C can link alongside it.
+
+## test-md4c-isolation.sh
+
+Run `bash scripts/test-md4c-isolation.sh` with a C99 compiler and a C++17 compiler available as `cc` and `c++`, or set `CC` and `CXX`. No React Native installation is required.
+
+Compiles and links two complete MD4C copies, one with Enriched's symbol name and one with the original `md_parse`. Runs both callback parsers and Enriched's C++ AST parser. Also compiles the iOS bridges' C++ includes with conflicting headers first in the search path, using both the monorepo symlink and the published package's copied core layout. This header diagnostic does not replace an iOS CocoaPods build.
