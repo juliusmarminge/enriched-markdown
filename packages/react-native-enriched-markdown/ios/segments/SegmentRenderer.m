@@ -11,7 +11,13 @@ static NSArray *ENRMSplitASTIntoSegments(MarkdownASTNode *root)
   NSMutableArray *currentTextNodes = [NSMutableArray array];
 
   for (MarkdownASTNode *child in root.children) {
-    if (child.type == MarkdownNodeTypeTable) {
+    if (child.attributes[@"_enrmMediaSlot"]) {
+      if (currentTextNodes.count > 0) {
+        [segments addObject:[ENRMTextSegment segmentWithNodes:[currentTextNodes copy]]];
+        [currentTextNodes removeAllObjects];
+      }
+      [segments addObject:child];
+    } else if (child.type == MarkdownNodeTypeTable) {
       if (currentTextNodes.count > 0) {
         [segments addObject:[ENRMTextSegment segmentWithNodes:[currentTextNodes copy]]];
         [currentTextNodes removeAllObjects];
@@ -83,7 +89,13 @@ NSArray<ENRMRenderedSegment *> *ENRMRenderSegmentsFromAST(MarkdownASTNode *ast, 
   static const uint64_t kVideoKindSalt = 0x7669646F00000000ULL;      // "vido"
 
   for (id segment in segments) {
-    if ([segment isKindOfClass:[ENRMTextSegment class]]) {
+    if ([segment isKindOfClass:[MarkdownASTNode class]]) {
+      ENRMRenderedSegment *rendered = [[ENRMRenderedSegment alloc] init];
+      rendered.kind = ENRMSegmentKindMediaSlot;
+      rendered.mediaSlotNode = segment;
+      rendered.signature = ENRMSignatureForNode(segment);
+      [renderedSegments addObject:rendered];
+    } else if ([segment isKindOfClass:[ENRMTextSegment class]]) {
       ENRMTextSegment *textSegment = (ENRMTextSegment *)segment;
       ENRMRenderResult *rendered = blockquoteContent
                                        ? ENRMRenderBlockquoteContentNodes(textSegment.nodes, config, allowFontScaling,

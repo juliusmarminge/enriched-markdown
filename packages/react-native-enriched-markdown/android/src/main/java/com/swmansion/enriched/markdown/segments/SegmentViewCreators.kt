@@ -9,6 +9,7 @@ import android.view.View
 import com.swmansion.enriched.markdown.EnrichedMarkdownInternalText
 import com.swmansion.enriched.markdown.accessibility.AccessibilityLabels
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
+import com.swmansion.enriched.markdown.media.MediaSlotView
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.styles.StyleConfig
 import com.swmansion.enriched.markdown.utils.common.BreakStrategyUtils
@@ -227,6 +228,7 @@ object SegmentViewCreators {
     segment: RenderedSegment.Video,
     config: SegmentViewConfig,
   ): View {
+    segment.mediaSlot?.let { return MediaSlotView(config.context, config.style, it) }
     val resolvedClass = videoContainerClass()
     if (!FeatureFlags.IS_VIDEO_ENABLED || resolvedClass == null) return View(config.context)
     return try {
@@ -251,6 +253,10 @@ object SegmentViewCreators {
     view: View,
     segment: RenderedSegment.Video,
   ) {
+    if (view is MediaSlotView) {
+      segment.mediaSlot?.let { view.slot = it }
+      return
+    }
     videoContainerClass()
       ?.getMethod("applyVideoNode", MarkdownASTNode::class.java)
       ?.invoke(view, segment.node)

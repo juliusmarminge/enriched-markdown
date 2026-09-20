@@ -38,6 +38,16 @@ inline folly::dynamic toDynamic(const EnrichedMarkdownProps &props) {
   serializedProps["allowTrailingMargin"] = props.allowTrailingMargin;
   serializedProps["streamingAnimation"] = props.streamingAnimation;
 
+  serializedProps["documentRevision"] = props.documentRevision;
+  serializedProps["mediaOverridesRevision"] = props.mediaOverridesRevision;
+  serializedProps["enableMediaSlots"] = props.enableMediaSlots;
+  folly::dynamic mediaOverrides = folly::dynamic::array();
+  for (const auto &slot : props.mediaOverrides) {
+    mediaOverrides.push_back(folly::dynamic::object("id", slot.id)("height", slot.height)("width", slot.width)(
+        "url", slot.url)("kind", slot.kind)("anchor", slot.anchor));
+  }
+  serializedProps["mediaOverrides"] = std::move(mediaOverrides);
+
   folly::dynamic imageRequestHeaders = folly::dynamic::array();
   for (const auto &header : props.imageRequestHeaders) {
     imageRequestHeaders.push_back(toDynamic(header));

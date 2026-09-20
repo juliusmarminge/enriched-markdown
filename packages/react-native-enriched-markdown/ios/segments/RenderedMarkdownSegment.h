@@ -13,7 +13,8 @@ typedef NS_ENUM(NSInteger, ENRMSegmentKind) {
   ENRMSegmentKindMath,
   ENRMSegmentKindCodeBlock,
   ENRMSegmentKindBlockquote,
-  ENRMSegmentKindVideo
+  ENRMSegmentKindVideo,
+  ENRMSegmentKindMediaSlot
 };
 
 @interface ENRMTextSegment : NSObject
@@ -49,6 +50,7 @@ typedef NS_ENUM(NSInteger, ENRMSegmentKind) {
 @interface ENRMRenderedSegment : NSObject
 @property (nonatomic, assign) ENRMSegmentKind kind;
 @property (nonatomic, assign) uint64_t signature;
+@property (nonatomic, strong, nullable) MarkdownASTNode *mediaSlotNode;
 @property (nonatomic, strong, nullable) ENRMRenderResult *textResult;
 @property (nonatomic, strong, nullable) ENRMTableSegment *tableSegment;
 @property (nonatomic, strong, nullable) ENRMMathSegment *mathSegment;

@@ -59,7 +59,8 @@ static inline Size ENRMClampMeasuredSize(CGSize size, const LayoutConstraints &l
 template <typename PropsT>
 static inline bool ENRMPropsNeedExactStreamingMeasurement(const PropsT &oldProps, const PropsT &newProps)
 {
-  return oldProps.streamingAnimation != newProps.streamingAnimation ||
+  return ENRMMediaPropsFingerprint(oldProps) != ENRMMediaPropsFingerprint(newProps) ||
+         oldProps.streamingAnimation != newProps.streamingAnimation ||
          oldProps.allowFontScaling != newProps.allowFontScaling ||
          oldProps.maxFontSizeMultiplier != newProps.maxFontSizeMultiplier ||
          oldProps.allowTrailingMargin != newProps.allowTrailingMargin ||
@@ -70,8 +71,7 @@ static inline bool ENRMPropsNeedExactStreamingMeasurement(const PropsT &oldProps
          oldProps.md4cFlags.highlight != newProps.md4cFlags.highlight ||
          oldProps.md4cFlags.hardSoftBreaks != newProps.md4cFlags.hardSoftBreaks ||
          oldProps.md4cFlags.preserveBlankLines != newProps.md4cFlags.preserveBlankLines ||
-         oldProps.isGFM != newProps.isGFM ||
-         oldProps.md4cFlags.admonitions != newProps.md4cFlags.admonitions ||
+         oldProps.isGFM != newProps.isGFM || oldProps.md4cFlags.admonitions != newProps.md4cFlags.admonitions ||
          computeStyleFingerprint(oldProps.markdownStyle) != computeStyleFingerprint(newProps.markdownStyle);
 }
 
@@ -104,7 +104,8 @@ ENRMMeasureMarkdownContent(const PropsT &typedProps, const std::shared_ptr<void>
   // bumps lastExactMeasurementCounter, the rest land here. Return the freshly
   // measured size, not the view's mailbox — mid-pass the frame isn't committed,
   // so the mailbox is a generation stale and would freeze the height.
-  if (typedProps.streamingAnimation && view && receivedCounter <= lastExactMeasurementCounter) {
+  if (typedProps.streamingAnimation && !ENRMMediaSlotsEnabled(typedProps) && view &&
+      receivedCounter <= lastExactMeasurementCounter) {
     if (lastExactMeasurementSize.width > 0 && lastExactMeasurementSize.height > 0) {
       return ENRMClampMeasuredSize(lastExactMeasurementSize, layoutConstraints);
     }

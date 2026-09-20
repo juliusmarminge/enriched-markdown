@@ -2,6 +2,7 @@
 
 #import "ENRMBlockquoteContainerView.h"
 #import "ENRMCodeBlockContainerView.h"
+#import "ENRMDocumentAssets.h"
 #import "ENRMFeatureFlags.h"
 #import "ENRMMarkdownParser.h"
 #import "ENRMTextRenderer.h"
@@ -272,6 +273,9 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
     ENRMWritingDirectionMode writingDirectionMode =
         ENRMResolveWritingDirectionMode([[NSString alloc] initWithUTF8String:typedProps.writingDirection.c_str()]);
 
+    if (typedProps.enableMediaSlots)
+      ENRMPrepareDocumentAssets(ast, YES, typedProps.mediaOverridesRevision == typedProps.documentRevision,
+                                ENRMMediaOverridesFromProps(typedProps));
     NSArray<ENRMRenderedSegment *> *segments =
         ENRMRenderSegmentsFromAST(ast, config, typedProps.allowTrailingMargin, typedProps.allowFontScaling,
                                   typedProps.maxFontSizeMultiplier, lineBreakStrategy, /*blockquoteContent*/ NO);
@@ -294,7 +298,14 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
       const BOOL isLast = (i == lastIndex);
       const BOOL shouldAddBottomMargin = (!isLast || typedProps.allowTrailingMargin);
 
-      if (segment.kind == ENRMSegmentKindText && segment.textResult) {
+      if (segment.kind == ENRMSegmentKindMediaSlot && segment.mediaSlotNode) {
+        BOOL video = [segment.mediaSlotNode.attributes[@"_enrmMediaKind"] isEqualToString:@"video"];
+        yOffset += video ? config.videoMarginTop : config.imageMarginTop;
+        yOffset += ENRMMediaSlotHeight(segment.mediaSlotNode, maxWidth, config);
+        maxContentWidth = maxWidth;
+        if (shouldAddBottomMargin)
+          yOffset += video ? config.videoMarginBottom : config.imageMarginBottom;
+      } else if (segment.kind == ENRMSegmentKindText && segment.textResult) {
         CGSize textSize = ENRMMeasureAttributedTextViewFree(
             segment.textResult.attributedText, maxWidth, config, shouldAddBottomMargin,
             segment.textResult.lastElementMarginBottom, pointScaleFactor, 0, NSLineBreakByWordWrapping);

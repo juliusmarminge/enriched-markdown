@@ -82,10 +82,25 @@ object SegmentHeightMeasurer {
         }
 
         is RenderedSegment.Video -> {
-          totalHeightPx += style.videoStyle.marginTop
-          totalHeightPx += contentWidthPx / style.videoStyle.resolvedAspectRatio
+          totalHeightPx +=
+            segment.mediaSlot?.let {
+              com.swmansion.enriched.markdown.media.MediaSlotView
+                .marginTop(it, style)
+            }
+              ?: style.videoStyle.marginTop
+          totalHeightPx +=
+            segment.mediaSlot?.let {
+              com.swmansion.enriched.markdown.media.MediaSlotView
+                .heightPx(it, style, contentWidthPx)
+            }
+              ?: (contentWidthPx / style.videoStyle.resolvedAspectRatio)
           if (includeBottomMargin) {
-            totalHeightPx += style.videoStyle.marginBottom
+            totalHeightPx +=
+              segment.mediaSlot?.let {
+                com.swmansion.enriched.markdown.media.MediaSlotView
+                  .marginBottom(it, style)
+              }
+                ?: style.videoStyle.marginBottom
           }
         }
       }

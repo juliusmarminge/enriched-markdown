@@ -431,10 +431,42 @@ export interface DocumentAssetsEventInternal {
   }[];
 }
 
+export interface MediaFrameInternal {
+  id: string;
+  x: CodegenTypes.Float;
+  y: CodegenTypes.Float;
+  width: CodegenTypes.Float;
+  height: CodegenTypes.Float;
+}
+
+export interface MediaLayoutEventInternal {
+  revision: CodegenTypes.Int32;
+  frames: {
+    id: string;
+    x: CodegenTypes.Float;
+    y: CodegenTypes.Float;
+    width: CodegenTypes.Float;
+    height: CodegenTypes.Float;
+  }[];
+}
+
+export interface MediaOverrideInternal {
+  url: string;
+  kind: string;
+  anchor: string;
+  id: string;
+  height: CodegenTypes.Float;
+  width: CodegenTypes.Float;
+}
+
 export interface NativeProps extends ViewProps {
   documentRevision?: CodegenTypes.WithDefault<CodegenTypes.Int32, 0>;
   enableDocumentAssets?: CodegenTypes.WithDefault<boolean, false>;
+  enableMediaSlots?: CodegenTypes.WithDefault<boolean, false>;
+  mediaOverridesRevision?: CodegenTypes.WithDefault<CodegenTypes.Int32, -1>;
+  mediaOverrides?: ReadonlyArray<Readonly<MediaOverrideInternal>>;
   onDocumentAssets?: CodegenTypes.DirectEventHandler<DocumentAssetsEventInternal>;
+  onMediaLayout?: CodegenTypes.DirectEventHandler<MediaLayoutEventInternal>;
 
   /**
    * Markdown content to render.

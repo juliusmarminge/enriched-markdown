@@ -7,6 +7,7 @@
 #import "ENRMImageAttachment.h"
 #import "ENRMLatexErrorCoordinator.h"
 #import "ENRMMarkdownParser.h"
+#import "ENRMMediaSlotView.h"
 #import "ENRMTailFadeInAnimator.h"
 #import "ENRMTextInteractionUtils.h"
 #import "ENRMTextRenderer.h"
@@ -80,6 +81,7 @@ static char kENRMSegmentFadeAnimatorKey;
 @interface EnrichedMarkdown () <RCTEnrichedMarkdownViewProtocol, UITextViewDelegate, ENRMImageLayoutObserver>
 + (ENRMMd4cFlags *)flagsFromProps:(const EnrichedMarkdownMd4cFlagsStruct &)props;
 - (void)emitDocumentAssets;
+- (void)emitMediaLayout:(NSArray<NSDictionary *> *)frames;
 - (void)emitLinkPress:(NSString *)url;
 - (void)emitLinkLongPress:(NSString *)url;
 - (void)emitImagePress:(NSString *)url altText:(NSString *)altText;
@@ -146,7 +148,11 @@ static char kENRMSegmentFadeAnimatorKey;
   NSInteger _documentRevision;
   NSInteger _renderedDocumentRevision;
   BOOL _enableDocumentAssets;
+  BOOL _enableMediaSlots;
+  NSInteger _mediaOverridesRevision;
+  NSDictionary *_mediaOverrides;
   NSArray<NSDictionary *> *_documentAssets;
+  NSArray<NSDictionary *> *_lastMediaFrames;
   NSArray<NSDictionary *> *_lastEmittedAssets;
   NSInteger _lastEmittedAssetsRevision;
 }
@@ -180,8 +186,10 @@ static char kENRMSegmentFadeAnimatorKey;
     _parser = [[ENRMMarkdownParser alloc] init];
     _md4cFlags = [EnrichedMarkdown flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
+    _mediaOverridesRevision = -1;
     _renderedDocumentRevision = -1;
     _lastEmittedAssetsRevision = -1;
+    _mediaOverrides = @{};
     _segmentViews = [NSMutableArray array];
     _segmentSignatures = [NSMutableArray array];
     __weak __typeof(self) weakLatexSelf = self;
@@ -378,6 +386,18 @@ static char kENRMSegmentFadeAnimatorKey;
                           }]];
 #endif
 
+  [handlers addObject:[ENRMSegmentViewHandler handlerWithKind:ENRMSegmentKindMediaSlot
+                          matchesView:^BOOL(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            return [view isKindOfClass:[ENRMMediaSlotView class]];
+                          }
+                          createView:^RCTUIView *(ENRMRenderedSegment *segment) {
+                            ENRMMediaSlotView *view = [[ENRMMediaSlotView alloc] init];
+                            view.mediaNode = segment.mediaSlotNode;
+                            return view;
+                          }
+                          updateView:^(RCTUIView *view, ENRMRenderedSegment *segment) {
+                            ((ENRMMediaSlotView *)view).mediaNode = segment.mediaSlotNode;
+                          }]];
   _segmentViewRegistry = [[ENRMSegmentViewRegistry alloc] initWithHandlers:handlers];
 }
 
@@ -442,6 +462,7 @@ static char kENRMSegmentFadeAnimatorKey;
 #endif
   }
 
+  NSMutableArray *mediaFrames = [NSMutableArray array];
   __block CGFloat yOffset = 0.0;
   __block CGFloat maxContentWidth = 0.0;
   const NSUInteger lastIndex = _segmentViews.count - 1;
@@ -453,7 +474,22 @@ static char kENRMSegmentFadeAnimatorKey;
     CGFloat segmentHeight = 0;
     const BOOL isTable = [segment isKindOfClass:[TableContainerView class]];
 
-    if ([segment isKindOfClass:[EnrichedMarkdownInternalText class]]) {
+    if ([segment isKindOfClass:[ENRMMediaSlotView class]]) {
+      MarkdownASTNode *node = ((ENRMMediaSlotView *)segment).mediaNode;
+      BOOL video = [node.attributes[@"_enrmMediaKind"] isEqualToString:@"video"];
+      yOffset += video ? _config.videoMarginTop : _config.imageMarginTop;
+      segmentHeight = ENRMMediaSlotHeight(node, width, _config);
+      maxContentWidth = width;
+      if (applyFrames) {
+        [mediaFrames addObject:@{
+          @"id" : node.attributes[@"_enrmMediaSlot"],
+          @"x" : @0,
+          @"y" : @(yOffset),
+          @"width" : @(width),
+          @"height" : @(segmentHeight)
+        }];
+      }
+    } else if ([segment isKindOfClass:[EnrichedMarkdownInternalText class]]) {
       EnrichedMarkdownInternalText *textView = (EnrichedMarkdownInternalText *)segment;
       textView.allowTrailingMargin = shouldAddBottomMargin;
       CGSize textSize = [textView measureSize:width];
@@ -514,7 +550,11 @@ static char kENRMSegmentFadeAnimatorKey;
 
     yOffset += segmentHeight;
 
-    if ([segment isKindOfClass:[TableContainerView class]] && shouldAddBottomMargin) {
+    if ([segment isKindOfClass:[ENRMMediaSlotView class]] && shouldAddBottomMargin) {
+      MarkdownASTNode *node = ((ENRMMediaSlotView *)segment).mediaNode;
+      yOffset += [node.attributes[@"_enrmMediaKind"] isEqualToString:@"video"] ? _config.videoMarginBottom
+                                                                               : _config.imageMarginBottom;
+    } else if ([segment isKindOfClass:[TableContainerView class]] && shouldAddBottomMargin) {
       yOffset += _config.tableMarginBottom;
     }
 #if ENRICHED_MARKDOWN_MATH
@@ -534,6 +574,11 @@ static char kENRMSegmentFadeAnimatorKey;
 #endif
   }];
 
+  if (applyFrames && _enableMediaSlots && _renderedDocumentRevision == _documentRevision &&
+      ![_lastMediaFrames isEqualToArray:mediaFrames]) {
+    _lastMediaFrames = [mediaFrames copy];
+    [self emitMediaLayout:mediaFrames];
+  }
   return CGSizeMake(maxContentWidth, yOffset);
 }
 
@@ -691,7 +736,10 @@ static char kENRMSegmentFadeAnimatorKey;
   NSWritingDirection resolvedLayoutDirection = _resolvedLayoutDirection;
 
   NSInteger revision = _documentRevision;
+  BOOL enableMediaSlots = _enableMediaSlots;
   BOOL enableDocumentAssets = _enableDocumentAssets;
+  BOOL decisionsAccepted = _mediaOverridesRevision == revision;
+  NSDictionary *mediaOverrides = [_mediaOverrides copy];
   __block NSArray<NSDictionary *> *documentAssets = @[];
   __block NSArray<ENRMRenderedSegment *> *renderedSegments = nil;
   __block NSString *renderableMarkdown = nil;
@@ -713,8 +761,8 @@ static char kENRMSegmentFadeAnimatorKey;
         if (!ast)
           return NO;
 
-        if (enableDocumentAssets)
-          documentAssets = ENRMPrepareDocumentAssets(ast);
+        if (enableDocumentAssets || enableMediaSlots)
+          documentAssets = ENRMPrepareDocumentAssets(ast, enableMediaSlots, decisionsAccepted, mediaOverrides);
         renderedSegments = ENRMRenderSegmentsFromAST(ast, config, allowTrailingMargin, allowFontScaling,
                                                      maxFontSizeMultiplier, lineBreakStrategy,
                                                      /*blockquoteContent*/ NO);
@@ -731,6 +779,7 @@ static char kENRMSegmentFadeAnimatorKey;
           return;
         self->_renderedDocumentRevision = revision;
         self->_documentAssets = documentAssets;
+        self->_lastMediaFrames = nil;
         [self emitDocumentAssets];
         self->_renderedStyleFingerprint = self->_pendingStyleFingerprint;
         [self applyRenderedSegments:renderedSegments
@@ -746,6 +795,10 @@ static char kENRMSegmentFadeAnimatorKey;
     return nil;
   }
 
+  if (_enableDocumentAssets || _enableMediaSlots)
+    _documentAssets = ENRMPrepareDocumentAssets(ast, _enableMediaSlots, _mediaOverridesRevision == _documentRevision,
+                                                _mediaOverrides);
+  _renderedDocumentRevision = _documentRevision;
   NSArray<ENRMRenderedSegment *> *segments =
       ENRMRenderSegmentsFromAST(ast, _config, _allowTrailingMargin, _fontScaleObserver.allowFontScaling,
                                 _maxFontSizeMultiplier, _lineBreakStrategy, /*blockquoteContent*/ NO);
@@ -1045,13 +1098,20 @@ static char kENRMSegmentFadeAnimatorKey;
     _dirtyFlags |= ENRMDirtyRender;
   }
 
-  if (_documentRevision != newViewProps.documentRevision ||
-      _enableDocumentAssets != newViewProps.enableDocumentAssets) {
+  NSDictionary *mediaOverrides = ENRMMediaOverridesFromProps(newViewProps);
+  if (_documentRevision != newViewProps.documentRevision || _enableMediaSlots != newViewProps.enableMediaSlots ||
+      _enableDocumentAssets != newViewProps.enableDocumentAssets ||
+      _mediaOverridesRevision != newViewProps.mediaOverridesRevision ||
+      ![_mediaOverrides isEqualToDictionary:mediaOverrides]) {
     _documentRevision = newViewProps.documentRevision;
+    _enableMediaSlots = newViewProps.enableMediaSlots;
     if (_enableDocumentAssets != newViewProps.enableDocumentAssets)
       _lastEmittedAssets = nil;
     _enableDocumentAssets = newViewProps.enableDocumentAssets;
-    _dirtyFlags |= ENRMDirtyRender;
+    _mediaOverridesRevision = newViewProps.mediaOverridesRevision;
+    _mediaOverrides = mediaOverrides;
+    _lastMediaFrames = nil;
+    _dirtyFlags |= ENRMDirtyForceHeight | ENRMDirtyRender;
   }
 
   if (_config == nil) {
@@ -1290,9 +1350,13 @@ static char kENRMSegmentFadeAnimatorKey;
   _documentAssets = nil;
   _lastEmittedAssets = nil;
   _lastEmittedAssetsRevision = -1;
-  _renderedDocumentRevision = -1;
+  _lastMediaFrames = nil;
+  _mediaOverrides = nil;
   _documentRevision = 0;
+  _renderedDocumentRevision = -1;
+  _mediaOverridesRevision = -1;
   _enableDocumentAssets = NO;
+  _enableMediaSlots = NO;
   _config = nil;
   _md4cFlags = [EnrichedMarkdown flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
@@ -1419,6 +1483,25 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
   emitter->onDocumentAssets(event);
 }
 
+- (void)emitMediaLayout:(NSArray<NSDictionary *> *)frames
+{
+  auto emitter = std::static_pointer_cast<EnrichedMarkdownEventEmitter const>(_eventEmitter);
+  if (!emitter)
+    return;
+  EnrichedMarkdownEventEmitter::OnMediaLayout event{};
+  event.revision = (int)_renderedDocumentRevision;
+  for (NSDictionary *frame in frames) {
+    decltype(event.frames)::value_type item{};
+    item.id = std::string([frame[@"id"] UTF8String]);
+    item.x = [frame[@"x"] floatValue];
+    item.y = [frame[@"y"] floatValue];
+    item.width = [frame[@"width"] floatValue];
+    item.height = [frame[@"height"] floatValue];
+    event.frames.push_back(item);
+  }
+  emitter->onMediaLayout(event);
+}
+
 - (void)emitLinkPress:(NSString *)url
 {
   auto emitter = std::static_pointer_cast<EnrichedMarkdownEventEmitter const>(_eventEmitter);
@@ -1480,9 +1563,14 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
 
 - (void)updateEventEmitter:(const facebook::react::EventEmitter::Shared &)eventEmitter
 {
+  BOOL firstAttachment = !_eventEmitter && eventEmitter;
   [super updateEventEmitter:eventEmitter];
   [_latexErrorCoordinator flushPending];
   [self emitDocumentAssets];
+  if (firstAttachment) {
+    _lastMediaFrames = nil;
+    [self setNeedsLayout];
+  }
 }
 
 - (void)textTapped:(ENRMTapRecognizer *)recognizer
@@ -1573,7 +1661,12 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownCls(void)
 
 - (NSArray *)accessibilityElements
 {
-  return _segmentViews;
+  NSMutableArray *elements = [NSMutableArray array];
+  for (RCTUIView *segment in _segmentViews) {
+    if (![segment isKindOfClass:[ENRMMediaSlotView class]])
+      [elements addObject:segment];
+  }
+  return elements;
 }
 
 - (NSInteger)accessibilityElementCount

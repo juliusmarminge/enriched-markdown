@@ -13,6 +13,7 @@ import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.viewmanagers.EnrichedMarkdownManagerDelegate
 import com.facebook.react.viewmanagers.EnrichedMarkdownManagerInterface
 import com.facebook.yoga.YogaMeasureMode
+import com.swmansion.enriched.markdown.media.parseMediaOverrides
 import com.swmansion.enriched.markdown.spoiler.SpoilerOverlay
 import com.swmansion.enriched.markdown.utils.common.CodeBlockStreamingMode
 import com.swmansion.enriched.markdown.utils.common.TableStreamingMode
@@ -115,6 +116,7 @@ class EnrichedMarkdownManager :
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> =
     markdownEventTypeConstants().apply {
       put("onDocumentAssets", mapOf("registrationName" to "onDocumentAssets"))
+      put("onMediaLayout", mapOf("registrationName" to "onMediaLayout"))
     }
 
   @ReactProp(name = "documentRevision", defaultInt = 0)
@@ -125,12 +127,36 @@ class EnrichedMarkdownManager :
     view?.setDocumentRevision(value)
   }
 
+  @ReactProp(name = "mediaOverridesRevision", defaultInt = -1)
+  override fun setMediaOverridesRevision(
+    view: EnrichedMarkdown?,
+    value: Int,
+  ) {
+    view?.setMediaOverridesRevision(value)
+  }
+
   @ReactProp(name = "enableDocumentAssets", defaultBoolean = false)
   override fun setEnableDocumentAssets(
     view: EnrichedMarkdown?,
     value: Boolean,
   ) {
     view?.setEnableDocumentAssets(value)
+  }
+
+  @ReactProp(name = "enableMediaSlots", defaultBoolean = false)
+  override fun setEnableMediaSlots(
+    view: EnrichedMarkdown?,
+    value: Boolean,
+  ) {
+    view?.setEnableMediaSlots(value)
+  }
+
+  @ReactProp(name = "mediaOverrides")
+  override fun setMediaOverrides(
+    view: EnrichedMarkdown?,
+    value: ReadableArray?,
+  ) {
+    view?.setMediaOverrides(parseMediaOverrides(value))
   }
 
   @ReactProp(name = "markdown")

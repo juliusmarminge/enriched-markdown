@@ -20,6 +20,14 @@ public:
   MarkdownContainerShadowNode(ShadowNode const &sourceShadowNode, ShadowNodeFragment const &fragment)
       : ConcreteViewShadowNode(sourceShadowNode, fragment) {
     dirtyLayoutIfNeeded();
+    const auto &previousProps = static_cast<const MarkdownContainerShadowNode &>(sourceShadowNode).getConcreteProps();
+    const auto &props = getConcreteProps();
+    if (previousProps.documentRevision != props.documentRevision ||
+        previousProps.enableMediaSlots != props.enableMediaSlots ||
+        previousProps.mediaOverridesRevision != props.mediaOverridesRevision ||
+        previousProps.mediaOverrides != props.mediaOverrides) {
+      dirtyLayout();
+    }
   }
 
   static ShadowNodeTraits BaseTraits() {
