@@ -14,6 +14,7 @@ import type {
 /** An action in a link's native context menu. Labels must be unique per URL. */
 export interface LinkContextMenuItem {
   text: string;
+  /** SF Symbol name, as in contextMenuItems. */
   icon?: string;
   visible?: boolean;
   disabled?: boolean;

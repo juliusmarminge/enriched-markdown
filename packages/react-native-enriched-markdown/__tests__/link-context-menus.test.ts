@@ -53,6 +53,36 @@ describe('per-link context menus', () => {
     expect(first).not.toHaveBeenCalled();
   });
 
+  it('produces JSON-serializable config without modifying public items', () => {
+    const item = Object.freeze({ text: 'Open', onPress: jest.fn() });
+    const menus = { './notes.md': { items: [item] } };
+    const config = normalizeLinkContextMenus(menus);
+    expect(JSON.parse(JSON.stringify(config))).toEqual(config);
+    expect(config).toEqual([
+      {
+        url: './notes.md',
+        title: '',
+        items: [
+          { text: 'Open', icon: '', disabled: false, destructive: false },
+        ],
+      },
+    ]);
+    expect(menus['./notes.md'].items[0]).toBe(item);
+  });
+
+  it('treats URL keys as own entries even when they match object properties', () => {
+    const callback = jest.fn();
+    const menus = {
+      ['__proto__']: { items: [{ text: 'Open', onPress: callback }] },
+    };
+    dispatchLinkContextMenuItem(menus, '__proto__', 'Open');
+    expect(callback).toHaveBeenCalledWith({ url: '__proto__' });
+    for (const url of ['__proto__', 'constructor', 'toString']) {
+      expect(() => dispatchLinkContextMenuItem({}, url, 'Open')).not.toThrow();
+    }
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects removed, hidden, disabled and unknown actions after a configuration update', () => {
     const callback = jest.fn();
     const menus: Record<string, LinkContextMenu> = {

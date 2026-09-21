@@ -22,7 +22,8 @@ export function dispatchLinkContextMenuItem(
   url: string,
   itemText: string
 ) {
-  const item = menus?.[url]?.items.find(
+  if (!menus || !Object.prototype.hasOwnProperty.call(menus, url)) return;
+  const item = menus[url]?.items.find(
     (candidate) => candidate.text === itemText
   );
   if (item && item.visible !== false && !item.disabled) item.onPress({ url });

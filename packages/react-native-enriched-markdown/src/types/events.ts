@@ -67,6 +67,7 @@ export interface OnLinkContextMenuItemPressEvent {
   itemText: string;
 }
 
+/** Native selection menu config. Callbacks are managed on the JS side. */
 export interface ContextMenuItemConfig {
   text: string;
   icon?: string;
