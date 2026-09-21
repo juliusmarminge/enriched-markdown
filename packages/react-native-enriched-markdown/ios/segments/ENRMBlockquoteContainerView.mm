@@ -6,6 +6,7 @@
 #import "ENRMTextInteractionUtils.h"
 #import "ENRMTextRenderer.h"
 #import "EnrichedMarkdownInternalText.h"
+#import "LinkTapUtils.h"
 #import "MarkdownASTNode.h"
 #import "MarkdownASTSerializer.h"
 #import "PasteboardUtils.h"
@@ -110,6 +111,11 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
 @property (nonatomic, copy) NSString *cachedMarkdown;
 @property (nonatomic, copy) NSString *cachedPlainText;
 @end
+
+#if !TARGET_OS_OSX
+@interface ENRMBlockquoteContainerView () <UITextViewDelegate>
+@end
+#endif
 
 @implementation ENRMBlockquoteContainerView
 
@@ -319,6 +325,9 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
 {
   ENRMTapRecognizer *tap = [[ENRMTapRecognizer alloc] initWithTarget:self action:@selector(handleTextTap:)];
   [view.textView addGestureRecognizer:tap];
+#if !TARGET_OS_OSX
+  view.textView.delegate = self;
+#endif
 }
 
 - (void)handleTextTap:(ENRMTapRecognizer *)recognizer
@@ -475,9 +484,33 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
 }
 
 #if !TARGET_OS_OSX
+- (UITextItemMenuConfiguration *)textView:(UITextView *)textView
+             menuConfigurationForTextItem:(UITextItem *)textItem
+                              defaultMenu:(UIMenu *)defaultMenu API_AVAILABLE(ios(17.0))
+{
+  NSString *url = linkURLAtRange(textView, textItem.range);
+  UIMenu *menu = [self.dynamicProps.linkContextMenus menuForURL:url];
+  if (menu)
+    return [UITextItemMenuConfiguration configurationWithPreview:nil menu:menu];
+  if (url && !self.dynamicProps.enableLinkPreview && self.onLinkLongPress) {
+    self.onLinkLongPress(url);
+    return nil;
+  }
+  return [UITextItemMenuConfiguration configurationWithMenu:defaultMenu];
+}
+
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
                         configurationForMenuAtLocation:(CGPoint)location
 {
+  // A leaf text view presents its own link menu, even inside nested quotes.
+  UIView *hit = [interaction.view hitTest:location withEvent:nil];
+  while (hit && hit != interaction.view && ![hit isKindOfClass:[UITextView class]])
+    hit = hit.superview;
+  if ([hit isKindOfClass:[UITextView class]]) {
+    NSString *url = linkURLAtPoint((UITextView *)hit, [interaction.view convertPoint:location toView:hit]);
+    if ([self.dynamicProps.linkContextMenus hasMenuForURL:url])
+      return nil;
+  }
   if (!self.dynamicProps.enableBlockContextMenu) {
     return nil;
   }

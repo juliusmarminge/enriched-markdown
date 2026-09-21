@@ -207,6 +207,9 @@ static NSString *linkInAttributedString(NSAttributedString *text, CGRect textRec
 - (void)handleLongPress:(UILongPressGestureRecognizer *)recognizer
 {
   if (recognizer.state == UIGestureRecognizerStateBegan) {
+    NSString *url = [self linkURLAtPoint:[recognizer locationInView:self]];
+    if (url && self.hasLinkContextMenu && self.hasLinkContextMenu(url))
+      return;
     [self handleLinkGesture:recognizer block:self.onLinkLongTap];
   }
 }
