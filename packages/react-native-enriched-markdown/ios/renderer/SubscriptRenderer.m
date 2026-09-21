@@ -18,7 +18,7 @@
   if (range.length == 0)
     return;
 
-  [output addAttribute:ENRMScriptAttributeName value:@"subscript" range:range];
+  [output addAttribute:ENRMScriptAttributeName value:ENRMScriptValueSubscript range:range];
   ENRMApplyBaselineShift(output, range, _config.subscriptFontScale, -_config.subscriptBaselineOffsetScale);
 }
 

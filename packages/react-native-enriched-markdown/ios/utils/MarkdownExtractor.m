@@ -304,8 +304,8 @@ NSString *_Nullable extractMarkdownFromAttributedString(NSAttributedString *attr
                         // Line-height alignment also shifts baselines. Only semantic script spans
                         // should produce superscript/subscript Markdown on the clipboard.
                         NSString *script = attrs[ENRMScriptAttributeName];
-                        BOOL isSuperscript = [script isEqualToString:@"superscript"];
-                        BOOL isSubscript = [script isEqualToString:@"subscript"];
+                        BOOL isSuperscript = [script isEqualToString:ENRMScriptValueSuperscript];
+                        BOOL isSubscript = [script isEqualToString:ENRMScriptValueSubscript];
 
                         BOOL isHighlight = [attrs[HighlightAttributeName] boolValue];
                         NSString *linkURL = attrs[NSLinkAttributeName];
