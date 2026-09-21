@@ -3,6 +3,7 @@
 #import "ENRMCodeBlockContainerView.h"
 #import "ENRMFeatureFlags.h"
 #import "ENRMSegmentHeightMeasurer.h"
+#import "ENRMTableIOSGridView.h"
 #import "ENRMTextInteractionUtils.h"
 #import "ENRMTextRenderer.h"
 #import "EnrichedMarkdownInternalText.h"
@@ -502,14 +503,18 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
                         configurationForMenuAtLocation:(CGPoint)location
 {
-  // A leaf text view presents its own link menu, even inside nested quotes.
+  // Let the leaf interaction present a configured link menu, including nested tables.
   UIView *hit = [interaction.view hitTest:location withEvent:nil];
-  while (hit && hit != interaction.view && ![hit isKindOfClass:[UITextView class]])
-    hit = hit.superview;
-  if ([hit isKindOfClass:[UITextView class]]) {
-    NSString *url = linkURLAtPoint((UITextView *)hit, [interaction.view convertPoint:location toView:hit]);
+  while (hit && hit != interaction.view) {
+    CGPoint point = [interaction.view convertPoint:location toView:hit];
+    NSString *url = nil;
+    if ([hit isKindOfClass:[UITextView class]])
+      url = linkURLAtPoint((UITextView *)hit, point);
+    else if ([hit isKindOfClass:[ENRMTableIOSGridView class]])
+      url = [(ENRMTableIOSGridView *)hit linkURLAtPoint:point];
     if ([self.dynamicProps.linkContextMenus hasMenuForURL:url])
       return nil;
+    hit = hit.superview;
   }
   if (!self.dynamicProps.enableBlockContextMenu) {
     return nil;

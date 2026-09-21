@@ -2,6 +2,9 @@
 
 #if !TARGET_OS_OSX
 
+@interface ENRMTableIOSGridView () <UIGestureRecognizerDelegate>
+@end
+
 @implementation ENRMTableIOSRowData
 @end
 
@@ -29,6 +32,7 @@
 
     UILongPressGestureRecognizer *longPress =
         [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+    longPress.delegate = self;
     [self addGestureRecognizer:longPress];
   }
   return self;
@@ -202,6 +206,15 @@ static NSString *linkInAttributedString(NSAttributedString *text, CGRect textRec
   if (recognizer.state == UIGestureRecognizerStateEnded) {
     [self handleLinkGesture:recognizer block:self.onLinkTap];
   }
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+  if (![gestureRecognizer isKindOfClass:[UILongPressGestureRecognizer class]])
+    return YES;
+  // Reject before recognition so the context-menu interaction can own this touch.
+  NSString *url = [self linkURLAtPoint:[touch locationInView:self]];
+  return !(url && self.hasLinkContextMenu && self.hasLinkContextMenu(url));
 }
 
 - (void)handleLongPress:(UILongPressGestureRecognizer *)recognizer

@@ -955,6 +955,10 @@ Class<RCTComponentViewProtocol> EnrichedMarkdownTextCls(void)
 
   NSString *urlString = linkURLAtRange(textView, characterRange);
 
+  // Do not let the legacy callback veto an explicitly configured iOS 17 menu.
+  if ([_linkContextMenus hasMenuForURL:urlString])
+    return YES;
+
   if (!urlString || _enableLinkPreview) {
     return YES;
   }

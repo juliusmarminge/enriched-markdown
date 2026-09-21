@@ -10,7 +10,11 @@
 
 - (BOOL)hasMenuForURL:(NSString *)url
 {
-  return url != nil && [self.menus[url][@"items"] count] > 0;
+#if !TARGET_OS_OSX
+  if (@available(iOS 17.0, *))
+    return url != nil && [self.menus[url][@"items"] count] > 0;
+#endif
+  return NO;
 }
 
 #if !TARGET_OS_OSX
