@@ -102,9 +102,9 @@
   variant.borderRadius = 8;
   variant.paddingHorizontal = 6;
   variant.paddingVertical = 2;
-  return [[ENRMCountingPill alloc] initWithLabel:@"src/a/long/original/path/file.ts"
-                                         variant:variant
-                                            font:[UIFont systemFontOfSize:16]];
+  return [[ENRMCountingPill alloc] initWithLinkText:@"src/a/long/original/path/file.ts"
+                                            variant:variant
+                                               font:[UIFont systemFontOfSize:16]];
 }
 
 - (NSMutableAttributedString *)labelWithPill:(ENRMLinkPillAttachment *)pill
@@ -172,9 +172,66 @@
   XCTAssertEqualObjects(storage.string, text.string);
 }
 
+- (void)testRemovalAndReintroductionOfPillsPreservesFoundationFixingAndSource
+{
+  ENRMCountingPill *pill = self.pill;
+  ENRMLinkPillTextStorage *storage =
+      [[ENRMLinkPillTextStorage alloc] initWithAttributedString:[self labelWithPill:pill]];
+  [storage removeAttribute:NSAttachmentAttributeName range:NSMakeRange(0, storage.length)];
+  [storage replaceCharactersInRange:NSMakeRange(0, storage.length) withString:@"ordinary"];
+  [storage addAttribute:NSAttachmentAttributeName value:[NSTextAttachment new] range:NSMakeRange(0, 1)];
+  [storage fixAttributesInRange:NSMakeRange(0, storage.length)];
+  XCTAssertNil([storage attribute:NSAttachmentAttributeName atIndex:0 effectiveRange:NULL]);
+  XCTAssertEqualObjects(storage.string, @"ordinary");
+  [storage setAttributedString:[self labelWithPill:pill]];
+  [storage replaceCharactersInRange:NSMakeRange(1, 2) withString:@"expanded"];
+  [storage fixAttributesInRange:NSMakeRange(0, storage.length)];
+  for (NSUInteger index = 0; index < storage.length; index++)
+    XCTAssertEqual([storage attribute:NSAttachmentAttributeName atIndex:index effectiveRange:NULL], pill);
+  XCTAssertFalse([storage.string containsString:@"\uFFFC"]);
+}
+
+- (void)testAccessibleNameIncludesVisibleLabelAndRetainsOriginalLinkText
+{
+  ENRMCountingPill *pill = self.pill;
+  XCTAssertEqualObjects(pill.linkAccessibilityLabel, @"file.ts, src/a/long/original/path/file.ts");
+  LinkVariantConfig *variant = [LinkVariantConfig new];
+  variant.label = @"original";
+  ENRMLinkPillAttachment *same = [[ENRMLinkPillAttachment alloc] initWithLinkText:@"original" variant:variant font:nil];
+  XCTAssertEqualObjects(same.linkAccessibilityLabel, @"original");
+  variant.label = @"";
+  ENRMLinkPillAttachment *fallback = [[ENRMLinkPillAttachment alloc] initWithLinkText:@"original"
+                                                                              variant:variant
+                                                                                 font:nil];
+  XCTAssertEqualObjects(fallback.linkAccessibilityLabel, @"original");
+}
+
+- (void)testViewFreePillMeasurementUsesTheSameNoLeadingMetricsAsVisibleText
+{
+  NSMutableAttributedString *text = [self labelWithPill:self.pill];
+  UIFont *font = [UIFont fontWithName:@"GeezaPro" size:40] ?: [UIFont systemFontOfSize:40];
+  [text appendAttributedString:[[NSAttributedString alloc] initWithString:@" السلام عليكم\nالسلام عليكم"
+                                                               attributes:@{NSFontAttributeName : font}]];
+  ENRMLinkPillTextStorage *storage = [[ENRMLinkPillTextStorage alloc] initWithAttributedString:text];
+  NSLayoutManager *reference = [NSLayoutManager new];
+  reference.usesFontLeading = NO;
+  reference.delegate = ENRMLinkPillLayoutDelegate.shared;
+  [storage addLayoutManager:reference];
+  NSTextContainer *container = [[NSTextContainer alloc] initWithSize:CGSizeMake(300, CGFLOAT_MAX)];
+  container.lineFragmentPadding = 0;
+  [reference addTextContainer:container];
+  [reference ensureLayoutForTextContainer:container];
+  CGRect expected = [reference usedRectForTextContainer:container];
+  CGRect actual = ENRMLinkPillTextBounds(text, 300);
+  XCTAssertEqualWithAccuracy(actual.size.height, expected.size.height, 0.01);
+  XCTAssertEqualWithAccuracy(actual.size.width, expected.size.width, 0.01);
+  [storage removeLayoutManager:reference];
+}
+
 - (CGRect)drawStorage:(NSTextStorage *)storage pill:(ENRMCountingPill *)pill usePillDelegate:(BOOL)usePillDelegate
 {
   NSLayoutManager *manager = [NSLayoutManager new];
+  manager.usesFontLeading = NO;
   if (usePillDelegate)
     manager.delegate = ENRMLinkPillLayoutDelegate.shared;
   [storage addLayoutManager:manager];

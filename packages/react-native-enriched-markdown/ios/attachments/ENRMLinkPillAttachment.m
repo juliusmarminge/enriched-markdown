@@ -8,24 +8,32 @@
 
 @implementation ENRMLinkPillAttachment {
   NSString *_label;
+  NSString *_originalLinkText;
   LinkVariantConfig *_variant;
   UIFont *_font;
   UIImage *_icon;
 }
 
-- (instancetype)initWithLabel:(NSString *)originalLabel variant:(LinkVariantConfig *)variant font:(UIFont *)font
+- (instancetype)initWithLinkText:(NSString *)originalLinkText variant:(LinkVariantConfig *)variant font:(UIFont *)font
 {
   self = [super initWithData:nil ofType:nil];
   if (self) {
     _variant = variant;
+    _originalLinkText = [originalLinkText copy];
     _font = font ?: [UIFont systemFontOfSize:16];
-    NSString *label = variant.label.length > 0 ? variant.label : originalLabel;
+    NSString *label = variant.label.length > 0 ? variant.label : originalLinkText;
     _label = [[label stringByReplacingOccurrencesOfString:@"\n"
                                                withString:@" "] stringByReplacingOccurrencesOfString:@"\r"
                                                                                           withString:@" "];
     _icon = ENRMLoadLinkPillIcon(variant.iconUri);
   }
   return self;
+}
+
+- (NSString *)linkAccessibilityLabel
+{
+  return [_label isEqualToString:_originalLinkText] ? _originalLinkText
+                                                    : [NSString stringWithFormat:@"%@, %@", _label, _originalLinkText];
 }
 
 - (CGFloat)boxHeight
@@ -136,6 +144,9 @@
 
 static char ENRMPillGlyphTailKey;
 
+// Pills require TextKit 1: substitute glyphs without replacing source characters.
+// testOriginalLabelUsesSameAttachmentGeometryAsRealReplacementCharacter guards
+// equivalence to native U+FFFC attachment layout when TextKit behavior changes.
 @implementation ENRMLinkPillLayoutDelegate
 + (instancetype)shared
 {
@@ -231,6 +242,7 @@ static NSLayoutManager *ENRMPillLayout(NSAttributedString *text, CGSize size, NS
   NSLayoutManager *manager = [[NSLayoutManager alloc] init];
   manager.delegate = ENRMLinkPillLayoutDelegate.shared;
   manager.allowsNonContiguousLayout = NO;
+  manager.usesFontLeading = NO;
   NSTextContainer *container = [[NSTextContainer alloc] initWithSize:size];
   container.lineFragmentPadding = 0;
   [storage addLayoutManager:manager];

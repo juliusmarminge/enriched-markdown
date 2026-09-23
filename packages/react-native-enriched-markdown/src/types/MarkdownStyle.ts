@@ -122,23 +122,24 @@ export interface LinkStyle {
   backgroundColor?: string;
 }
 
-/** Per-variant overrides inherit the base link styling. */
 export type LinkVariantStyle = LinkStyle & {
-  /** Render the link as one native pill. Original text and URL remain selectable. */
-  pill?: boolean;
-  /** Presentation label only. Missing or empty uses the original link text. */
+  /** Native atomic presentation. True uses defaults; an object enables overrides. */
+  pill?: boolean | LinkPillStyle | null;
+};
+
+export interface LinkPillStyle {
+  /** Visible text, also included in the accessible name alongside original link text. */
   label?: string;
-  /** Local file:// image URI. Unreadable files are ignored. Native pills only. */
+  /** Local image source. Unreadable or non-local sources are ignored. */
   iconUri?: string;
   borderRadius?: number;
   paddingHorizontal?: number;
   paddingVertical?: number;
   borderWidth?: number;
   borderColor?: string;
-  /** Maximum pill width in points/DIP. 0 uses the available text width. */
+  /** Maximum width in points/DIP. 0 uses the available text width. */
   maxWidth?: number;
-};
-
+}
 
 interface StrongStyle {
   fontFamily?: string;

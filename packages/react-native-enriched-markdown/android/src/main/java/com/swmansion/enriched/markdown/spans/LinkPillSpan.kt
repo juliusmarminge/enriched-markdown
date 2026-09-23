@@ -1,5 +1,6 @@
 package com.swmansion.enriched.markdown.spans
 
+import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
@@ -18,18 +19,20 @@ class LinkPillSpan(
   private val variant: LinkVariantEntry,
   private val typeface: android.graphics.Typeface,
   private val fontSize: Float,
-  originalLabel: String,
+  originalLinkText: String,
+  context: Context,
 ) : ReplacementSpan() {
-  private val label = (variant.label.ifEmpty { originalLabel }).replace('\n', ' ').replace('\r', ' ')
+  private val label = (variant.label.ifEmpty { originalLinkText }).replace('\n', ' ').replace('\r', ' ')
   private var availableWidth = Float.MAX_VALUE
-  private val icon = LinkPillIconCache.load(variant.iconUri)
+  private val icon = LinkPillIconCache.load(context, variant.iconUri)
   private val iconPaint =
     Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
     }
 
+  val accessibilityText = if (label == originalLinkText) originalLinkText else "$label, $originalLinkText"
+
   init {
-    // TalkBack reads original semantics even when the visual label differs.
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) contentDescription = originalLabel
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) contentDescription = accessibilityText
   }
 
   fun prepareForMeasurement(width: Int): Boolean {

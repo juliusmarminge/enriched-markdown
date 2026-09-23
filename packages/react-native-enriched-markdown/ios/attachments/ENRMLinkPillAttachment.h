@@ -7,7 +7,8 @@
 /// Presentation over the original link characters. Text storage never receives U+FFFC.
 @interface ENRMLinkPillAttachment : NSTextAttachment
 @property (nonatomic, readonly) CGFloat boxHeight;
-- (instancetype)initWithLabel:(NSString *)originalLabel variant:(LinkVariantConfig *)variant font:(UIFont *)font;
+@property (nonatomic, readonly) NSString *linkAccessibilityLabel;
+- (instancetype)initWithLinkText:(NSString *)originalLinkText variant:(LinkVariantConfig *)variant font:(UIFont *)font;
 @end
 
 /// Stateless and shared by visible, table, and view-free TextKit stacks.

@@ -6,7 +6,7 @@ it('requires an explicit pill opt-in and preserves ordinary link overrides', () 
   const style = normalizeMarkdownStyle({
     link: { color: '#112233', underline: false, fontFamily: 'Example' },
     linkVariants: {
-      '^https:': { backgroundColor: '#abcdef', label: 'visual' },
+      '^https:': { backgroundColor: '#abcdef' },
     },
   });
   expect(style.linkVariants[0]).toEqual({
@@ -16,7 +16,7 @@ it('requires an explicit pill opt-in and preserves ordinary link overrides', () 
     backgroundColor: normalizeColor('#abcdef'),
     fontFamily: 'Example',
     pill: false,
-    label: 'visual',
+    label: '',
     iconUri: '',
     borderRadius: 8,
     paddingHorizontal: 6,
@@ -32,16 +32,17 @@ it('normalizes presentation fields and orders specific URL patterns first', () =
     linkVariants: {
       '^https:': { pill: true },
       '^https://example.com/': {
-        pill: true,
-        label: 'Example',
-        iconUri: 'file:///bundle/icon.png',
         fontFamily: 'Custom',
-        paddingHorizontal: 12,
-        paddingVertical: 3,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#123456',
-        maxWidth: 160,
+        pill: {
+          label: 'Example',
+          iconUri: 'file:///bundle/icon.png',
+          paddingHorizontal: 12,
+          paddingVertical: 3,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: '#123456',
+          maxWidth: 160,
+        },
       },
     },
   });
@@ -65,12 +66,13 @@ it('rejects nonfinite geometry, clamps negatives, and preserves explicit zero', 
   const style = normalizeMarkdownStyle({
     linkVariants: {
       '^app:': {
-        pill: true,
-        paddingHorizontal: Infinity,
-        paddingVertical: -1,
-        borderRadius: NaN,
-        borderWidth: 0,
-        maxWidth: -200,
+        pill: {
+          paddingHorizontal: Infinity,
+          paddingVertical: -1,
+          borderRadius: NaN,
+          borderWidth: 0,
+          maxWidth: -200,
+        },
       },
     },
   });
@@ -105,17 +107,34 @@ it('ignores invalid patterns with the existing warning', () => {
   warn.mockRestore();
 });
 
-it('normalizes web fields without changing document labels or opting ordinary links into pills', () => {
+it('normalizes nested web configuration without changing document labels', () => {
   const style = normalizeWebStyle({
     linkVariants: {
-      '^app:': { label: 'visual', fontFamily: 'Custom', maxWidth: 120 },
+      '^app:': {
+        fontFamily: 'Custom',
+        pill: { label: 'visual', maxWidth: 120 },
+      },
     },
   });
   expect(style.linkVariants[0]).toMatchObject({
-    pill: false,
+    pill: true,
     label: 'visual',
     fontFamily: 'Custom',
     borderColor: 'transparent',
     maxWidth: 120,
   });
+});
+
+it.each([undefined, false, null])('keeps pills disabled for %s', (pill) => {
+  expect(
+    normalizeMarkdownStyle({ linkVariants: { '^app:': { pill } } })
+      .linkVariants[0]
+  ).toMatchObject({ pill: false, label: '', paddingHorizontal: 6 });
+});
+
+it.each([true, {}])('enables default presentation for %s', (pill) => {
+  expect(
+    normalizeMarkdownStyle({ linkVariants: { '^app:': { pill } } })
+      .linkVariants[0]
+  ).toMatchObject({ pill: true, label: '', paddingHorizontal: 6 });
 });

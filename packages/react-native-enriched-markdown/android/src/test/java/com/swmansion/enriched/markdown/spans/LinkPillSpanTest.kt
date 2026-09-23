@@ -10,10 +10,13 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.util.Base64
+import android.view.View
 import android.widget.TextView
 import com.facebook.react.bridge.JavaOnlyArray
 import com.facebook.react.bridge.JavaOnlyMap
 import com.facebook.react.uimanager.DisplayMetricsHolder
+import com.swmansion.enriched.markdown.accessibility.MarkdownAccessibilityHelper
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.renderer.LinkRenderer
 import com.swmansion.enriched.markdown.renderer.RendererConfig
@@ -21,6 +24,7 @@ import com.swmansion.enriched.markdown.renderer.RendererFactory
 import com.swmansion.enriched.markdown.styles.LinkVariantEntry
 import com.swmansion.enriched.markdown.styles.StyleConfig
 import com.swmansion.enriched.markdown.styles.StyleParser
+import com.swmansion.enriched.markdown.utils.text.LocalImageLoader
 import com.swmansion.enriched.markdown.utils.text.conversion.MarkdownExtractor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -48,7 +52,8 @@ class LinkPillSpanTest {
       typeface = Typeface.DEFAULT
     }
 
-  private fun span(variant: LinkVariantEntry = style) = LinkPillSpan(variant, Typeface.DEFAULT, 16f, original)
+  private fun span(variant: LinkVariantEntry = style) =
+    LinkPillSpan(variant, Typeface.DEFAULT, 16f, original, RuntimeEnvironment.getApplication())
 
   private fun writeIcon(
     file: File,
@@ -75,20 +80,20 @@ class LinkPillSpanTest {
       val file = File.createTempFile("enriched-cache", ".png").also { files.add(it) }
       writeIcon(file)
       val uri = file.toURI().toString()
-      val first = LinkPillIconCache.load(uri)!!
-      assertSame(first, LinkPillIconCache.load(uri))
+      val first = LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri)!!
+      assertSame(first, LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri))
       val modified = file.lastModified()
       writeIcon(file, Color.BLUE)
       assertTrue(file.setLastModified(modified + 2000))
-      val updated = LinkPillIconCache.load(uri)!!
+      val updated = LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri)!!
       assertNotSame(first, updated)
       assertEquals(Color.BLUE, updated.getPixel(2, 8))
       repeat(64) {
         val next = File.createTempFile("enriched-cache", ".png").also { files.add(it) }
         writeIcon(next)
-        LinkPillIconCache.load(next.toURI().toString())
+        LinkPillIconCache.load(RuntimeEnvironment.getApplication(), next.toURI().toString())
       }
-      assertNotSame(updated, LinkPillIconCache.load(uri))
+      assertNotSame(updated, LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri))
       assertFalse(updated.isRecycled)
       assertEquals(Color.RED, first.getPixel(2, 8))
     } finally {
@@ -107,11 +112,11 @@ class LinkPillSpanTest {
         source.eraseColor(Color.RED)
         file.outputStream().use { assertTrue(source.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         source.recycle()
-        val decoded = LinkPillIconCache.load(file.toURI().toString())!!
+        val decoded = LinkPillIconCache.load(RuntimeEnvironment.getApplication(), file.toURI().toString())!!
         assertTrue(decoded.width <= 512 && decoded.height <= 512)
         if (it == 0) first = decoded
       }
-      assertNotSame(first, LinkPillIconCache.load(files.first().toURI().toString()))
+      assertNotSame(first, LinkPillIconCache.load(RuntimeEnvironment.getApplication(), files.first().toURI().toString()))
       assertFalse(first!!.isRecycled)
     } finally {
       files.forEach { it.delete() }
@@ -124,8 +129,56 @@ class LinkPillSpanTest {
     val text = SpannableString(original)
     text.setSpan(pill, 0, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     assertEquals(original, text.toString())
-    assertEquals(original, pill.contentDescription)
+    assertEquals("Visual, $original", pill.contentDescription)
     assertFalse(text.toString().contains('\uFFFC'))
+  }
+
+  @Test
+  fun accessibleLinkNodeIncludesVisibleAndOriginalText() {
+    val context = RuntimeEnvironment.getApplication()
+    val config = testStyleConfig(true)
+    val factory = RendererFactory(RendererConfig(config), context) {}
+    factory.blockStyleContext.setParagraphStyle(config.paragraphStyle)
+    val text = SpannableStringBuilder()
+    val node =
+      MarkdownASTNode(
+        MarkdownASTNode.NodeType.Link,
+        attributes = mapOf("url" to "https://example.com/original"),
+        children = listOf(MarkdownASTNode(MarkdownASTNode.NodeType.Text, original)),
+      )
+    LinkRenderer(RendererConfig(config)).render(node, text, null, null, factory)
+    factory.flushDeferredSpans(text)
+    val view = TextView(context)
+    view.text = text
+    view.measure(
+      View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.EXACTLY),
+      View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY),
+    )
+    view.layout(0, 0, 300, 100)
+    val helper = MarkdownAccessibilityHelper(view)
+    helper.invalidateAccessibilityItems()
+    val accessible = helper.getAccessibilityNodeProvider(view)!!.createAccessibilityNodeInfo(0)!!
+    assertEquals("Visual label, $original", accessible.text.toString())
+    assertEquals(original, view.text.toString())
+    assertEquals(original, span(style.copy(label = "")).accessibilityText)
+    assertEquals(original, span(style.copy(label = original)).accessibilityText)
+    helper.cleanup()
+  }
+
+  @Test
+  fun localDataIconsDownsampleBothAxesWithoutChangingOrdinaryImagePolicy() {
+    val source = Bitmap.createBitmap(32, 2048, Bitmap.Config.ARGB_8888)
+    source.eraseColor(Color.RED)
+    val bytes = java.io.ByteArrayOutputStream()
+    assertTrue(source.compress(Bitmap.CompressFormat.PNG, 100, bytes))
+    source.recycle()
+    val uri = "data:image/png;base64," + Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP)
+    val decoded = LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri)!!
+    assertTrue(decoded.width <= 512 && decoded.height <= 512)
+    assertEquals(Color.RED, decoded.getPixel(0, 0))
+    val ordinaryImage = LocalImageLoader.load(RuntimeEnvironment.getApplication(), uri)!!
+    assertEquals(2048, ordinaryImage.height)
+    assertSame(decoded, LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri))
   }
 
   @Test
@@ -319,7 +372,14 @@ class LinkPillSpanTest {
     val start = "left ".length
     val end = text.length - " right".length
     val background = CodeBackgroundSpan(config)
-    val pill = LinkPillSpan(style.copy(label = "X"), Typeface.DEFAULT, 16f, text.subSequence(start, end).toString())
+    val pill =
+      LinkPillSpan(
+        style.copy(label = "X"),
+        Typeface.DEFAULT,
+        16f,
+        text.subSequence(start, end).toString(),
+        RuntimeEnvironment.getApplication(),
+      )
     text.setSpan(background, 0, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     text.setSpan(pill, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     LinkPillSpan.prepareForMeasurement(text, 240)

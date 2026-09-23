@@ -296,7 +296,6 @@ export const normalizeMarkdownStyle = (
         pattern,
         ...normalizeLinkPillStyle(override),
         fontFamily: override.fontFamily ?? linkBase.fontFamily,
-        borderColor: override.borderColor ?? 'transparent',
         color: override.color ?? linkBase.color,
         underline: override.underline ?? linkBase.underline,
         backgroundColor: override.backgroundColor ?? 'transparent',

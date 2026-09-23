@@ -6,6 +6,7 @@ import android.util.AttributeSet
 import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatTextView
+import com.swmansion.enriched.markdown.spans.LinkPillSpan
 
 /** AppCompatTextView with built-in TalkBack support via MarkdownAccessibilityHelper. */
 abstract class AccessibleMarkdownTextView
@@ -23,7 +24,7 @@ abstract class AccessibleMarkdownTextView
     ) {
       if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) {
         val width = (MeasureSpec.getSize(widthMeasureSpec) - compoundPaddingLeft - compoundPaddingRight).coerceAtLeast(1)
-        if (com.swmansion.enriched.markdown.spans.LinkPillSpan
+        if (LinkPillSpan
             .prepareForMeasurement(text, width)
         ) {
           // TextView can reuse a layout at the same width after a style or label change.

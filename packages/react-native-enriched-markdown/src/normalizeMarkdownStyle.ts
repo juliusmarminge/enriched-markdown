@@ -340,11 +340,12 @@ export const normalizeMarkdownStyle = (
   const linkBase = result.link as MarkdownStyleInternal['link'];
   result.linkVariants = normalizeLinkVariantEntries(style.linkVariants).map(
     ([pattern, override]): LinkVariantEntryInternal => {
+      const pill = normalizeLinkPillStyle(override);
       return {
         pattern,
-        ...normalizeLinkPillStyle(override),
+        ...pill,
         fontFamily: override.fontFamily ?? linkBase.fontFamily,
-        borderColor: (normalizeColor(override.borderColor ?? 'transparent') ??
+        borderColor: (normalizeColor(pill.borderColor) ??
           transparent) as string,
         color: ((override.color ? normalizeColor(override.color) : null) ??
           linkBase.color) as string,

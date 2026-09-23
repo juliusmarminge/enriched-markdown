@@ -83,45 +83,46 @@ Readonly `EnrichedMarkdownText` supports optional pill presentation on iOS and A
   markdownStyle={{
     linkVariants: {
       '^https://example\\.com/document$': {
-        pill: true,
-        label: 'Document',
-        iconUri: 'file:///path/to/bundled-icon.png',
+        pill: {
+          label: 'Document',
+          iconUri: 'file:///path/to/bundled-icon.png',
+          borderRadius: 8,
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderWidth: 1,
+          borderColor: '#B8DDF0',
+          maxWidth: 180,
+        },
         fontFamily: 'CustomFont',
         color: '#1264A3',
         underline: false,
         backgroundColor: '#E8F5FB',
-        borderRadius: 8,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderWidth: 1,
-        borderColor: '#B8DDF0',
-        maxWidth: 180,
       },
     },
   }}
 />
 ```
 
-`pill` defaults to `false`. The presentation `label` never replaces the original link text used for plain copy, Markdown extraction, selection, or accessibility. Missing or empty labels use the original text. Tap and long-press callbacks still receive the original URL, and existing link menus continue to work.
+`pill` defaults to `false`. Set it to `true` for default presentation or an object for overrides. `null` also disables pills. The presentation `pill.label` never replaces the original link text used for plain copy, Markdown extraction, or selection. The accessible name includes the visible label followed by the original link text when they differ. Missing or empty labels use the original text. Tap and long-press callbacks still receive the original URL, and existing link menus continue to work.
 
-| Field               | Default            | Meaning                                                               |
-| ------------------- | ------------------ | --------------------------------------------------------------------- |
-| `fontFamily`        | Base link family   | Link font family, including ordinary links.                           |
-| `pill`              | `false`            | Opt into atomic native presentation.                                  |
-| `label`             | Original link text | Presentation label.                                                   |
-| `iconUri`           | No icon            | Local `file://` image URI. Unreadable files are ignored.              |
-| `borderRadius`      | `8`                | Corner radius in points/DIP.                                          |
-| `paddingHorizontal` | `6`                | Horizontal inset in points/DIP.                                       |
-| `paddingVertical`   | `2`                | Vertical inset in points/DIP.                                         |
-| `borderWidth`       | `0`                | Border width in points/DIP.                                           |
-| `borderColor`       | Transparent        | Border color.                                                         |
-| `maxWidth`          | `0`                | Positive maximum width in points/DIP. Zero uses available text width. |
+| Field                    | Default            | Meaning                                                               |
+| ------------------------ | ------------------ | --------------------------------------------------------------------- |
+| `fontFamily`             | Base link family   | Link font family, including ordinary links.                           |
+| `pill`                   | `false`            | Opt into atomic native presentation.                                  |
+| `pill.label`             | Original link text | Presentation label.                                                   |
+| `pill.iconUri`           | No icon            | Local or bundled image URI. Unreadable sources are ignored.           |
+| `pill.borderRadius`      | `8`                | Corner radius in points/DIP.                                          |
+| `pill.paddingHorizontal` | `6`                | Horizontal inset in points/DIP.                                       |
+| `pill.paddingVertical`   | `2`                | Vertical inset in points/DIP.                                         |
+| `pill.borderWidth`       | `0`                | Border width in points/DIP.                                           |
+| `pill.borderColor`       | Transparent        | Border color.                                                         |
+| `pill.maxWidth`          | `0`                | Positive maximum width in points/DIP. Zero uses available text width. |
 
 The existing `color`, `underline`, and `backgroundColor` fields still apply. Pill labels truncate at the tail and wrap as one unit. The width limit also accounts for native container width and block indentation. Nonfinite dimensions use defaults and negative dimensions clamp to zero.
 
-Pill presentation is currently native only. Web renders ordinary links and retains their original labels. Links containing image or math attachments retain their existing native rendering. Only local `file://` icon URIs are supported. Missing or unreadable files render no icon.
+Pill presentation is currently native only. Web renders ordinary links and retains their original labels. Links containing image or math attachments retain their existing native rendering. Icons use the existing local image resolver. iOS supports file paths, `file://` URIs, and file-backed bundle names including `@2x`/`@3x` variants. Asset-catalog-only images have no thumbnail-readable path and render no icon. Android also supports bundled drawable/raw resources, assets, content and data URIs. Remote URLs and unreadable sources render no icon.
 
-Icon decoding is downsampled to approximately 512 pixels. Each native cache retains at most 64 images and 8 MiB of decoded pixels; images held by visible pills are separate from this cache budget. File metadata changes invalidate cached icons.
+Icon decoding is downsampled to approximately 512 pixels. Android caches are bounded to 64 images and 8 MiB. iOS uses a pressure-aware `NSCache` configured with the same count and decoded-byte cost limits; images held by visible pills are separate from this cache budget. File metadata changes invalidate cached icons.
 
 ## Positioning the Suggestion List
 

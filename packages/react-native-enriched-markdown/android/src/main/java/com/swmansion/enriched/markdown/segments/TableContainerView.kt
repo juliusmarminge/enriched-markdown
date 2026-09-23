@@ -26,6 +26,7 @@ import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode.NodeType
 import com.swmansion.enriched.markdown.renderer.Renderer
 import com.swmansion.enriched.markdown.spans.ImageSpan
+import com.swmansion.enriched.markdown.spans.LinkPillSpan
 import com.swmansion.enriched.markdown.styles.StyleConfig
 import com.swmansion.enriched.markdown.styles.TableStyle
 import com.swmansion.enriched.markdown.utils.common.findEnrichedMarkdownAncestor
@@ -446,7 +447,7 @@ class TableContainerView(
       text: CharSequence,
       widthPx: Int,
     ) {
-      com.swmansion.enriched.markdown.spans.LinkPillSpan
+      LinkPillSpan
         .prepareForMeasurement(text, widthPx)
       if (widthPx <= 1) return
       val spanned = text as? Spanned ?: return
@@ -478,7 +479,7 @@ class TableContainerView(
       val columnWidths = FloatArray(texts.maxOfOrNull { it.size } ?: 0)
       texts.forEach { row ->
         row.forEachIndexed { colIndex, cellText ->
-          com.swmansion.enriched.markdown.spans.LinkPillSpan
+          LinkPillSpan
             .prepareForMeasurement(cellText, maxColumnWidth.toInt())
           val layout =
             StaticLayout.Builder

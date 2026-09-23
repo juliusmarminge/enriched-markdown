@@ -2,6 +2,7 @@ package com.swmansion.enriched.markdown.renderer
 
 import android.text.SpannableStringBuilder
 import android.text.TextPaint
+import android.text.style.ReplacementSpan
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.spans.LinkPillSpan
 import com.swmansion.enriched.markdown.spans.LinkSpan
@@ -22,7 +23,7 @@ class LinkRenderer(
 
     factory.renderWithSpan(builder, { factory.renderChildren(node, builder, onLinkPress, onLinkLongPress) }) { start, end, blockStyle ->
       val variant = factory.styleCache.resolvedVariantForUrl(url)
-      if (variant?.pill == true && builder.getSpans(start, end, android.text.style.ReplacementSpan::class.java).isEmpty()) {
+      if (variant?.pill == true && builder.getSpans(start, end, ReplacementSpan::class.java).isEmpty()) {
         val fontFamily = variant.fontFamily.ifEmpty { factory.styleCache.linkFontFamily }.ifEmpty { blockStyle.fontFamily }
         val font = TextPaint().apply { applyBlockStyleFont(blockStyle.copy(fontFamily = fontFamily), factory.context) }
         factory.registerDeferredSpan(
@@ -31,6 +32,7 @@ class LinkRenderer(
             font.typeface,
             blockStyle.fontSize,
             builder.subSequence(start, end).toString(),
+            factory.context,
           ),
           start,
           end,

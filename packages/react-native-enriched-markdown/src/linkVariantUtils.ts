@@ -43,18 +43,22 @@ export function normalizeLinkVariantEntries(
 
 /** Native pill geometry is finite and nonnegative before crossing codegen. */
 export function normalizeLinkPillStyle(style: LinkVariantStyle) {
+  const hasConfig = typeof style.pill === 'object' && style.pill !== null;
+  const config =
+    typeof style.pill === 'object' && style.pill !== null ? style.pill : {};
   const dimension = (value: number | undefined, fallback: number) =>
     value === undefined || !Number.isFinite(value)
       ? fallback
       : Math.max(0, value);
   return {
-    pill: style.pill ?? false,
-    label: style.label ?? '',
-    iconUri: style.iconUri ?? '',
-    borderRadius: dimension(style.borderRadius, 8),
-    paddingHorizontal: dimension(style.paddingHorizontal, 6),
-    paddingVertical: dimension(style.paddingVertical, 2),
-    borderWidth: dimension(style.borderWidth, 0),
-    maxWidth: dimension(style.maxWidth, 0),
+    pill: style.pill === true || hasConfig,
+    borderColor: config.borderColor ?? 'transparent',
+    label: config.label ?? '',
+    iconUri: config.iconUri ?? '',
+    borderRadius: dimension(config.borderRadius, 8),
+    paddingHorizontal: dimension(config.paddingHorizontal, 6),
+    paddingVertical: dimension(config.paddingVertical, 2),
+    borderWidth: dimension(config.borderWidth, 0),
+    maxWidth: dimension(config.maxWidth, 0),
   };
 }
