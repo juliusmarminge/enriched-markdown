@@ -102,13 +102,13 @@ class LinkPillSpanTest {
     try {
       writeIcon(file)
       val uri = file.toURI().toString()
-      val cached = LinkPillIconCache.load(uri)!!
+      val cached = LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri)!!
       val before = drawIcon(uri, null)
       val tinted = drawIcon(uri, Color.BLUE)
       val translucent = drawIcon(uri, Color.argb(128, 0, 0, 255))
       val transparent = drawIcon(uri, Color.TRANSPARENT)
       val after = drawIcon(uri, null)
-      assertSame(cached, LinkPillIconCache.load(uri))
+      assertSame(cached, LinkPillIconCache.load(RuntimeEnvironment.getApplication(), uri))
       assertEquals(Color.RED, cached.getPixel(2, 8))
       assertEquals(Color.GREEN, cached.getPixel(12, 8))
       assertTrue(pixels(before).contentEquals(pixels(after)))

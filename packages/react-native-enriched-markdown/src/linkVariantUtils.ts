@@ -55,6 +55,7 @@ export function normalizeLinkPillStyle(style: LinkVariantStyle) {
     borderColor: config.borderColor ?? 'transparent',
     label: config.label ?? '',
     iconUri: config.iconUri ?? '',
+    iconTintColor: config.iconTintColor,
     borderRadius: dimension(config.borderRadius, 8),
     paddingHorizontal: dimension(config.paddingHorizontal, 6),
     paddingVertical: dimension(config.paddingVertical, 2),

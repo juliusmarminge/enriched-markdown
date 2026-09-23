@@ -143,8 +143,8 @@ it('preserves original icon colors by default and transports explicit tint inclu
   const style = normalizeMarkdownStyle({
     linkVariants: {
       '^plain:': { pill: true },
-      '^tinted:': { pill: true, iconTintColor: '#abcdef' },
-      '^clear:': { pill: true, iconTintColor: 'transparent' },
+      '^tinted:': { pill: { iconTintColor: '#abcdef' } },
+      '^clear:': { pill: { iconTintColor: 'transparent' } },
     },
   });
   const entry = (pattern: string) =>
@@ -154,7 +154,7 @@ it('preserves original icon colors by default and transports explicit tint inclu
   expect(entry('^clear:')?.iconTintColor).toBe(normalizeColor('transparent'));
   expect(
     normalizeWebStyle({
-      linkVariants: { '^app:': { iconTintColor: '#abcdef' } },
+      linkVariants: { '^app:': { pill: { iconTintColor: '#abcdef' } } },
     }).linkVariants[0]?.iconTintColor
   ).toBe('#abcdef');
 });
@@ -162,7 +162,7 @@ it('preserves original icon colors by default and transports explicit tint inclu
 it('ignores invalid native icon tint instead of silently making an icon transparent', () => {
   const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   const style = normalizeMarkdownStyle({
-    linkVariants: { '^app:': { pill: true, iconTintColor: 'invalid color' } },
+    linkVariants: { '^app:': { pill: { iconTintColor: 'invalid color' } } },
   });
   expect(style.linkVariants[0]?.iconTintColor).toBeUndefined();
   expect(warn).toHaveBeenCalledWith(
