@@ -4,6 +4,7 @@
 #import "../../ios/utils/CodeBackground.h"
 #import "../../ios/utils/ENRMTextViewSetup.h"
 #import "../../ios/utils/MarkdownExtractor.h"
+#import "../../ios/utils/ParagraphStyleUtils.h"
 #import <XCTest/XCTest.h>
 
 @interface ENRMCountingPill : ENRMLinkPillAttachment
@@ -285,6 +286,34 @@
   XCTAssertEqualWithAccuracy(originalBounds.size.width, referenceBounds.size.width, 0.01);
   XCTAssertEqualWithAccuracy(originalBounds.size.height, referenceBounds.size.height, 0.01);
   XCTAssertEqualObjects(storage.string, @"src/a/long/original/path/file.ts");
+}
+
+- (void)testParagraphLineHeightFloorPreservesPillGeometryAndOriginalSource
+{
+  for (NSNumber *lineHeight in @[ @12, @64 ]) {
+    ENRMCountingPill *referencePill = self.pill;
+    NSMutableAttributedString *reference = [self labelWithPill:referencePill];
+    [reference replaceCharactersInRange:NSMakeRange(0, reference.length) withString:@"\uFFFC"];
+    applyLineHeight(reference, NSMakeRange(0, reference.length), lineHeight.doubleValue);
+    applyBaselineOffset(reference, NSMakeRange(0, reference.length));
+    CGRect referenceBounds = [self drawStorage:[[NSTextStorage alloc] initWithAttributedString:reference]
+                                          pill:referencePill
+                               usePillDelegate:NO];
+
+    ENRMCountingPill *pill = self.pill;
+    NSMutableAttributedString *label = [self labelWithPill:pill];
+    NSRange range = NSMakeRange(0, label.length);
+    NSString *markdown = extractMarkdownFromAttributedString(label, range);
+    applyLineHeight(label, range, lineHeight.doubleValue);
+    applyBaselineOffset(label, range);
+    ENRMLinkPillTextStorage *storage = [[ENRMLinkPillTextStorage alloc] initWithAttributedString:label];
+    CGRect bounds = [self drawStorage:storage pill:pill usePillDelegate:YES];
+    XCTAssertGreaterThanOrEqual(bounds.size.height, lineHeight.doubleValue);
+    XCTAssertEqualWithAccuracy(bounds.size.height, referenceBounds.size.height, 0.01);
+    XCTAssertEqual(pill.imageCalls, referencePill.imageCalls);
+    XCTAssertEqualObjects(storage.string, label.string);
+    XCTAssertEqualObjects(extractMarkdownFromAttributedString(storage, range), markdown);
+  }
 }
 
 - (void)fragmentLabelAttributes:(NSMutableAttributedString *)label
