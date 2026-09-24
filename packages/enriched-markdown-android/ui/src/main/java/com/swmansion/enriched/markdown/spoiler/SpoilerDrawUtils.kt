@@ -42,10 +42,16 @@ internal fun colorWithAlpha(
 }
 
 /**
- * Whether a spoiler still hides `[start, end)`. Once a reveal starts, the fading overlay lets the text show
- * through, so decorations drawn outside the text paint come back with it.
+ * How much of `[start, end)` shows through the spoilers over it: 0 while concealed, 1 once revealed
+ * or when no spoiler covers it. Lets decorations drawn outside the text paint fade with the text.
  */
-internal fun Spanned.isConcealedBySpoiler(
+internal fun Spanned.spoilerTextAlpha(
   start: Int,
   end: Int,
-): Boolean = getSpans(start, end, SpoilerSpan::class.java).any { !it.revealed && !it.revealing }
+): Float {
+  var alpha = 1f
+  for (span in getSpans(start, end, SpoilerSpan::class.java)) {
+    if (!span.revealed) alpha = minOf(alpha, span.textAlpha)
+  }
+  return alpha
+}

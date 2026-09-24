@@ -18,9 +18,11 @@ import com.facebook.react.bridge.JavaOnlyMap
 import com.facebook.react.uimanager.DisplayMetricsHolder
 import com.swmansion.enriched.markdown.accessibility.MarkdownAccessibilityHelper
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
+import com.swmansion.enriched.markdown.renderer.BlockStyle
 import com.swmansion.enriched.markdown.renderer.LinkRenderer
 import com.swmansion.enriched.markdown.renderer.RendererConfig
 import com.swmansion.enriched.markdown.renderer.RendererFactory
+import com.swmansion.enriched.markdown.renderer.SpanStyleCache
 import com.swmansion.enriched.markdown.styles.LinkVariantEntry
 import com.swmansion.enriched.markdown.styles.StyleConfig
 import com.swmansion.enriched.markdown.styles.StyleParser
@@ -395,6 +397,40 @@ class LinkPillSpanTest {
     assertEquals(Color.TRANSPARENT, bitmap.getPixel(((coveredLeft + coveredRight) / 2).toInt(), 20))
     assertEquals(Color.RED, bitmap.getPixel((coveredLeft / 2).toInt(), 20))
     assertEquals(Color.RED, bitmap.getPixel(((coveredRight + layout.getLineWidth(0)) / 2).toInt(), 20))
+  }
+
+  @Test
+  fun concealedSpoilerKeepsPartialPillCodeBackgroundHiddenUntilReveal() {
+    val config = testStyleConfig(true, Color.RED)
+    val originalText = "left original source path right"
+    val text = SpannableString(originalText)
+    val start = "left ".length
+    val end = text.length - " right".length
+    val background = CodeBackgroundSpan(config)
+    val spoiler = SpoilerSpan(SpanStyleCache(config), BlockStyle(16f, "", "normal", Color.BLACK))
+    val pill =
+      LinkPillSpan(
+        style.copy(label = "X"),
+        Typeface.DEFAULT,
+        16f,
+        text.subSequence(start, end).toString(),
+        RuntimeEnvironment.getApplication(),
+      )
+    text.setSpan(background, 0, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    text.setSpan(spoiler, 0, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    text.setSpan(pill, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    LinkPillSpan.prepareForMeasurement(text, 240)
+    val bitmap = Bitmap.createBitmap(240, 40, Bitmap.Config.ARGB_8888)
+    background.drawBackground(Canvas(bitmap), paint, 0, 240, 0, 24, 40, text, 0, text.length, 0)
+    assertTrue("Concealed code background must remain hidden around a pill", pixels(bitmap).all { it == Color.TRANSPARENT })
+
+    spoiler.markRevealing()
+    background.drawBackground(Canvas(bitmap), paint, 0, 240, 0, 24, 40, text, 0, text.length, 0)
+    assertTrue("Code background outside the pill returns when reveal starts", pixels(bitmap).any { it == Color.RED })
+    assertEquals(originalText, text.toString())
+    assertSame(background, text.getSpans(0, text.length, CodeBackgroundSpan::class.java).single())
+    assertEquals(0, text.getSpanStart(background))
+    assertEquals(text.length, text.getSpanEnd(background))
   }
 
   private fun pixels(bitmap: Bitmap): IntArray =
