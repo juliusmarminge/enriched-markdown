@@ -343,10 +343,12 @@ export const normalizeMarkdownStyle = (
       const pill = normalizeLinkPillStyle(override);
       return {
         pattern,
-        ...pill,
+        pill: {
+          ...pill,
+          borderColor: (normalizeColor(pill.borderColor) ??
+            transparent) as string,
+        },
         fontFamily: override.fontFamily ?? linkBase.fontFamily,
-        borderColor: (normalizeColor(pill.borderColor) ??
-          transparent) as string,
         color: ((override.color ? normalizeColor(override.color) : null) ??
           linkBase.color) as string,
         underline: override.underline ?? linkBase.underline,

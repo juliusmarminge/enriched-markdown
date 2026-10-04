@@ -92,8 +92,14 @@ class CodeBackgroundSpan(
       drawShapes(canvas, isFirst, isLast)
     }
 
+    // Runs per code span, per line, per draw: only query for pills if the style can produce any.
+    val pills = if (styleConfig.hasLinkPills) text.getSpans(spanStart, spanEnd, LinkPillSpan::class.java) else emptyArray()
+    if (pills.isEmpty()) {
+      drawUncoveredRange(spanStart, spanEnd)
+      return
+    }
+    if (pills.size > 1) pills.sortBy { text.getSpanStart(it) }
     var cursor = spanStart
-    val pills = text.getSpans(spanStart, spanEnd, LinkPillSpan::class.java).sortedBy { text.getSpanStart(it) }
     for (pill in pills) {
       val coveredStart = max(spanStart, text.getSpanStart(pill))
       val coveredEnd = min(spanEnd, text.getSpanEnd(pill))

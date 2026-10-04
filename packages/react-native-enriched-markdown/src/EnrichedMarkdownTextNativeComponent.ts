@@ -91,14 +91,8 @@ interface LinkStyleInternal {
   backgroundColor: ColorValue;
 }
 
-// Mirrors EnrichedMarkdownNativeComponent.ts — kept in sync manually (codegen spec files must be self-contained).
-interface LinkVariantEntryInternal {
-  pattern: string;
-  color: ColorValue;
-  underline: boolean;
-  backgroundColor: ColorValue;
-  fontFamily: string;
-  pill: boolean;
+interface LinkPillInternal {
+  enabled: boolean;
   label: string;
   iconUri: string;
   borderRadius: CodegenTypes.Float;
@@ -107,6 +101,16 @@ interface LinkVariantEntryInternal {
   borderWidth: CodegenTypes.Float;
   borderColor: ColorValue;
   maxWidth: CodegenTypes.Float;
+}
+
+// Mirrors EnrichedMarkdownNativeComponent.ts — kept in sync manually (codegen spec files must be self-contained).
+interface LinkVariantEntryInternal {
+  pattern: string;
+  color: ColorValue;
+  underline: boolean;
+  backgroundColor: ColorValue;
+  fontFamily: string;
+  pill: LinkPillInternal;
 }
 
 interface StrongStyleInternal {
@@ -311,6 +315,12 @@ export interface ContextMenuItemConfig {
 export interface ImageRequestHeaderInternal {
   name: string;
   value: string;
+}
+
+export interface LinkPillContentInternal {
+  url: string;
+  label: string;
+  iconUri: string;
 }
 
 export interface SelectionMenuConfig {
@@ -587,6 +597,8 @@ export interface NativeProps extends ViewProps {
    * HTTP headers attached to remote image requests, as name/value pairs.
    */
   imageRequestHeaders?: ReadonlyArray<Readonly<ImageRequestHeaderInternal>>;
+  /** Per-link pill content (label, icon), one entry per exact link URL. */
+  linkPillContent?: ReadonlyArray<Readonly<LinkPillContentInternal>>;
   /**
    * Built-in items to show in the text selection context menu.
    */

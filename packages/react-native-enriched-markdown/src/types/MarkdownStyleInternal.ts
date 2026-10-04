@@ -110,7 +110,11 @@ export interface LinkVariantEntryInternal {
   underline: boolean;
   backgroundColor: string;
   fontFamily: string;
-  pill: boolean;
+  pill: LinkPillInternal;
+}
+
+export interface LinkPillInternal {
+  enabled: boolean;
   label: string;
   iconUri: string;
   borderRadius: number;

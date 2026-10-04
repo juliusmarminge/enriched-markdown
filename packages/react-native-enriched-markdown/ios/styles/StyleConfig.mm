@@ -18,6 +18,12 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   return fontWeight;
 }
 
+@implementation LinkPillConfig
+@end
+
+@implementation LinkPillContent
+@end
+
 @implementation LinkVariantConfig
 @end
 
@@ -145,6 +151,7 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   CGFloat _imageMarginTop;
   CGFloat _imageMarginBottom;
   NSDictionary<NSString *, NSString *> *_imageRequestHeaders;
+  NSDictionary<NSString *, LinkPillContent *> *_linkPillContent;
   // Video properties
   CGFloat _videoMarginTop;
   CGFloat _videoMarginBottom;
@@ -438,6 +445,7 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
   copy->_imageMarginTop = _imageMarginTop;
   copy->_imageMarginBottom = _imageMarginBottom;
   copy->_imageRequestHeaders = [_imageRequestHeaders copy];
+  copy->_linkPillContent = [_linkPillContent copy];
   copy->_videoMarginTop = _videoMarginTop;
   copy->_videoMarginBottom = _videoMarginBottom;
   copy->_videoBorderRadius = _videoBorderRadius;
@@ -1615,6 +1623,16 @@ static inline NSString *normalizedFontWeight(NSString *fontWeight)
 - (void)setImageRequestHeaders:(NSDictionary<NSString *, NSString *> *)newValue
 {
   _imageRequestHeaders = [newValue copy];
+}
+
+- (NSDictionary<NSString *, LinkPillContent *> *)linkPillContent
+{
+  return _linkPillContent;
+}
+
+- (void)setLinkPillContent:(NSDictionary<NSString *, LinkPillContent *> *)newValue
+{
+  _linkPillContent = [newValue copy];
 }
 
 - (CGFloat)videoMarginTop

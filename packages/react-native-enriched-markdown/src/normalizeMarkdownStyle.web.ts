@@ -294,7 +294,7 @@ export const normalizeMarkdownStyle = (
     ([pattern, override]): LinkVariantEntryInternal => {
       return {
         pattern,
-        ...normalizeLinkPillStyle(override),
+        pill: normalizeLinkPillStyle(override),
         fontFamily: override.fontFamily ?? linkBase.fontFamily,
         color: override.color ?? linkBase.color,
         underline: override.underline ?? linkBase.underline,

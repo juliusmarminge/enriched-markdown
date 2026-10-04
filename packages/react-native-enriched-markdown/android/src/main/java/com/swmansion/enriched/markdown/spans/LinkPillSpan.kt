@@ -1,61 +1,201 @@
 package com.swmansion.enriched.markdown.spans
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.os.Build
+import android.os.Looper
+import android.text.Spannable
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.TextUtils
+import android.text.style.LeadingMarginSpan
 import android.text.style.ReplacementSpan
+import android.view.View
+import android.widget.TextView
+import com.swmansion.enriched.markdown.spoiler.isConcealedBySpoiler
+import com.swmansion.enriched.markdown.styles.LinkPillContent
+import com.swmansion.enriched.markdown.styles.LinkPillStyle
 import com.swmansion.enriched.markdown.styles.LinkVariantEntry
+import java.lang.ref.WeakReference
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 
-/** Draws an atomic visual over the original link text, without changing stored characters. */
+/**
+ * Draws an atomic visual over the original link text, without changing stored characters.
+ *
+ * Presentation comes from the [variant]; [content] is what this particular link shows
+ * and wins over the variant's label and icon, which win over the link text.
+ */
 class LinkPillSpan(
   private val variant: LinkVariantEntry,
-  private val typeface: android.graphics.Typeface,
+  private val typeface: Typeface,
   private val fontSize: Float,
   originalLinkText: String,
   context: Context,
+  content: LinkPillContent? = null,
+  requestHeaders: Map<String, String> = emptyMap(),
+  // False when the link style names a font family, which then wins over the run's font.
+  private val followsRunTypeface: Boolean = false,
 ) : ReplacementSpan() {
-  private val label = (variant.label.ifEmpty { originalLinkText }).replace('\n', ' ').replace('\r', ' ')
-  private var availableWidth = Float.MAX_VALUE
-  private val icon = LinkPillIconCache.load(context, variant.iconUri)
-  private val iconPaint =
-    Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-    }
+  private val pill = variant.pill ?: LinkPillStyle()
+  private val label =
+    (content?.label?.ifEmpty { null } ?: pill.label.ifEmpty { originalLinkText })
+      .replace('\n', ' ')
+      .replace('\r', ' ')
+
+  /** Width limit given to a layout, and the box that layout reserved for the pill. */
+  private class LayoutState {
+    var availableWidth = Float.MAX_VALUE
+    var reservedWidth = 0
+  }
+
+  // The view's text is also re-measured by Yoga off the main thread, at widths that may
+  // never be committed. Each side keeps its own state so that pass cannot change what
+  // the visible layout reserved and draws.
+  private val uiState = LayoutState()
+  private val backgroundState = LayoutState()
+  private val state: LayoutState
+    get() = if (Looper.myLooper() == Looper.getMainLooper()) uiState else backgroundState
+
+  // Indentation of the enclosing blocks; -1 until resolved.
+  @Volatile
+  private var leadingMargin = -1
+
+  @Volatile
+  private var icon: Bitmap? = null
+
+  // A remote icon keeps its slot while it loads, so its arrival needs a redraw, never a
+  // relayout. If the load fails the slot stays empty until the next render.
+  private val reservesIconSlot: Boolean
+  private val views = ArrayList<WeakReference<View>>()
+
+  private var ellipsizedLabel = label
+  private var ellipsizedForWidth = -1f
 
   val accessibilityText = if (label == originalLinkText) originalLinkText else "$label, $originalLinkText"
 
   init {
+    val iconUri = content?.iconUri?.ifEmpty { null } ?: pill.iconUri
+    if (LinkPillIconCache.isRemote(iconUri)) {
+      // A source that failed a moment ago gets no slot and no request until it may be retried.
+      reservesIconSlot = !LinkPillIconCache.hasFailedRecently(iconUri, requestHeaders)
+      if (reservesIconSlot) {
+        LinkPillIconCache
+          .loadRemote(context, iconUri, requestHeaders) { loaded ->
+            icon = loaded
+            invalidateViews()
+          }?.let { icon = it }
+      }
+    } else {
+      icon = LinkPillIconCache.load(context, iconUri)
+      reservesIconSlot = icon != null
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) contentDescription = accessibilityText
+  }
+
+  /**
+   * Records how much the enclosing blocks (lists, quotes) indent this pill's line. Done
+   * once when the text is complete; looking it up on every layout would scan all spans.
+   */
+  fun resolveLeadingMargin(
+    text: Spanned,
+    start: Int,
+    end: Int,
+  ) {
+    leadingMargin =
+      text
+        .getSpans(start, end, LeadingMarginSpan::class.java)
+        .sumOf { max(it.getLeadingMargin(true), it.getLeadingMargin(false)) }
   }
 
   fun prepareForMeasurement(width: Int): Boolean {
     val next = width.coerceAtLeast(1).toFloat()
-    if (availableWidth == next) return false
-    availableWidth = next
+    val current = state
+    if (current.availableWidth == next) return false
+    current.availableWidth = next
     return true
   }
 
-  private fun textPaint(paint: Paint) =
-    TextPaint(paint).apply {
-      typeface = this@LinkPillSpan.typeface
-      textSize = fontSize
-      color = variant.color
-      bgColor = 0
-      isUnderlineText = variant.underline
-      isStrikeThruText = false
+  // A link's text can hold several styled runs (bold next to regular, inline code), and
+  // a layout measures and draws a replacement once per run. The pill belongs to the
+  // first run; the others take no room and draw nothing.
+  private fun startsPill(
+    text: CharSequence,
+    start: Int,
+  ): Boolean {
+    val spanStart = (text as? Spanned)?.getSpanStart(this) ?: -1
+    return spanStart < 0 || start <= spanStart
+  }
+
+  /** Lets an icon that arrives after layout redraw [view]. */
+  fun registerView(view: View) {
+    if (!reservesIconSlot || icon != null) return
+    synchronized(views) {
+      views.removeAll { it.get() == null }
+      if (views.none { it.get() === view }) views.add(WeakReference(view))
     }
+  }
+
+  private fun invalidateViews() {
+    synchronized(views) {
+      views.forEach { reference ->
+        val view = reference.get() ?: return@forEach
+        when {
+          view !is TextView -> view.postInvalidate()
+          Looper.myLooper() == Looper.getMainLooper() -> redrawIn(view)
+          else -> view.post { redrawIn(view) }
+        }
+      }
+      views.clear()
+    }
+  }
+
+  /**
+   * A selectable TextView draws its text from a cached display list, which invalidating
+   * the view does not record again; a span change does.
+   */
+  private fun redrawIn(view: TextView) {
+    val text = view.text as? Spannable
+    val start = text?.getSpanStart(this) ?: -1
+    if (text != null && start >= 0) {
+      text.setSpan(this, start, text.getSpanEnd(this), text.getSpanFlags(this))
+    } else {
+      view.invalidate()
+    }
+  }
+
+  private fun TextPaint.applyLabelStyle(source: Paint): TextPaint {
+    set(source)
+    // The other spans on this run (strong, emphasis, inline code) have already styled the
+    // paint. Use that font, as ordinary link text would; an explicit link font family keeps
+    // its face and only takes the run's weight and slant.
+    val base = this@LinkPillSpan.typeface
+    val run = source.typeface
+    typeface =
+      if (followsRunTypeface && run != null) {
+        run
+      } else {
+        val style = base.style or ((run?.style ?: Typeface.NORMAL) and Typeface.BOLD_ITALIC)
+        if (style == base.style) base else Typeface.create(base, style)
+      }
+    textSize = fontSize
+    color = variant.color
+    bgColor = 0
+    isUnderlineText = variant.underline
+    isStrikeThruText = false
+    return this
+  }
 
   private fun width(paint: Paint): Float {
-    val iconWidth = if (icon == null) 0f else fontSize + fontSize * 0.25f
-    val natural = paint.measureText(label) + iconWidth + 2 * (variant.paddingHorizontal + variant.borderWidth)
-    val limit = if (variant.maxWidth > 0) min(availableWidth, variant.maxWidth) else availableWidth
+    val iconWidth = if (reservesIconSlot) fontSize * ICON_SLOT_RATIO else 0f
+    val natural = paint.measureText(label) + iconWidth + 2 * (pill.paddingHorizontal + pill.borderWidth)
+    val availableWidth = state.availableWidth
+    val limit = if (pill.maxWidth > 0) min(availableWidth, pill.maxWidth) else availableWidth
     return min(ceil(natural), limit).coerceAtLeast(1f)
   }
 
@@ -66,16 +206,18 @@ class LinkPillSpan(
     end: Int,
     fm: Paint.FontMetricsInt?,
   ): Int {
-    val labelPaint = textPaint(paint)
+    if (!startsPill(text, start)) return 0
+    // Measurement can run off the main thread, so it keeps its own paint.
+    val labelPaint = TextPaint().applyLabelStyle(paint)
     val metrics = labelPaint.fontMetricsInt
-    val inset = ceil(variant.paddingVertical + variant.borderWidth).toInt()
+    val inset = ceil(pill.paddingVertical + pill.borderWidth).toInt()
     fm?.let {
       it.ascent = min(it.ascent, metrics.ascent - inset)
       it.descent = max(it.descent, metrics.descent + inset)
       it.top = min(it.top, it.ascent)
       it.bottom = max(it.bottom, it.descent)
     }
-    return ceil(width(labelPaint)).toInt()
+    return ceil(width(labelPaint)).toInt().also { state.reservedWidth = it }
   }
 
   override fun draw(
@@ -89,38 +231,74 @@ class LinkPillSpan(
     bottom: Int,
     paint: Paint,
   ) {
-    val labelPaint = textPaint(paint)
-    val metrics = labelPaint.fontMetrics
-    val inset = variant.paddingVertical + variant.borderWidth
-    val rect = RectF(x, y + metrics.ascent - inset, x + width(labelPaint), y + metrics.descent + inset)
-    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = variant.backgroundColor }
-    canvas.drawRoundRect(rect, variant.borderRadius, variant.borderRadius, fill)
-    if (variant.borderWidth > 0) {
-      fill.color = variant.borderColor
-      fill.style = Paint.Style.STROKE
-      fill.strokeWidth = variant.borderWidth
-      val border = RectF(rect).apply { inset(variant.borderWidth / 2, variant.borderWidth / 2) }
-      canvas.drawRoundRect(border, variant.borderRadius, variant.borderRadius, fill)
+    // The spoiler overlay only covers the text's glyph box, so a pill drawn under it
+    // would outline the hidden link with its padding and border.
+    if (text is Spanned && text.isConcealedBySpoiler(start, end)) return
+    if (!startsPill(text, start)) return
+
+    val labelPaint = drawLabelPaint.applyLabelStyle(paint)
+    val metrics = drawMetrics.also { labelPaint.getFontMetrics(it) }
+    val inset = pill.paddingVertical + pill.borderWidth
+    val reservedWidth = uiState.reservedWidth
+    val pillWidth = if (reservedWidth > 0) reservedWidth.toFloat() else width(labelPaint)
+    rect.set(x, y + metrics.ascent - inset, x + pillWidth, y + metrics.descent + inset)
+    shapePaint.style = Paint.Style.FILL
+    shapePaint.color = variant.backgroundColor
+    canvas.drawRoundRect(rect, pill.borderRadius, pill.borderRadius, shapePaint)
+    if (pill.borderWidth > 0) {
+      shapePaint.color = pill.borderColor
+      shapePaint.style = Paint.Style.STROKE
+      shapePaint.strokeWidth = pill.borderWidth
+      innerRect.set(rect)
+      innerRect.inset(pill.borderWidth / 2, pill.borderWidth / 2)
+      canvas.drawRoundRect(innerRect, pill.borderRadius, pill.borderRadius, shapePaint)
     }
     val save = canvas.save()
     canvas.clipRect(rect)
-    var left = x + variant.paddingHorizontal + variant.borderWidth
-    val right = rect.right - variant.paddingHorizontal - variant.borderWidth
-    if (icon != null && right - left >= fontSize) {
-      val iconTop = y + (metrics.ascent + metrics.descent - fontSize) / 2
-      val scale = fontSize / max(icon.width, icon.height)
-      val destination = RectF(left, iconTop, left + icon.width * scale, iconTop + icon.height * scale)
-      destination.offset((fontSize - destination.width()) / 2, (fontSize - destination.height()) / 2)
-      canvas.drawBitmap(icon, null, destination, iconPaint)
-      left += fontSize + fontSize * 0.25f
+    var left = x + pill.paddingHorizontal + pill.borderWidth
+    val right = rect.right - pill.paddingHorizontal - pill.borderWidth
+    if (reservesIconSlot && right - left >= fontSize) {
+      icon?.let {
+        val iconTop = y + (metrics.ascent + metrics.descent - fontSize) / 2
+        val scale = fontSize / max(it.width, it.height)
+        innerRect.set(left, iconTop, left + it.width * scale, iconTop + it.height * scale)
+        innerRect.offset((fontSize - innerRect.width()) / 2, (fontSize - innerRect.height()) / 2)
+        canvas.drawBitmap(it, null, innerRect, iconPaint)
+      }
+      left += fontSize * ICON_SLOT_RATIO
     }
-    val displayed = TextUtils.ellipsize(label, labelPaint, max(0f, right - left), TextUtils.TruncateAt.END)
-    canvas.drawText(displayed.toString(), left, y.toFloat(), labelPaint)
+    canvas.drawText(displayedLabel(labelPaint, max(0f, right - left)), left, y.toFloat(), labelPaint)
     canvas.restoreToCount(save)
   }
 
+  private fun displayedLabel(
+    paint: TextPaint,
+    width: Float,
+  ): String {
+    if (width != ellipsizedForWidth) {
+      ellipsizedLabel = TextUtils.ellipsize(label, paint, width, TextUtils.TruncateAt.END).toString()
+      ellipsizedForWidth = width
+    }
+    return ellipsizedLabel
+  }
+
   companion object {
-    /** Called before both Fabric measurement and visible TextView layout, including table cells. */
+    // The icon occupies a square of the label's font size plus a quarter of it as a gap.
+    private const val ICON_SLOT_RATIO = 1.25f
+
+    // Drawing happens on the main thread only, so all pills share these scratch objects
+    // instead of allocating native paints per pill.
+    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val shapePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val drawLabelPaint = TextPaint()
+    private val drawMetrics = Paint.FontMetrics()
+    private val rect = RectF()
+    private val innerRect = RectF()
+
+    /**
+     * Gives every pill in [text] its width limit. Layout sites reach this through
+     * `prepareWidthAwareSpans`; returns true when a limit changed.
+     */
     fun prepareForMeasurement(
       text: CharSequence?,
       width: Int,
@@ -128,15 +306,30 @@ class LinkPillSpan(
       val spanned = text as? Spanned ?: return false
       var changed = false
       spanned.getSpans(0, spanned.length, LinkPillSpan::class.java).forEach { pill ->
-        val start = spanned.getSpanStart(pill)
-        val end = spanned.getSpanEnd(pill)
-        val margin =
-          spanned
-            .getSpans(start, end, android.text.style.LeadingMarginSpan::class.java)
-            .sumOf { max(it.getLeadingMargin(true), it.getLeadingMargin(false)) }
-        changed = pill.prepareForMeasurement(width - margin) || changed
+        if (pill.leadingMargin < 0) {
+          pill.resolveLeadingMargin(spanned, spanned.getSpanStart(pill), spanned.getSpanEnd(pill))
+        }
+        changed = pill.prepareForMeasurement(width - pill.leadingMargin) || changed
       }
       return changed
+    }
+
+    fun registerView(
+      text: CharSequence?,
+      view: View,
+    ) {
+      val spanned = text as? Spanned ?: return
+      spanned.getSpans(0, spanned.length, LinkPillSpan::class.java).forEach { it.registerView(view) }
+    }
+
+    /** Redraws the pills in `[start, end)`, which skipped drawing while a spoiler concealed them. */
+    fun redraw(
+      view: TextView,
+      start: Int,
+      end: Int,
+    ) {
+      val spanned = view.text as? Spanned ?: return
+      spanned.getSpans(start, end, LinkPillSpan::class.java).forEach { it.redrawIn(view) }
     }
   }
 }

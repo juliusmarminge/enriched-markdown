@@ -1,68 +1,167 @@
 #import "ENRMLinkPillAttachment.h"
+#import "ENRMImageAttachment.h"
+#import "ENRMImageDownloader.h"
 #import "ENRMLinkPillIconCache.h"
-#import "ENRMLinkPillTextStorage.h"
+#import "ENRMSpoilerTapUtils.h"
+#import "RuntimeKeys.h"
 #import "StyleConfig.h"
 #import <objc/runtime.h>
 
 #if !TARGET_OS_OSX
 
-@implementation ENRMLinkPillAttachment {
-  NSString *_label;
-  NSString *_originalLinkText;
-  LinkVariantConfig *_variant;
-  UIFont *_font;
-  UIImage *_icon;
+// The icon occupies a square of the label's font size plus a quarter of it as a gap.
+static const CGFloat kIconSlotRatio = 1.25;
+
+/// Everything that decides what a drawn pill looks like. Streaming re-renders create new
+/// attachments for the same links on every update; keyed like this, they reuse the drawn image.
+@interface ENRMLinkPillAppearance : NSObject
+@property (nonatomic, strong) LinkVariantConfig *variant;
+@property (nonatomic, copy) NSString *label;
+@property (nonatomic, strong) UIFont *font;
+@property (nonatomic, strong, nullable) UIImage *icon;
+@property (nonatomic, assign) BOOL reservesIconSlot;
+@property (nonatomic, assign) CGSize size;
+@property (nonatomic, assign) UIUserInterfaceStyle interfaceStyle;
+@end
+
+@implementation ENRMLinkPillAppearance
+- (NSUInteger)hash
+{
+  return _label.hash ^ _font.hash ^ (NSUInteger)_variant ^ (NSUInteger)(_size.width * 31 + _size.height);
 }
 
-- (instancetype)initWithLinkText:(NSString *)originalLinkText variant:(LinkVariantConfig *)variant font:(UIFont *)font
+- (BOOL)isEqual:(id)object
+{
+  if (![object isKindOfClass:ENRMLinkPillAppearance.class])
+    return NO;
+  ENRMLinkPillAppearance *other = object;
+  // The variant and icon are compared by identity: both objects live as long as the style and
+  // the icon cache keep them, and this key retains them, so a match is never a recycled pointer.
+  return _variant == other->_variant && _icon == other->_icon && _reservesIconSlot == other->_reservesIconSlot &&
+         _interfaceStyle == other->_interfaceStyle && CGSizeEqualToSize(_size, other->_size) &&
+         [_font isEqual:other->_font] && [_label isEqualToString:other->_label];
+}
+@end
+
+/// Drawn pills, shared and bounded: the ones on screen are redrawn often, but a long document
+/// holds thousands, each a bitmap of 100 KB or more, so pills must not each keep their own.
+static NSCache<ENRMLinkPillAppearance *, UIImage *> *ENRMRenderedLinkPills(void)
+{
+  static NSCache<ENRMLinkPillAppearance *, UIImage *> *rendered;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    rendered = [NSCache new];
+    rendered.countLimit = 256;
+    rendered.totalCostLimit = 8 * 1024 * 1024;
+  });
+  return rendered;
+}
+
+static UIImage *ENRMClearLinkPillImage(void)
+{
+  static UIImage *clear;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+    format.opaque = NO;
+    clear = [[[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(1, 1) format:format]
+        imageWithActions:^(UIGraphicsImageRendererContext *context){}];
+  });
+  return clear;
+}
+
+/// Streaming renders the same links again on every update; their label widths do not change.
+static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
+{
+  static NSCache<NSString *, NSNumber *> *widths;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    widths = [NSCache new];
+    widths.countLimit = 2048;
+  });
+  NSString *key = [NSString stringWithFormat:@"%@|%.2f|%@", font.fontName, font.pointSize, label];
+  NSNumber *cached = [widths objectForKey:key];
+  if (cached)
+    return cached.doubleValue;
+  CGFloat width = [label sizeWithAttributes:@{NSFontAttributeName : font}].width;
+  [widths setObject:@(width) forKey:key];
+  return width;
+}
+
+@implementation ENRMLinkPillAttachment {
+  NSString *_label;
+  LinkVariantConfig *_variant;
+  LinkPillConfig *_pill;
+  UIFont *_font;
+  UIImage *_icon;
+  // Space for the icon is held while a remote icon is still loading, so its arrival only needs a redraw.
+  BOOL _reservesIconSlot;
+  __weak NSTextContainer *_textContainer;
+  CGFloat _labelWidth;
+}
+
+- (instancetype)initWithOriginalText:(NSAttributedString *)originalText
+                             variant:(LinkVariantConfig *)variant
+                               label:(NSString *)label
+                             iconUri:(NSString *)iconUri
+                                font:(UIFont *)font
+                      requestHeaders:(NSDictionary<NSString *, NSString *> *)requestHeaders
 {
   self = [super initWithData:nil ofType:nil];
   if (self) {
     _variant = variant;
-    _originalLinkText = [originalLinkText copy];
+    _pill = variant.pill;
+    _originalText = [originalText copy];
     _font = font ?: [UIFont systemFontOfSize:16];
-    NSString *label = variant.label.length > 0 ? variant.label : originalLinkText;
-    _label = [[label stringByReplacingOccurrencesOfString:@"\n"
-                                               withString:@" "] stringByReplacingOccurrencesOfString:@"\r"
-                                                                                          withString:@" "];
-    _icon = ENRMLoadLinkPillIcon(variant.iconUri);
+    // The pill is a single line; a label supplied by the app may still carry breaks.
+    NSString *visible = label.length > 0 ? label : originalText.string;
+    _label = [[visible componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]
+        componentsJoinedByString:@" "];
+    [self resolveIcon:iconUri requestHeaders:requestHeaders];
   }
   return self;
 }
 
+- (void)resolveIcon:(NSString *)iconUri requestHeaders:(NSDictionary<NSString *, NSString *> *)requestHeaders
+{
+  if (iconUri.length == 0)
+    return;
+  _icon = ENRMLoadLinkPillIcon(iconUri) ?: ENRMCachedLinkPillIcon(iconUri, requestHeaders);
+  _reservesIconSlot = _icon != nil;
+  if (_icon || ENRMLinkPillIconDidFail(iconUri, requestHeaders))
+    return;
+  _reservesIconSlot = YES;
+  __weak typeof(self) weakSelf = self;
+  ENRMLoadLinkPillIconAsync(iconUri, requestHeaders, ^(UIImage *icon) { [weakSelf iconDidSettle:icon]; });
+}
+
+- (void)adoptFont:(UIFont *)font
+{
+  if (!font || [font isEqual:_font])
+    return;
+  _font = font;
+  _labelWidth = 0;
+}
+
 - (NSString *)linkAccessibilityLabel
 {
-  return [_label isEqualToString:_originalLinkText] ? _originalLinkText
-                                                    : [NSString stringWithFormat:@"%@, %@", _label, _originalLinkText];
+  NSString *original = _originalText.string;
+  return [_label isEqualToString:original] ? original : [NSString stringWithFormat:@"%@, %@", _label, original];
 }
 
 - (CGFloat)boxHeight
 {
-  return ceil(_font.ascender - _font.descender + 2 * (_variant.paddingVertical + _variant.borderWidth));
+  return ceil(_font.ascender - _font.descender + 2 * (_pill.paddingVertical + _pill.borderWidth));
 }
 
 - (CGFloat)widthForLimit:(CGFloat)available
 {
-  CGFloat iconWidth = _icon ? _font.pointSize * 1.25 : 0;
-  CGFloat natural = ceil([_label sizeWithAttributes:@{NSFontAttributeName : _font}].width + iconWidth +
-                         2 * (_variant.paddingHorizontal + _variant.borderWidth));
-  CGFloat limit = _variant.maxWidth > 0 ? MIN(available, _variant.maxWidth) : available;
+  CGFloat iconWidth = _reservesIconSlot ? _font.pointSize * kIconSlotRatio : 0;
+  if (_labelWidth <= 0)
+    _labelWidth = ENRMLinkPillLabelWidth(_label, _font);
+  CGFloat natural = ceil(_labelWidth + iconWidth + 2 * (_pill.paddingHorizontal + _pill.borderWidth));
+  CGFloat limit = _pill.maxWidth > 0 ? MIN(available, _pill.maxWidth) : available;
   return MAX(1, MIN(natural, limit));
-}
-
-- (BOOL)startsAttachmentInTextContainer:(NSTextContainer *)container characterIndex:(NSUInteger)index
-{
-  NSTextStorage *storage = container.layoutManager.textStorage;
-  if (!storage)
-    return YES;
-  if (index >= storage.length)
-    return NO;
-  NSRange range;
-  id attachment = [storage attribute:NSAttachmentAttributeName
-                             atIndex:index
-               longestEffectiveRange:&range
-                             inRange:NSMakeRange(0, storage.length)];
-  return attachment == self && index == range.location;
 }
 
 - (CGRect)attachmentBoundsForTextContainer:(NSTextContainer *)container
@@ -70,229 +169,141 @@
                              glyphPosition:(CGPoint)position
                             characterIndex:(NSUInteger)characterIndex
 {
-  // TextKit can query attachments directly, bypassing the glyph delegate for
-  // attachment characters. Only the first source character owns the pill box.
-  if (![self startsAttachmentInTextContainer:container characterIndex:characterIndex])
-    return CGRectZero;
-  // Use the full container width, not the remainder of the current line. TextKit then moves
-  // the whole attachment to the next line if it doesn't fit the remainder.
-  NSParagraphStyle *paragraph = [container.layoutManager.textStorage attribute:NSParagraphStyleAttributeName
-                                                                       atIndex:characterIndex
-                                                                effectiveRange:NULL];
-  CGFloat indent = MAX(paragraph.firstLineHeadIndent, paragraph.headIndent);
-  CGFloat tailInset = paragraph.tailIndent < 0 ? -paragraph.tailIndent : 0;
-  CGFloat available = MAX(1, container.size.width - 2 * container.lineFragmentPadding - indent - tailInset);
-  CGFloat inset = _variant.paddingVertical + _variant.borderWidth;
+  CGFloat available = CGFLOAT_MAX;
+  if (container) {
+    _textContainer = container;
+    // Use the full container width, not the remainder of the current line. TextKit then moves
+    // the whole attachment to the next line if it doesn't fit the remainder.
+    NSTextStorage *storage = container.layoutManager.textStorage;
+    NSParagraphStyle *paragraph = characterIndex < storage.length ? [storage attribute:NSParagraphStyleAttributeName
+                                                                               atIndex:characterIndex
+                                                                        effectiveRange:NULL]
+                                                                  : nil;
+    CGFloat indent = MAX(paragraph.firstLineHeadIndent, paragraph.headIndent);
+    CGFloat tailInset = paragraph.tailIndent < 0 ? -paragraph.tailIndent : 0;
+    available = MAX(1, container.size.width - 2 * container.lineFragmentPadding - indent - tailInset);
+  } else if (lineFragment.size.width > 0 && lineFragment.size.width < 1e6) {
+    // String drawing (table cells) lays out without a text container.
+    available = lineFragment.size.width;
+  }
+  CGFloat inset = _pill.paddingVertical + _pill.borderWidth;
   return CGRectMake(0, _font.descender - inset, [self widthForLimit:available], self.boxHeight);
 }
 
 - (UIImage *)imageForBounds:(CGRect)bounds textContainer:(NSTextContainer *)container characterIndex:(NSUInteger)index
 {
-  if (bounds.size.width <= 0 || bounds.size.height <= 0 ||
-      ![self startsAttachmentInTextContainer:container characterIndex:index])
+  if (bounds.size.width <= 0 || bounds.size.height <= 0)
     return nil;
+  if (container) {
+    _textContainer = container;
+    // The spoiler hides text by clearing its color, which this drawing does not use.
+    NSTextStorage *storage = container.layoutManager.textStorage;
+    if (index < storage.length && [storage attribute:SpoilerAttributeName atIndex:index effectiveRange:NULL])
+      return ENRMClearLinkPillImage();
+  }
   CGSize size = bounds.size;
+  UIUserInterfaceStyle interfaceStyle = UITraitCollection.currentTraitCollection.userInterfaceStyle;
+  ENRMLinkPillAppearance *appearance = [ENRMLinkPillAppearance new];
+  appearance.variant = _variant;
+  appearance.label = _label;
+  appearance.font = _font;
+  appearance.icon = _icon;
+  appearance.reservesIconSlot = _reservesIconSlot;
+  appearance.size = size;
+  appearance.interfaceStyle = interfaceStyle;
+  UIImage *rendered = [ENRMRenderedLinkPills() objectForKey:appearance];
+  if (rendered)
+    return rendered;
+
   UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
   format.opaque = NO;
   UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
-  return [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+  UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
     CGRect rect = (CGRect){CGPointZero, size};
-    UIBezierPath *background = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:_variant.borderRadius];
+    UIBezierPath *background = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:_pill.borderRadius];
     [_variant.backgroundColor ?: UIColor.clearColor setFill];
     [background fill];
-    if (_variant.borderWidth > 0) {
+    if (_pill.borderWidth > 0) {
       UIBezierPath *border =
-          [UIBezierPath bezierPathWithRoundedRect:CGRectInset(rect, _variant.borderWidth / 2, _variant.borderWidth / 2)
-                                     cornerRadius:_variant.borderRadius];
-      border.lineWidth = _variant.borderWidth;
-      [_variant.borderColor setStroke];
+          [UIBezierPath bezierPathWithRoundedRect:CGRectInset(rect, _pill.borderWidth / 2, _pill.borderWidth / 2)
+                                     cornerRadius:_pill.borderRadius];
+      border.lineWidth = _pill.borderWidth;
+      [_pill.borderColor setStroke];
       [border stroke];
     }
     [background addClip];
-    CGFloat left = _variant.paddingHorizontal + _variant.borderWidth;
+    CGFloat left = _pill.paddingHorizontal + _pill.borderWidth;
     CGFloat right = size.width - left;
-    if (_icon && right - left >= _font.pointSize) {
+    if (_reservesIconSlot && right - left >= _font.pointSize) {
       CGFloat side = _font.pointSize;
-      CGFloat scale = side / MAX(_icon.size.width, _icon.size.height);
-      CGSize iconSize = CGSizeMake(_icon.size.width * scale, _icon.size.height * scale);
-      CGRect iconRect = CGRectMake(left + (side - iconSize.width) / 2, (size.height - iconSize.height) / 2,
-                                   iconSize.width, iconSize.height);
-      [_icon drawInRect:iconRect];
-      left += side * 1.25;
+      if (_icon) {
+        CGFloat scale = side / MAX(_icon.size.width, _icon.size.height);
+        CGSize iconSize = CGSizeMake(_icon.size.width * scale, _icon.size.height * scale);
+        CGRect iconRect = CGRectMake(left + (side - iconSize.width) / 2, (size.height - iconSize.height) / 2,
+                                     iconSize.width, iconSize.height);
+        [_icon drawInRect:iconRect];
+      }
+      left += side * kIconSlotRatio;
     }
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
     paragraph.lineBreakMode = NSLineBreakByTruncatingTail;
     NSDictionary *attributes = @{
       NSFontAttributeName : _font,
-      NSForegroundColorAttributeName : _variant.color,
+      NSForegroundColorAttributeName : _variant.color ?: UIColor.labelColor,
       NSUnderlineStyleAttributeName : @(_variant.underline ? NSUnderlineStyleSingle : NSUnderlineStyleNone),
       NSParagraphStyleAttributeName : paragraph,
     };
-    [_label drawInRect:CGRectMake(left, _variant.paddingVertical + _variant.borderWidth, MAX(0, right - left),
-                                  size.height)
+    [_label drawInRect:CGRectMake(left, _pill.paddingVertical + _pill.borderWidth, MAX(0, right - left), size.height)
         withAttributes:attributes];
   }];
-}
-@end
-
-@interface ENRMPillGlyphTail : NSObject
-@property (nonatomic) NSUInteger glyphEnd;
-@property (nonatomic) NSUInteger characterIndex;
-@end
-@implementation ENRMPillGlyphTail
-@end
-
-static char ENRMPillGlyphTailKey;
-
-// Pills require TextKit 1: substitute glyphs without replacing source characters.
-// testOriginalLabelUsesSameAttachmentGeometryAsRealReplacementCharacter guards
-// equivalence to native U+FFFC attachment layout when TextKit behavior changes.
-@implementation ENRMLinkPillLayoutDelegate
-+ (instancetype)shared
-{
-  static ENRMLinkPillLayoutDelegate *delegate;
-  static dispatch_once_t once;
-  dispatch_once(&once, ^{ delegate = [[self alloc] init]; });
-  return delegate;
+  [ENRMRenderedLinkPills() setObject:image forKey:appearance cost:ENRMImageByteCost(image)];
+  return image;
 }
 
-- (NSUInteger)layoutManager:(NSLayoutManager *)manager
-       shouldGenerateGlyphs:(const CGGlyph *)glyphs
-                 properties:(const NSGlyphProperty *)properties
-           characterIndexes:(const NSUInteger *)indexes
-                       font:(UIFont *)font
-              forGlyphRange:(NSRange)glyphRange
+#pragma mark - Asynchronous icon
+
+- (void)iconDidSettle:(UIImage *)icon
 {
-  NSUInteger count = glyphRange.length;
-  if (count == 0)
-    return 0;
-  ENRMPillGlyphTail *tail = objc_getAssociatedObject(manager, &ENRMPillGlyphTailKey);
-  BOOL continuesFirstCharacter = tail && tail.glyphEnd == glyphRange.location && tail.characterIndex == indexes[0];
-  if (!tail) {
-    tail = [ENRMPillGlyphTail new];
-    objc_setAssociatedObject(manager, &ENRMPillGlyphTailKey, tail, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  _icon = icon;
+  BOOL slotReleased = icon == nil;
+  if (slotReleased)
+    _reservesIconSlot = NO;
+
+  if (self.onIconLoaded)
+    self.onIconLoaded();
+
+  NSTextContainer *container = _textContainer;
+  UITextView *textView = container ? objc_getAssociatedObject(container, kTextViewKey) : nil;
+  if (!textView)
+    return;
+  NSRange range = [self rangeInText:textView.textStorage];
+  if (range.location == NSNotFound)
+    return;
+  if (!slotReleased) {
+    [textView.layoutManager invalidateDisplayForCharacterRange:range];
+    return;
   }
-  // Remember only the immediately preceding callback. Querying surrounding glyphs
-  // during generation can recurse into this delegate before those glyphs exist.
-  tail.glyphEnd = NSMaxRange(glyphRange);
-  tail.characterIndex = indexes[count - 1];
-  NSMutableData *glyphData = nil;
-  NSMutableData *propertyData = nil;
-  CGGlyph *replacement = NULL;
-  NSGlyphProperty *replacementProperties = NULL;
-  for (NSUInteger i = 0; i < count; i++) {
-    id attachment = [manager.textStorage attribute:NSAttachmentAttributeName atIndex:indexes[i] effectiveRange:NULL];
-    if (![attachment isKindOfClass:ENRMLinkPillAttachment.class])
-      continue;
-    NSRange range;
-    // Attribute runs may split at every source character after UIKit fixes fonts/colors.
-    // The pill starts at the longest range of the attachment alone, not the current run.
-    [manager.textStorage attribute:NSAttachmentAttributeName
-                           atIndex:indexes[i]
-             longestEffectiveRange:&range
-                           inRange:NSMakeRange(0, manager.textStorage.length)];
-    if (!glyphData) {
-      glyphData = [NSMutableData dataWithBytes:glyphs length:count * sizeof(CGGlyph)];
-      propertyData = [NSMutableData dataWithBytes:properties length:count * sizeof(NSGlyphProperty)];
-      replacement = glyphData.mutableBytes;
-      replacementProperties = propertyData.mutableBytes;
-    }
-    // A character can have multiple glyphs, even across font/callback boundaries.
-    BOOL startsAttachment = indexes[i] == range.location;
-    BOOL continuesCharacter = startsAttachment && (i > 0 ? indexes[i - 1] == indexes[i] : continuesFirstCharacter);
-    if (startsAttachment && !continuesCharacter) {
-      // TextKit's attachment glyph exists only in the glyph buffer, never in text storage.
-      replacement[i] = 0xFFFC;
-      replacementProperties[i] = 0;
-    } else {
-      replacement[i] = 0;
-      replacementProperties[i] = NSGlyphPropertyNull;
-    }
-  }
-  if (!glyphData)
-    return 0;
-  [manager setGlyphs:replacement
-            properties:replacementProperties
-      characterIndexes:indexes
-                  font:font
-         forGlyphRange:glyphRange];
-  return count;
+  // The pill got narrower, so lines can reflow: lay out again and let the host re-measure.
+  [textView.layoutManager invalidateLayoutForCharacterRange:range actualCharacterRange:NULL];
+  id<ENRMImageLayoutObserver> observer = [textView enrm_imageLayoutObserver];
+  if (observer)
+    dispatch_async(dispatch_get_main_queue(), ^{ [observer imageAttachmentDidResolveLayout]; });
 }
 
-- (BOOL)layoutManager:(NSLayoutManager *)manager shouldBreakLineByWordBeforeCharacterAtIndex:(NSUInteger)index
+- (NSRange)rangeInText:(NSAttributedString *)text
 {
-  if (index >= manager.textStorage.length)
-    return YES;
-  id attachment = [manager.textStorage attribute:NSAttachmentAttributeName atIndex:index effectiveRange:NULL];
-  if (![attachment isKindOfClass:ENRMLinkPillAttachment.class])
-    return YES;
-  NSRange range;
-  [manager.textStorage attribute:NSAttachmentAttributeName
-                         atIndex:index
-           longestEffectiveRange:&range
-                         inRange:NSMakeRange(0, manager.textStorage.length)];
-  return index == range.location;
-}
-@end
-
-static NSLayoutManager *ENRMPillLayout(NSAttributedString *text, CGSize size, NSTextStorage **storageOut,
-                                       NSTextContainer **containerOut)
-{
-  NSTextStorage *storage = [[ENRMLinkPillTextStorage alloc] initWithAttributedString:text];
-  NSLayoutManager *manager = [[NSLayoutManager alloc] init];
-  manager.delegate = ENRMLinkPillLayoutDelegate.shared;
-  manager.allowsNonContiguousLayout = NO;
-  manager.usesFontLeading = NO;
-  NSTextContainer *container = [[NSTextContainer alloc] initWithSize:size];
-  container.lineFragmentPadding = 0;
-  [storage addLayoutManager:manager];
-  [manager addTextContainer:container];
-  [manager ensureLayoutForTextContainer:container];
-  *storageOut = storage;
-  *containerOut = container;
-  return manager;
-}
-
-static BOOL ENRMHasLinkPill(NSAttributedString *text)
-{
-  __block BOOL found = NO;
+  __block NSRange found = NSMakeRange(NSNotFound, 0);
   [text enumerateAttribute:NSAttachmentAttributeName
                    inRange:NSMakeRange(0, text.length)
-                   options:0
+                   options:NSAttributedStringEnumerationLongestEffectiveRangeNotRequired
                 usingBlock:^(id value, NSRange range, BOOL *stop) {
-                  if ([value isKindOfClass:ENRMLinkPillAttachment.class]) {
-                    found = YES;
+                  if (value == self) {
+                    found = range;
                     *stop = YES;
                   }
                 }];
   return found;
 }
+@end
 
-CGRect ENRMLinkPillTextBounds(NSAttributedString *text, CGFloat width)
-{
-  if (!ENRMHasLinkPill(text))
-    return [text boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
-                              options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                              context:nil];
-  // NSLayoutManager does not own its storage. Keep it alive through measurement/drawing under ARC.
-  __attribute__((objc_precise_lifetime)) NSTextStorage *storage;
-  NSTextContainer *container;
-  NSLayoutManager *manager = ENRMPillLayout(text, CGSizeMake(width, CGFLOAT_MAX), &storage, &container);
-  return [manager usedRectForTextContainer:container];
-}
-
-void ENRMDrawLinkPillText(NSAttributedString *text, CGRect rect)
-{
-  if (!ENRMHasLinkPill(text)) {
-    [text drawWithRect:rect options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading context:nil];
-    return;
-  }
-  // NSLayoutManager does not own its storage. Keep it alive through measurement/drawing under ARC.
-  __attribute__((objc_precise_lifetime)) NSTextStorage *storage;
-  NSTextContainer *container;
-  NSLayoutManager *manager = ENRMPillLayout(text, rect.size, &storage, &container);
-  NSRange glyphs = [manager glyphRangeForTextContainer:container];
-  [manager drawBackgroundForGlyphRange:glyphs atPoint:rect.origin];
-  [manager drawGlyphsForGlyphRange:glyphs atPoint:rect.origin];
-}
 #endif

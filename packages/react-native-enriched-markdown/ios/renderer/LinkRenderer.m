@@ -1,5 +1,7 @@
 #import "LinkRenderer.h"
+#import "CodeBackground.h"
 #import "ENRMLinkPillAttachment.h"
+#import "ENRMSpoilerTapUtils.h"
 #import "FontUtils.h"
 #import "RenderContext.h"
 #import "RendererFactory.h"
@@ -7,10 +9,10 @@
 #import <React/RCTFont.h>
 
 #if !TARGET_OS_OSX
-static BOOL ENRMRangeHasAttachment(NSAttributedString *text, NSRange range)
+static BOOL ENRMRangeHasAttribute(NSAttributedString *text, NSRange range, NSAttributedStringKey key)
 {
   __block BOOL found = NO;
-  [text enumerateAttribute:NSAttachmentAttributeName
+  [text enumerateAttribute:key
                    inRange:range
                    options:0
                 usingBlock:^(id value, NSRange subrange, BOOL *stop) {
@@ -20,6 +22,33 @@ static BOOL ENRMRangeHasAttachment(NSAttributedString *text, NSRange range)
                   }
                 }];
   return found;
+}
+
+/// Replaces the rendered link content with one attachment character and returns its range.
+static NSRange ENRMCollapseLinkIntoPill(NSMutableAttributedString *output, NSRange range, NSString *url,
+                                        LinkVariantConfig *variant, StyleConfig *config, RenderContext *context)
+{
+  LinkPillContent *content = [config linkPillContent][url];
+  NSDictionary<NSAttributedStringKey, id> *attributes = [output attributesAtIndex:range.location effectiveRange:NULL];
+  ENRMLinkPillAttachment *pill = [[ENRMLinkPillAttachment alloc]
+      initWithOriginalText:[output attributedSubstringFromRange:range]
+                   variant:variant
+                     label:content.label.length > 0 ? content.label : variant.pill.label
+                   iconUri:content.iconUri.length > 0 ? content.iconUri : variant.pill.iconUri
+                      font:attributes[NSFontAttributeName] ?: [context getBlockStyle].cachedFont
+            requestHeaders:[config imageRequestHeaders]];
+
+  // The placeholder keeps the block context of the text it replaces. The pill draws its own
+  // background, underline and label, so inline decoration of that text must not show around it.
+  NSMutableDictionary<NSAttributedStringKey, id> *placeholder = [attributes mutableCopy];
+  [placeholder removeObjectsForKeys:@[
+    NSBackgroundColorAttributeName, NSUnderlineStyleAttributeName, NSUnderlineColorAttributeName,
+    NSStrikethroughStyleAttributeName, CodeAttributeName
+  ]];
+  placeholder[NSAttachmentAttributeName] = pill;
+  [output replaceCharactersInRange:range
+              withAttributedString:[[NSAttributedString alloc] initWithString:@"\uFFFC" attributes:placeholder]];
+  return NSMakeRange(range.location, 1);
 }
 #endif
 
@@ -93,7 +122,13 @@ static BOOL ENRMRangeHasAttachment(NSAttributedString *text, NSRange range)
                           }];
 
 #if !TARGET_OS_OSX
-  BOOL willBePill = variant.pill && !ENRMRangeHasAttachment(output, range);
+  // A pill is one line and one unit: links holding attachments or a line break stay ordinary links.
+  // So do links holding a spoiler, whose hidden text the label would show.
+  BOOL willBePill =
+      variant.pill != nil && !ENRMRangeHasAttribute(output, range, NSAttachmentAttributeName) &&
+      !ENRMRangeHasAttribute(output, range, SpoilerAttributeName) &&
+      [output.string rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet options:0 range:range].location ==
+          NSNotFound;
 #else
   BOOL willBePill = NO;
 #endif
@@ -101,16 +136,8 @@ static BOOL ENRMRangeHasAttachment(NSAttributedString *text, NSRange range)
     [output addAttribute:NSBackgroundColorAttributeName value:backgroundColor range:range];
 
 #if !TARGET_OS_OSX
-  if (willBePill) {
-    UIFont *font = [output attribute:NSFontAttributeName atIndex:range.location effectiveRange:NULL];
-    ENRMLinkPillAttachment *pill =
-        [[ENRMLinkPillAttachment alloc] initWithLinkText:[output.string substringWithRange:range]
-                                                 variant:variant
-                                                    font:font ?: [context getBlockStyle].cachedFont];
-    // Children may already have an inline-code background. Pills draw their own.
-    [output removeAttribute:NSBackgroundColorAttributeName range:range];
-    [output addAttribute:NSAttachmentAttributeName value:pill range:range];
-  }
+  if (willBePill)
+    range = ENRMCollapseLinkIntoPill(output, range, url, variant, _config, context);
 #endif
   [context registerLinkRange:range url:url];
 }

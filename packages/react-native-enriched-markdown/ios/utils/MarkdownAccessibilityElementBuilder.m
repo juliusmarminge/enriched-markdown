@@ -116,9 +116,9 @@ static const CGFloat kFocusRectPadding = 2.0;
     BOOL isImg = item[@"altText"] != nil;
     NSString *label = isImg ? item[@"altText"] : [fullText substringWithRange:itemRange];
     if (!isImg) {
-      id attachment = [textView.attributedText attribute:NSAttachmentAttributeName
-                                                 atIndex:itemRange.location
-                                          effectiveRange:NULL];
+      id attachment = [textView.textStorage attribute:NSAttachmentAttributeName
+                                              atIndex:itemRange.location
+                                       effectiveRange:NULL];
       if ([attachment isKindOfClass:ENRMLinkPillAttachment.class])
         label = [(ENRMLinkPillAttachment *)attachment linkAccessibilityLabel];
     }

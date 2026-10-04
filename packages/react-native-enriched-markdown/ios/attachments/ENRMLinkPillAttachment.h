@@ -4,18 +4,33 @@
 #if !TARGET_OS_OSX
 @class LinkVariantConfig;
 
-/// Presentation over the original link characters. Text storage never receives U+FFFC.
+NS_ASSUME_NONNULL_BEGIN
+
+/**
+ * A link presented as a pill. Like image and inline-math attachments it is a
+ * single U+FFFC in text storage, laid out and drawn by TextKit natively.
+ * The link's own rendered text is kept here; ENRMLinkPillText.h puts it back
+ * wherever text leaves the view (copy, export, accessibility).
+ */
 @interface ENRMLinkPillAttachment : NSTextAttachment
 @property (nonatomic, readonly) CGFloat boxHeight;
+/// Visible label, followed by the original link text when they differ.
 @property (nonatomic, readonly) NSString *linkAccessibilityLabel;
-- (instancetype)initWithLinkText:(NSString *)originalLinkText variant:(LinkVariantConfig *)variant font:(UIFont *)font;
+@property (nonatomic, readonly) NSAttributedString *originalText;
+/// Called on the main thread when an asynchronously loaded icon settles. For hosts that draw the
+/// string themselves (the table grid) and have no text view for the attachment to invalidate.
+@property (nonatomic, copy, nullable) void (^onIconLoaded)(void);
+
+/// `variant.pill` must be non-nil. `label` and `iconUri` are already resolved (per-link content, then variant default).
+- (instancetype)initWithOriginalText:(NSAttributedString *)originalText
+                             variant:(LinkVariantConfig *)variant
+                               label:(nullable NSString *)label
+                             iconUri:(nullable NSString *)iconUri
+                                font:(nullable UIFont *)font
+                      requestHeaders:(nullable NSDictionary<NSString *, NSString *> *)requestHeaders;
+
+- (void)adoptFont:(nullable UIFont *)font;
 @end
 
-/// Stateless and shared by visible, table, and view-free TextKit stacks.
-@interface ENRMLinkPillLayoutDelegate : NSObject <NSLayoutManagerDelegate>
-+ (instancetype)shared;
-@end
-
-FOUNDATION_EXPORT CGRect ENRMLinkPillTextBounds(NSAttributedString *text, CGFloat width);
-FOUNDATION_EXPORT void ENRMDrawLinkPillText(NSAttributedString *text, CGRect rect);
+NS_ASSUME_NONNULL_END
 #endif

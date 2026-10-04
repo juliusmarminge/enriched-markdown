@@ -2,9 +2,12 @@
 
 XCTest sources for the React Native library's Objective-C / Objective-C++ code
 (`ios/**`). They run in the example app's app-hosted test target
-`EnrichedMarkdownExampleTests`, which links the same pods as the app (via the
-Podfile `inherit! :complete` block), so tests compile against the exact code the
-example ships.
+`EnrichedMarkdownExampleTests`. The test bundle does not link the pods itself: it
+inherits only their header search paths (the Podfile `inherit! :search_paths`
+block) and resolves the library's symbols from the host app at load time, so the
+tests exercise the exact code the example ships. Linking the pods into the bundle
+as well would load every library class twice, and `isKindOfClass:` checks between
+the two copies then fail unpredictably.
 
 ## Running
 
@@ -36,10 +39,12 @@ the target checked. By hand in `project.pbxproj`, add the file as a
 matching `PBXBuildFile`, and reference it from the target's
 `00E356EA...` Sources build phase.
 
-Test files import the code under test by relative path, e.g.
-`#import "../../ios/attachments/ENRMLinkPillTextStorage.h"`. Header search paths
-for the C++ core and pod internals are set on the test target's build
-configuration, mirroring `ReactNativeEnrichedMarkdown.podspec`.
+Test files import the code under test by header name, e.g.
+`#import "ENRMLinkPillAttachment.h"`. The library's source folders (`ios/utils`,
+`ios/styles`, `ios/attachments`, ...), the C++ core and the pod internals are on
+the test target's header search paths, mirroring
+`ReactNativeEnrichedMarkdown.podspec`; add a folder there when a test needs a
+header from a new one.
 
 `EnrichedMarkdownExampleTests.m` in the app-side target dir is a harness
 placeholder that keeps the bundle non-empty; it can stay or be removed once real

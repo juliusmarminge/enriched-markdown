@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatTextView
 import com.swmansion.enriched.markdown.spans.LinkPillSpan
+import com.swmansion.enriched.markdown.utils.text.span.prepareWidthAwareSpans
 
 /** AppCompatTextView with built-in TalkBack support via MarkdownAccessibilityHelper. */
 abstract class AccessibleMarkdownTextView
@@ -18,21 +19,37 @@ abstract class AccessibleMarkdownTextView
   ) : AppCompatTextView(context, attrs, defStyleAttr) {
     val accessibilityHelper = MarkdownAccessibilityHelper(this)
 
+    override fun setText(
+      text: CharSequence?,
+      type: BufferType?,
+    ) {
+      // Prime pills before the layout for the new text is built, and register for icons
+      // that load later. Runs from the TextView constructor too: use nothing initialized after it.
+      val contentWidth = width - compoundPaddingLeft - compoundPaddingRight
+      if (contentWidth > 0) prepareWidthAwareSpans(text, contentWidth, includeImages = false)
+      LinkPillSpan.registerView(text, this)
+      super.setText(text, type)
+    }
+
     override fun onMeasure(
       widthMeasureSpec: Int,
       heightMeasureSpec: Int,
     ) {
       if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) {
         val width = (MeasureSpec.getSize(widthMeasureSpec) - compoundPaddingLeft - compoundPaddingRight).coerceAtLeast(1)
-        if (LinkPillSpan
-            .prepareForMeasurement(text, width)
-        ) {
-          // TextView can reuse a layout at the same width after a style or label change.
-          val current = text
-          text = current
-        }
+        // TextView keeps its layout when the new width still fits the old lines.
+        if (prepareWidthAwareSpans(text, width, includeImages = false) && layout != null) dropTextLayout()
       }
       super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    /**
+     * Makes the next measure build a fresh text layout. TextView exposes no direct way:
+     * re-setting the text would copy it and clear the selection, while setting the break
+     * strategy, even to its current value, discards the layout and nothing else.
+     */
+    private fun dropTextLayout() {
+      breakStrategy = breakStrategy
     }
 
     override fun dispatchHoverEvent(event: MotionEvent): Boolean =

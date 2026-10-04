@@ -130,7 +130,7 @@ export type LinkVariantStyle = LinkStyle & {
 export interface LinkPillStyle {
   /** Visible text, also included in the accessible name alongside original link text. */
   label?: string;
-  /** Local image source. Unreadable or non-local sources are ignored. */
+  /** Local file, bundled asset or `http(s)` URL. A source that fails shows no icon. */
   iconUri?: string;
   borderRadius?: number;
   paddingHorizontal?: number;

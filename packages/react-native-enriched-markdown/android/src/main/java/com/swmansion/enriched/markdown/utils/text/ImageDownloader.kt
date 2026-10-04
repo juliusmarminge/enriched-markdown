@@ -69,12 +69,19 @@ object ImageDownloader {
       inFlight[requestKey] = mutableListOf(callback)
     }
 
+    // OkHttp throws on a URL or header it cannot use; report that like any failed download.
     val request =
-      Request
-        .Builder()
-        .url(url)
-        .apply { headers.forEach { (name, value) -> addHeader(name, value) } }
-        .build()
+      try {
+        Request
+          .Builder()
+          .url(url)
+          .apply { headers.forEach { (name, value) -> addHeader(name, value) } }
+          .build()
+      } catch (e: IllegalArgumentException) {
+        Log.e(TAG, "Invalid image request: $url", e)
+        dispatchCallbacks(requestKey, null)
+        return
+      }
     getClient(context).newCall(request).enqueue(
       object : Callback {
         override fun onResponse(

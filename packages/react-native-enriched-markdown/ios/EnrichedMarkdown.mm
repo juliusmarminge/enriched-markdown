@@ -13,6 +13,7 @@
 #import "ENRMUIKit.h"
 #import "EditMenuUtils.h"
 #import "ImageRequestHeaderUtils.h"
+#import "LinkPillContentUtils.h"
 
 #import "ENRMFeatureFlags.h"
 
@@ -1039,6 +1040,15 @@ static char kENRMSegmentFadeAnimatorKey;
 
   if (ENRMImageRequestHeadersChanged(oldViewProps.imageRequestHeaders, newViewProps.imageRequestHeaders)) {
     [_config setImageRequestHeaders:ENRMImageRequestHeadersFromProps(newViewProps.imageRequestHeaders)];
+    _dirtyFlags |= ENRMDirtyRender;
+    if (!markdownChanged) {
+      _dirtyFlags |= ENRMDirtyRecreateSegments;
+    }
+  }
+
+  // Pill labels change layout, so treat new content like a style change.
+  if (ENRMLinkPillContentChanged(oldViewProps.linkPillContent, newViewProps.linkPillContent)) {
+    [_config setLinkPillContent:ENRMLinkPillContentFromProps(newViewProps.linkPillContent)];
     _dirtyFlags |= ENRMDirtyRender;
     if (!markdownChanged) {
       _dirtyFlags |= ENRMDirtyRecreateSegments;

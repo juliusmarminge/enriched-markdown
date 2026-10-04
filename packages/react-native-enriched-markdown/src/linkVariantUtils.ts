@@ -1,4 +1,5 @@
 import type { LinkVariantStyle } from './types/MarkdownStyle';
+import type { LinkPillContent } from './types/MarkdownTextProps';
 
 type LinkVariantEntry = [pattern: string, style: LinkVariantStyle];
 
@@ -51,7 +52,7 @@ export function normalizeLinkPillStyle(style: LinkVariantStyle) {
       ? fallback
       : Math.max(0, value);
   return {
-    pill: style.pill === true || hasConfig,
+    enabled: style.pill === true || hasConfig,
     borderColor: config.borderColor ?? 'transparent',
     label: config.label ?? '',
     iconUri: config.iconUri ?? '',
@@ -61,4 +62,37 @@ export function normalizeLinkPillStyle(style: LinkVariantStyle) {
     borderWidth: dimension(config.borderWidth, 0),
     maxWidth: dimension(config.maxWidth, 0),
   };
+}
+
+/** Flattens `linkPillContent` for native; sorted so equal maps produce the same array. */
+export function normalizeLinkPillContent(
+  content: Record<string, LinkPillContent> | undefined
+) {
+  if (!content) return undefined;
+  return Object.entries(content)
+    .map(([url, { label, iconUri }]) => ({
+      url,
+      label: label ?? '',
+      iconUri: iconUri ?? '',
+    }))
+    .sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
+}
+
+type NativeLinkPillContent = ReturnType<typeof normalizeLinkPillContent>;
+
+/** Whether two flattened `linkPillContent` arrays hold the same entries. */
+export function isLinkPillContentEqual(
+  a: NativeLinkPillContent,
+  b: NativeLinkPillContent
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((entry, index) => {
+    const other = b[index]!;
+    return (
+      entry.url === other.url &&
+      entry.label === other.label &&
+      entry.iconUri === other.iconUri
+    );
+  });
 }
