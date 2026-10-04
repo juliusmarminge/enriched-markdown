@@ -75,42 +75,54 @@ Each key is a regex tested against the link URL. First match wins. Unspecified p
 
 ## Native link pills
 
-Readonly `EnrichedMarkdownText` supports optional pill presentation on iOS and Android through the same `markdownStyle.linkVariants` map. It also works for links in GFM table cells. This does not change the text-input mention API.
+Readonly `EnrichedMarkdownText` can present links as pills on iOS and Android: a rounded box with an optional icon and label that wraps as one unit. It works everywhere links render, including GFM table cells. This does not change the text-input mention API.
+
+Pills have two parts:
+
+- **Presentation** lives in `markdownStyle.linkVariants`: which links are pills, their colors and geometry, and an optional label and icon shared by every link the pattern matches.
+- **Per-link content** lives in the `linkPillContent` prop: a label and icon for one exact URL. It is content, not style, so `markdownStyle` can stay a stable constant while this map changes.
 
 ```tsx
-<EnrichedMarkdownText
-  markdown="See [original label](https://example.com/document)."
-  markdownStyle={{
-    linkVariants: {
-      '^https://example\\.com/document$': {
-        pill: {
-          label: 'Document',
-          iconUri: 'file:///path/to/bundled-icon.png',
-          borderRadius: 8,
-          paddingHorizontal: 6,
-          paddingVertical: 2,
-          borderWidth: 1,
-          borderColor: '#B8DDF0',
-          maxWidth: 180,
-        },
-        fontFamily: 'CustomFont',
-        color: '#1264A3',
-        underline: false,
-        backgroundColor: '#E8F5FB',
+const markdownStyle = {
+  linkVariants: {
+    '^https://example\\.com/files/': {
+      color: '#3730A3',
+      backgroundColor: '#EEF2FF',
+      underline: false,
+      pill: {
+        iconUri: 'file_icon',
+        borderRadius: 10,
+        paddingHorizontal: 7,
+        paddingVertical: 2,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        maxWidth: 220,
       },
     },
+    '^user:': { color: '#065F46', backgroundColor: '#ECFDF5', pill: true },
+  },
+};
+
+<EnrichedMarkdownText
+  markdown="Open [src/components/Button.tsx](https://example.com/files/src/components/Button.tsx) or ask [@gregory](user:gregory)."
+  markdownStyle={markdownStyle}
+  linkPillContent={{
+    'https://example.com/files/src/components/Button.tsx': {
+      label: 'Button.tsx',
+    },
+    'user:gregory': { iconUri: avatarUri },
   }}
-/>
+/>;
 ```
 
-`pill` defaults to `false`. Set it to `true` for default presentation or an object for overrides. `null` also disables pills. The presentation `pill.label` never replaces the original link text used for plain copy, Markdown extraction, or selection. The accessible name includes the visible label followed by the original link text when they differ. Missing or empty labels use the original text. Tap and long-press callbacks still receive the original URL, and existing link menus continue to work.
+### Presentation: `linkVariants[pattern].pill`
+
+`pill` defaults to `false`. Set it to `true` for the default look or to an object to override it. The variant's `color`, `underline`, `backgroundColor` and `fontFamily` apply to the pill.
 
 | Field                    | Default            | Meaning                                                               |
 | ------------------------ | ------------------ | --------------------------------------------------------------------- |
-| `fontFamily`             | Base link family   | Link font family, including ordinary links.                           |
-| `pill`                   | `false`            | Opt into atomic native presentation.                                  |
-| `pill.label`             | Original link text | Presentation label.                                                   |
-| `pill.iconUri`           | No icon            | Local or bundled image URI. Unreadable sources are ignored.           |
+| `pill.label`             | Original link text | Label shown by every link the pattern matches.                        |
+| `pill.iconUri`           | No icon            | Icon shown by every link the pattern matches. See icon sources below. |
 | `pill.borderRadius`      | `8`                | Corner radius in points/DIP.                                          |
 | `pill.paddingHorizontal` | `6`                | Horizontal inset in points/DIP.                                       |
 | `pill.paddingVertical`   | `2`                | Vertical inset in points/DIP.                                         |
@@ -118,11 +130,36 @@ Readonly `EnrichedMarkdownText` supports optional pill presentation on iOS and A
 | `pill.borderColor`       | Transparent        | Border color.                                                         |
 | `pill.maxWidth`          | `0`                | Positive maximum width in points/DIP. Zero uses available text width. |
 
-The existing `color`, `underline`, and `backgroundColor` fields still apply. Pill labels truncate at the tail and wrap as one unit. The width limit also accounts for native container width and block indentation. Nonfinite dimensions use defaults and negative dimensions clamp to zero.
+Nonfinite dimensions use defaults and negative dimensions clamp to zero.
 
-Pill presentation is currently native only. Web renders ordinary links and retains their original labels. Links containing image or math attachments retain their existing native rendering. Icons use the existing local image resolver. iOS supports file paths, `file://` URIs, and file-backed bundle names including `@2x`/`@3x` variants. Asset-catalog-only images have no thumbnail-readable path and render no icon. Android also supports bundled drawable/raw resources, assets, content and data URIs. Remote URLs and unreadable sources render no icon.
+### Per-link content: `linkPillContent`
 
-Icon decoding is downsampled to approximately 512 pixels. Android caches are bounded to 64 images and 8 MiB. iOS uses a pressure-aware `NSCache` configured with the same count and decoded-byte cost limits; images held by visible pills are separate from this cache budget. File metadata changes invalidate cached icons.
+`linkPillContent` maps an exact link URL to `{ label?, iconUri? }`. It only affects links whose variant enables `pill`. For both label and icon the order is: `linkPillContent` entry, then the variant's `pill.label` / `pill.iconUri`, then the link's own text (and no icon).
+
+Lookup is by exact URL, so it stays cheap with hundreds of links, and changing it re-renders without touching `markdownStyle`. Keep the object reference stable between renders when its content has not changed.
+
+### Behavior
+
+- The label uses the font of the surrounding text, including bold and italic applied around the link. Long labels truncate at the tail; the pill never grows past the available text width.
+- The label is presentation only. Plain copy, Copy as Markdown, HTML and RTF export, and the iOS system actions (Look Up, Translate, Share) receive the original link text. Tap and long-press callbacks receive the original URL.
+- The accessible name is the visible label, followed by the original link text when they differ.
+- Links whose text contains an image, inline math, a hard line break or a spoiler stay ordinary links.
+- A pill inside an unrevealed spoiler is hidden with the rest of the spoiler.
+
+### Icon sources
+
+Icons are drawn at the label's font size.
+
+| Source                                                                                | iOS | Android |
+| ------------------------------------------------------------------------------------- | --- | ------- |
+| File path, `file://` URI, bundled asset name                                          | Yes | Yes     |
+| `http://`, `https://` (including `Image.resolveAssetSource(require(...)).uri` in dev) | Yes | Yes     |
+| `data:` (base64)                                                                      | Yes | Yes     |
+| Drawable/raw resource name, `asset://`, `res://`, `content://`                        | No  | Yes     |
+
+Local files show on the first layout. Remote icons load in the background through the same pipeline as Markdown images, using `imageRequestHeaders`, and the pill keeps room for them while they load. A source that fails to load shows no icon and is retried after 30 seconds.
+
+Pill presentation is native only. Web and macOS render ordinary links and ignore `pill` and `linkPillContent`.
 
 ## Positioning the Suggestion List
 

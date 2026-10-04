@@ -47,8 +47,10 @@ The web implementation also exports `WebMarkdownTextProps` which extends `Enrich
 | `contextMenuItems` | Not supported — browsers don't allow extending the native context menu. |
 | `selectionMenuConfig` | Not supported — native-only built-in selection menu actions. |
 | `selectionHandleColor` | Android-only — desktop browsers don't render selection handles. |
+| `linkPillContent` | Native-only — link pills are not rendered on web. |
 
 ## Not supported on web
 
 - `EnrichedMarkdownTextInput` — native-only
 - Configurable link `target` — all links open in a new tab (`target="_blank"`). Use `onLinkPress` for custom navigation.
+- Link pills — `linkVariants[pattern].pill` is ignored; such links render as ordinary links with the variant's colors and font.
