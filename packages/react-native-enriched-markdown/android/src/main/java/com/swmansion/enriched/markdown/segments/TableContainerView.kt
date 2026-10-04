@@ -9,7 +9,7 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.Layout
-import android.text.SpannableString
+import android.text.Spannable
 import android.text.Spanned
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -156,7 +156,7 @@ class TableContainerView(
     node: MarkdownASTNode,
     isHeader: Boolean,
     alignment: Layout.Alignment,
-  ): SpannableString {
+  ): Spannable {
     val paragraph = MarkdownASTNode(NodeType.Paragraph, children = node.children)
     val cellParagraphStyle = styleConfig.tableCellParagraphStyle(tableStyle, isHeader)
     return styleConfig
@@ -630,7 +630,7 @@ class TableContainerView(
   }
 
   private data class TableCellData(
-    val attributedText: SpannableString,
+    val attributedText: Spannable,
     val plainText: String,
     val markdownText: String,
     val isHeader: Boolean,
