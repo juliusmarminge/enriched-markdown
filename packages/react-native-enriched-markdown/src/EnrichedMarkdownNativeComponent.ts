@@ -429,6 +429,24 @@ interface StreamingConfigInternal {
   codeBlockMode: string;
 }
 
+interface LinkContextMenuItemConfig {
+  text: string;
+  icon: string;
+  disabled: boolean;
+  destructive: boolean;
+}
+
+interface LinkContextMenuItemsConfig {
+  pattern: string;
+  items: ReadonlyArray<Readonly<LinkContextMenuItemConfig>>;
+}
+
+interface OnLinkContextMenuItemPressEvent {
+  url: string;
+  pattern: string;
+  itemText: string;
+}
+
 export interface NativeProps extends ViewProps {
   /**
    * Markdown content to render.
@@ -602,6 +620,9 @@ export interface NativeProps extends ViewProps {
   imageRequestHeaders?: ReadonlyArray<Readonly<ImageRequestHeaderInternal>>;
   /** Per-link pill content (label, icon), one entry per exact link URL. */
   linkPillContent?: ReadonlyArray<Readonly<LinkPillContentInternal>>;
+  /** Link long-press menus (iOS 17+): item lists by URL pattern, in matching order. */
+  linkContextMenuItems?: ReadonlyArray<Readonly<LinkContextMenuItemsConfig>>;
+  onLinkContextMenuItemPress?: CodegenTypes.BubblingEventHandler<OnLinkContextMenuItemPressEvent>;
   /**
    * Built-in items to show in the text selection context menu.
    */

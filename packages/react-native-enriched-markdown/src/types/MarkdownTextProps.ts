@@ -22,6 +22,20 @@ export interface LinkPillContent {
 }
 
 /**
+ * An item of a link's long-press menu. `text` identifies the item, so it must be
+ * unique within one pattern.
+ */
+export interface LinkContextMenuItem {
+  text: string;
+  /** SF Symbol name, as in `contextMenuItems`. */
+  icon?: string;
+  visible?: boolean;
+  disabled?: boolean;
+  destructive?: boolean;
+  onPress: (event: LinkPressEvent) => void;
+}
+
+/**
  * Public context menu item. Each item includes a JS-side `onPress` callback
  * that is called when the user taps the item in the selection context menu.
  */
@@ -357,6 +371,23 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * @platform ios, android
    */
   contextMenuItems?: ContextMenuItem[];
+  /**
+   * Items of the native menu shown when a link is long-pressed, keyed by a URL
+   * regex pattern like `markdownStyle.linkVariants`: the longest pattern that
+   * matches the link supplies its menu. A link with a menu shows it instead of
+   * the link preview and `onLinkLongPress`; other links keep their long-press
+   * behavior. Items with `visible: false` are left out, and a pattern with no
+   * visible items has no menu.
+   *
+   * @example
+   * linkContextMenuItems={{
+   *   '^https://example\\.com/files/': [
+   *     { text: 'Copy path', icon: 'doc.on.doc', onPress: ({ url }) => copy(url) },
+   *   ],
+   * }}
+   * @platform ios 17+
+   */
+  linkContextMenuItems?: Record<string, LinkContextMenuItem[]>;
   /**
    * HTTP headers to attach to remote image requests, e.g. a `Referer`
    * required by CDN hotlink protection or an `Authorization` token.

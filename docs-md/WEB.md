@@ -57,6 +57,7 @@ warnings.
 | `selectionMenuConfig` | Not supported - native-only built-in selection menu actions. |
 | `selectionHandleColor` | Android-only - desktop browsers don't render selection handles. |
 | `linkPillContent` | Native-only - link pills are not rendered on web. |
+| `linkContextMenuItems` | Native-only - link long-press menus (iOS 17+). |
 | `imageRequestHeaders` | Not supported - browsers don't allow custom headers on `<img>` requests. |
 | `accessibilityLabels` | VoiceOver / TalkBack announcement strings. The web renderer uses semantic HTML and native `aria-*` instead. |
 | `textBreakStrategy` / `lineBreakStrategyIOS` / `writingDirection` | Native line-breaking and paragraph-direction controls. Use `dir` for web text direction. |

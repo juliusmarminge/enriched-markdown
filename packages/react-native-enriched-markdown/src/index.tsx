@@ -1,5 +1,6 @@
 export type { LinkVariantStyle, LinkPillStyle } from './types/MarkdownStyle';
 export type { LinkPillContent } from './types/MarkdownTextProps';
+export type { LinkContextMenuItem } from './types/MarkdownTextProps';
 export { default as EnrichedMarkdownText } from './native/EnrichedMarkdownText';
 export type {
   EnrichedMarkdownTextProps,

@@ -2,27 +2,33 @@ import type { LinkVariantStyle } from './types/MarkdownStyle';
 import type { LinkPillContent } from './types/MarkdownTextProps';
 import { normalizeColor } from './styleUtils';
 
-type LinkVariantEntry = [pattern: string, style: LinkVariantStyle];
+type LinkPatternEntry<T> = [pattern: string, value: T];
 
 // Lookbehind assertions (?<=...) and (?<!...) are not supported by
 // NSRegularExpression on iOS. Warn early so the issue surfaces in JS tests
 // before it silently misfires on device.
 const UNSAFE_LOOKBEHIND_RE = /\(\?<[=!]/;
 
-function warnAboutUnsafePattern(pattern: string): void {
+function warnAboutUnsafePattern(owner: string, pattern: string): void {
   if (UNSAFE_LOOKBEHIND_RE.test(pattern)) {
     console.warn(
-      `[MarkdownStyle] linkVariants pattern "${pattern}" contains a lookbehind assertion (?<= or ?<!). ` +
+      `${owner} pattern "${pattern}" contains a lookbehind assertion (?<= or ?<!). ` +
         'Lookbehinds are not supported by NSRegularExpression on iOS and will never match. ' +
         'Use a lookahead or restructure the pattern to avoid them.'
     );
   }
 }
 
-export function normalizeLinkVariantEntries(
-  linkVariants?: Record<string, LinkVariantStyle>
-): LinkVariantEntry[] {
-  return Object.entries(linkVariants ?? {})
+/**
+ * Orders URL patterns the way native tries them: longest first, so the most
+ * specific pattern wins. Patterns that are not valid regexes are dropped.
+ * `owner` names the prop in warnings.
+ */
+export function normalizeLinkPatternEntries<T>(
+  entries: Record<string, T> | undefined,
+  owner: string
+): LinkPatternEntry<T>[] {
+  return Object.entries(entries ?? {})
     .sort(([a], [b]) => b.length - a.length)
     .filter(([pattern]) => {
       try {
@@ -30,17 +36,26 @@ export function normalizeLinkVariantEntries(
       } catch {
         if (__DEV__) {
           console.warn(
-            `[MarkdownStyle] linkVariants pattern "${pattern}" is not a valid regex and will be ignored.`
+            `${owner} pattern "${pattern}" is not a valid regex and will be ignored.`
           );
         }
         return false;
       }
 
       if (__DEV__) {
-        warnAboutUnsafePattern(pattern);
+        warnAboutUnsafePattern(owner, pattern);
       }
       return true;
     });
+}
+
+export function normalizeLinkVariantEntries(
+  linkVariants?: Record<string, LinkVariantStyle>
+): LinkPatternEntry<LinkVariantStyle>[] {
+  return normalizeLinkPatternEntries(
+    linkVariants,
+    '[MarkdownStyle] linkVariants'
+  );
 }
 
 /** Native pill geometry is finite and nonnegative before crossing codegen. */

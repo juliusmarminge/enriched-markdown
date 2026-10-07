@@ -44,6 +44,7 @@ export const NATIVE_ONLY_PROP_NAMES: Record<NativeOnlyPropName, true> = {
   contextMenuItems: true,
   imageRequestHeaders: true,
   linkPillContent: true,
+  linkContextMenuItems: true,
   selectionMenuConfig: true,
   accessibilityLabels: true,
   textBreakStrategy: true,

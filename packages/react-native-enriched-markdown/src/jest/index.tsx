@@ -309,6 +309,7 @@ export const EnrichedMarkdownText = ({
   streamingConfig: _streamingConfig,
   spoilerOverlay: _spoilerOverlay,
   contextMenuItems: _contextMenuItems,
+  linkContextMenuItems: _linkContextMenuItems,
   imageRequestHeaders: _imageRequestHeaders,
   linkPillContent: _linkPillContent,
   selectionMenuConfig: _selectionMenuConfig,

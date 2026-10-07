@@ -256,6 +256,11 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
   NSArray *_cachedAccessibilityElements;
 
   BOOL _imageRemeasurePending;
+  // Frame, in grid coordinates, of the link whose menu is being presented. Null for the table's own menu.
+  CGRect _linkMenuFrame;
+#if !TARGET_OS_OSX
+  ENRMLinkMenuLift *_linkMenuLift;
+#endif
 }
 
 - (instancetype)initWithConfig:(StyleConfig *)config
@@ -314,6 +319,8 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
     if (strongSelf && strongSelf.onLinkPress)
       strongSelf.onLinkPress(url);
   };
+  iosGridView.hasLinkContextMenu =
+      ^BOOL(NSString *url) { return [weakSelf.dynamicProps.linkContextMenus hasMenuForURL:url]; };
   iosGridView.onLinkLongTap = ^(NSString *url) {
     TableContainerView *strongSelf = weakSelf;
     if (strongSelf && strongSelf.onLinkLongPress)
@@ -523,6 +530,10 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
   if (_rows.count == 0) {
     return;
   }
+#if !TARGET_OS_OSX
+  // The grid is about to change under the lifted link's image.
+  [_linkMenuLift end];
+#endif
   NSArray<NSNumber *> *oldColWidths = _colWidths;
   NSArray<NSNumber *> *oldRowHeights = _rowHeights;
   CGFloat oldTotalHeight = _totalTableHeight;
@@ -546,9 +557,63 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
 }
 
 #if !TARGET_OS_OSX
+/// A link's menu lifts only the link, see `ENRMLinkMenuLift`; the table's own menu (no link
+/// frame) lifts the whole grid.
+- (UITargetedPreview *)linkPreviewForInteraction:(UIContextMenuInteraction *)interaction
+{
+  UIView *grid = interaction.view;
+  if (CGRectIsNull(_linkMenuFrame))
+    return nil;
+  if (![_linkMenuLift isOverView:grid]) {
+    // A little of the cell around the link, so that the lifted image has the cell's background.
+    CGRect frame = CGRectIntersection(CGRectInset(_linkMenuFrame, -4, -2), grid.bounds);
+    if (grid.window == nil || CGRectIsEmpty(frame))
+      return nil;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:frame.size];
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+      CGContextTranslateCTM(context.CGContext, -frame.origin.x, -frame.origin.y);
+      [grid.layer renderInContext:context.CGContext];
+    }];
+    if (!_linkMenuLift)
+      _linkMenuLift = [[ENRMLinkMenuLift alloc] init];
+    [_linkMenuLift layImage:image atFrame:frame overView:grid];
+  }
+  return [_linkMenuLift previewWithCornerRadius:8 backgroundColor:nil];
+}
+
+- (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+    previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+  return [self linkPreviewForInteraction:interaction];
+}
+
+- (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+    previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+  return [self linkPreviewForInteraction:interaction];
+}
+
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+       willEndForConfiguration:(UIContextMenuConfiguration *)configuration
+                      animator:(id<UIContextMenuInteractionAnimating>)animator
+{
+  [_linkMenuLift endWithAnimator:animator];
+}
+
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
                         configurationForMenuAtLocation:(CGPoint)location
 {
+  ENRMTableIOSLinkHit *link = [(ENRMTableIOSGridView *)_gridContainer linkAtPoint:location];
+  UIMenu *linkMenu = [self.dynamicProps.linkContextMenus menuForURL:link.url title:link.title];
+  [_linkMenuLift end];
+  // UIKit replaces a nil identifier with one of its own, so the frame tells the menus apart.
+  _linkMenuFrame = linkMenu ? link.frame : CGRectNull;
+  if (linkMenu) {
+    return [UIContextMenuConfiguration
+        configurationWithIdentifier:link.url
+                    previewProvider:nil
+                     actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggestedActions) { return linkMenu; }];
+  }
   if (!self.dynamicProps.enableBlockContextMenu) {
     return nil;
   }

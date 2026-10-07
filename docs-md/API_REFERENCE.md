@@ -69,6 +69,49 @@ Callback when a link is long pressed. Access URL via `event.url`. On iOS, automa
 />
 ```
 
+### `linkContextMenuItems`
+
+Items of the native menu shown when a link is long-pressed, on iOS 17 and later.
+
+| Type                                    | Default Value | Platform |
+| --------------------------------------- | ------------- | -------- |
+| `Record<string, LinkContextMenuItem[]>` | -             | iOS 17+  |
+
+Keys are URL regex patterns, matched like `markdownStyle.linkVariants`: the longest pattern that matches a link's URL supplies its menu, so one entry covers every link of a kind. To give one link its own menu, use a pattern anchored to its URL.
+
+A link with a menu shows it instead of `onLinkLongPress` and the system link preview. The menu holds only your items and is titled with the link's text, or its pill label. A link that matches no pattern, or whose pattern has no visible items, keeps its existing long-press behavior.
+
+Each item has `text`, `onPress({ url })`, and optional `icon`, `visible`, `disabled` and `destructive` fields. `icon` is an SF Symbol name, as with `contextMenuItems`. `text` identifies the item, so it must be unique within one pattern.
+
+`onPress` receives the link's original URL, including relative paths. The library does not navigate or copy for these items; do that in JavaScript. A menu can stay open while the prop changes: a press on an item the current value no longer offers (removed, hidden or disabled) is ignored.
+
+```tsx
+<EnrichedMarkdownText
+  markdown="Open [README.md](https://example.com/files/README.md) or ask [@gregory](user:gregory)."
+  linkContextMenuItems={{
+    '^https://example\\.com/files/': [
+      {
+        text: 'Copy path',
+        icon: 'doc.on.doc',
+        onPress: ({ url }) => copyPath(url),
+      },
+      {
+        text: 'Delete',
+        icon: 'trash',
+        destructive: true,
+        onPress: ({ url }) => deleteFile(url),
+      },
+    ],
+    '^user:': [
+      { text: 'Mention', icon: 'at', onPress: ({ url }) => mention(url) },
+    ],
+  }}
+  onLinkLongPress={({ url }) => showFallbackMenu(url)}
+/>
+```
+
+Works in CommonMark text and GitHub-flavor text segments, including blockquotes and table cells. The text-selection menu stays controlled by `contextMenuItems` and `selectionMenuConfig`, and block copy menus by `enableBlockContextMenu`. Android, macOS and iOS below 17 ignore this prop; use `onLinkLongPress` there.
+
 ### `onImagePress`
 
 Callback when a rendered image is tapped or clicked. Access the image URL via `event.url` and its Markdown alt text via `event.altText` (`""` when the image has no alt text). Use it to open a lightbox or full-screen viewer.

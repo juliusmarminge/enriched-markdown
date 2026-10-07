@@ -92,7 +92,6 @@ static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
 }
 
 @implementation ENRMLinkPillAttachment {
-  NSString *_label;
   LinkVariantConfig *_variant;
   LinkPillConfig *_pill;
   UIFont *_font;
@@ -196,10 +195,17 @@ static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
   return CGRectMake(0, _font.descender - inset, [self widthForLimit:available], self.boxHeight);
 }
 
+- (CGFloat)cornerRadius
+{
+  return MIN(_pill.borderRadius, self.boxHeight / 2);
+}
+
 - (UIImage *)imageForBounds:(CGRect)bounds textContainer:(NSTextContainer *)container characterIndex:(NSUInteger)index
 {
   if (bounds.size.width <= 0 || bounds.size.height <= 0)
     return nil;
+  if (_lifted)
+    return ENRMClearLinkPillImage();
   if (container) {
     _textContainer = container;
     // The spoiler hides text by clearing its color, which this drawing does not use.
