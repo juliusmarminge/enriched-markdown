@@ -19,7 +19,7 @@ int main() {
       {"https://devbox:8080/path", {"https://devbox:8080/path"}},
       {"Visit https://example.com/a...", {"https://example.com/a"}},
       {"(https://example.com/a_(b)).", {"https://example.com/a_(b)"}},
-      {"www.example.com user@example.com", {"www.example.com", "user@example.com"}},
+      {"www.example.com user@example.com", {"http://www.example.com", "mailto:user@example.com"}},
       {"www.localhost user@localhost", {}},
       {"`http://localhost:3000`", {}},
       {"[Site](https://example.com/explicit)", {"https://example.com/explicit"}},

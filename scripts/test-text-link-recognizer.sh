@@ -64,6 +64,8 @@ elif [[ -n "${1:-}" ]]; then
 fi
 
 "$kotlin_compiler" \
+  "$android_dir/src/main/java/com/swmansion/enriched/markdown/media/DocumentAssets.kt" \
+  "$android_dir/src/main/java/com/swmansion/enriched/markdown/media/ImageSources.kt" \
   "$android_dir/src/main/java/com/swmansion/enriched/markdown/parser/MarkdownASTNode.kt" \
   "$android_dir/src/main/java/com/swmansion/enriched/markdown/parser/TextLinkRecognizer.kt" \
   "$android_dir/src/main/java/com/swmansion/enriched/markdown/input/autolink/LinkRegexConfig.kt" \
