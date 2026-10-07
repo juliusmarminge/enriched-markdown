@@ -287,6 +287,7 @@ class EnrichedMarkdownText
       markdownStyleMap?.let { styleMap ->
         markdownStyle =
           StyleConfig(styleMap, context, allowFontScaling, maxFontSizeMultiplier).also {
+            it.selectionClipboard = selectionClipboardConfig
             it.imageRequestHeaders = imageRequestHeaders
             it.linkPillContent = linkPillContent
           }

@@ -490,6 +490,7 @@ class EnrichedMarkdown(
     markdownStyleMap?.let {
       markdownStyle =
         StyleConfig(it, context, allowFontScaling, maxFontSizeMultiplier).also { config ->
+          config.selectionClipboard = selectionClipboardConfig
           config.imageRequestHeaders = imageRequestHeaders
           config.linkPillContent = linkPillContent
         }

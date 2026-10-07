@@ -409,10 +409,12 @@ export const EnrichedMarkdownText = ({
     [accessibilityLabels]
   );
 
+  const selectionClipboardConfig = useMemo(
+    () => (selectionClipboard ? JSON.stringify(selectionClipboard) : ''),
+    [selectionClipboard]
+  );
   const sharedProps = {
-    selectionClipboardConfig: selectionClipboard
-      ? JSON.stringify(selectionClipboard)
-      : '',
+    selectionClipboardConfig,
     markdown,
     linkRegex,
     inlineCodeLinkRegex,
