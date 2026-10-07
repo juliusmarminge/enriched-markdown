@@ -95,6 +95,7 @@ interface LinkPillInternal {
   enabled: boolean;
   label: string;
   iconUri: string;
+  iconTintColor?: ColorValue;
   borderRadius: CodegenTypes.Float;
   paddingHorizontal: CodegenTypes.Float;
   paddingVertical: CodegenTypes.Float;
@@ -321,6 +322,7 @@ export interface LinkPillContentInternal {
   url: string;
   label: string;
   iconUri: string;
+  iconTintColor?: ColorValue;
 }
 
 export interface SelectionMenuConfig {

@@ -7,6 +7,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LinkPillConfig : NSObject
 @property (nonatomic, copy) NSString *label;
 @property (nonatomic, copy) NSString *iconUri;
+/// Nil keeps the icon's own colors.
+@property (nonatomic, strong, nullable) RCTUIColor *iconTintColor;
 @property (nonatomic, assign) CGFloat borderRadius;
 @property (nonatomic, assign) CGFloat paddingHorizontal;
 @property (nonatomic, assign) CGFloat paddingVertical;
@@ -21,6 +23,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LinkPillContent : NSObject
 @property (nonatomic, copy) NSString *label;
 @property (nonatomic, copy) NSString *iconUri;
+/// Tint for this link's icon; nil means none was set for the link.
+@property (nonatomic, strong, nullable) RCTUIColor *iconTintColor;
 @end
 
 /**

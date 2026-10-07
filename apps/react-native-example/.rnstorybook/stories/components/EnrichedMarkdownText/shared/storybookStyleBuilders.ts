@@ -346,7 +346,8 @@ export function toLinkVariantsDemoStyle(
 }
 
 export function toLinkPillStyle(
-  controls: LinkPillControls
+  controls: LinkPillControls,
+  iconUri?: string
 ): Pick<MarkdownStyle, 'linkVariants'> {
   return {
     linkVariants: {
@@ -357,6 +358,10 @@ export function toLinkPillStyle(
         pill: controls.pill
           ? {
               label: controls.variantLabel,
+              iconUri,
+              iconTintColor: controls.tintIcon
+                ? controls.iconTintColor
+                : undefined,
               borderColor: controls.borderColor,
               borderWidth: controls.borderWidth,
               borderRadius: controls.borderRadius,

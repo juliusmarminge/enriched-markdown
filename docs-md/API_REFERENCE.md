@@ -498,11 +498,11 @@ Headers participate in image cache identity, so the same URL requested with diff
 
 ### `linkPillContent`
 
-Per-link content for [link pills](./MENTIONS.md#native-link-pills): a label and icon for one exact link URL. It only affects links whose `markdownStyle.linkVariants` entry enables `pill`, and wins over that variant's `pill.label` and `pill.iconUri`.
+Per-link content for [link pills](./MENTIONS.md#native-link-pills): a label, icon and icon tint for one exact link URL. It only affects links whose `markdownStyle.linkVariants` entry enables `pill`, and wins over that variant's `pill.label`, `pill.iconUri` and `pill.iconTintColor`.
 
-| Type                                                   | Default Value | Platform     |
-| ------------------------------------------------------ | ------------- | ------------ |
-| `Record<string, { label?: string; iconUri?: string }>` | -             | iOS, Android |
+| Type                                                                           | Default Value | Platform     |
+| ------------------------------------------------------------------------------ | ------------- | ------------ |
+| `Record<string, { label?: string; iconUri?: string; iconTintColor?: string }>` | -             | iOS, Android |
 
 This is content, not style: keep `markdownStyle` stable and change this map as links appear. Keep the object reference stable between renders when its content has not changed.
 

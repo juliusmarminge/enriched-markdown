@@ -19,6 +19,7 @@ static const CGFloat kIconSlotRatio = 1.25;
 @property (nonatomic, copy) NSString *label;
 @property (nonatomic, strong) UIFont *font;
 @property (nonatomic, strong, nullable) UIImage *icon;
+@property (nonatomic, strong, nullable) UIColor *iconTint;
 @property (nonatomic, assign) BOOL reservesIconSlot;
 @property (nonatomic, assign) CGSize size;
 @property (nonatomic, assign) UIUserInterfaceStyle interfaceStyle;
@@ -37,9 +38,11 @@ static const CGFloat kIconSlotRatio = 1.25;
   ENRMLinkPillAppearance *other = object;
   // The variant and icon are compared by identity: both objects live as long as the style and
   // the icon cache keep them, and this key retains them, so a match is never a recycled pointer.
-  return _variant == other->_variant && _icon == other->_icon && _reservesIconSlot == other->_reservesIconSlot &&
-         _interfaceStyle == other->_interfaceStyle && CGSizeEqualToSize(_size, other->_size) &&
-         [_font isEqual:other->_font] && [_label isEqualToString:other->_label];
+  BOOL sameTint = _iconTint == other->_iconTint || [_iconTint isEqual:other->_iconTint];
+  return _variant == other->_variant && _icon == other->_icon && sameTint &&
+         _reservesIconSlot == other->_reservesIconSlot && _interfaceStyle == other->_interfaceStyle &&
+         CGSizeEqualToSize(_size, other->_size) && [_font isEqual:other->_font] &&
+         [_label isEqualToString:other->_label];
 }
 @end
 
@@ -94,6 +97,7 @@ static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
   LinkPillConfig *_pill;
   UIFont *_font;
   UIImage *_icon;
+  UIColor *_iconTint;
   // Space for the icon is held while a remote icon is still loading, so its arrival only needs a redraw.
   BOOL _reservesIconSlot;
   __weak NSTextContainer *_textContainer;
@@ -104,6 +108,7 @@ static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
                              variant:(LinkVariantConfig *)variant
                                label:(NSString *)label
                              iconUri:(NSString *)iconUri
+                       iconTintColor:(UIColor *)iconTintColor
                                 font:(UIFont *)font
                       requestHeaders:(NSDictionary<NSString *, NSString *> *)requestHeaders
 {
@@ -111,6 +116,7 @@ static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
   if (self) {
     _variant = variant;
     _pill = variant.pill;
+    _iconTint = iconTintColor;
     _originalText = [originalText copy];
     _font = font ?: [UIFont systemFontOfSize:16];
     // The pill is a single line; a label supplied by the app may still carry breaks.
@@ -208,6 +214,7 @@ static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
   appearance.label = _label;
   appearance.font = _font;
   appearance.icon = _icon;
+  appearance.iconTint = _iconTint;
   appearance.reservesIconSlot = _reservesIconSlot;
   appearance.size = size;
   appearance.interfaceStyle = interfaceStyle;
@@ -241,7 +248,9 @@ static CGFloat ENRMLinkPillLabelWidth(NSString *label, UIFont *font)
         CGSize iconSize = CGSizeMake(_icon.size.width * scale, _icon.size.height * scale);
         CGRect iconRect = CGRectMake(left + (side - iconSize.width) / 2, (size.height - iconSize.height) / 2,
                                      iconSize.width, iconSize.height);
-        [_icon drawInRect:iconRect];
+        UIImage *presented =
+            _iconTint ? [_icon imageWithTintColor:_iconTint renderingMode:UIImageRenderingModeAlwaysOriginal] : _icon;
+        [presented drawInRect:iconRect];
       }
       left += side * kIconSlotRatio;
     }

@@ -117,6 +117,7 @@ export interface LinkPillInternal {
   enabled: boolean;
   label: string;
   iconUri: string;
+  iconTintColor?: string;
   borderRadius: number;
   paddingHorizontal: number;
   paddingVertical: number;

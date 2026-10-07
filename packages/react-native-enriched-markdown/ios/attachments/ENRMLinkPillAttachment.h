@@ -23,11 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
 /// string themselves (the table grid) and have no text view for the attachment to invalidate.
 @property (nonatomic, copy, nullable) void (^onIconLoaded)(void);
 
-/// `variant.pill` must be non-nil. `label` and `iconUri` are already resolved (per-link content, then variant default).
+/// `variant.pill` must be non-nil. `label`, `iconUri` and `iconTintColor` are already resolved (per-link content,
+/// then variant default).
 - (instancetype)initWithOriginalText:(NSAttributedString *)originalText
                              variant:(LinkVariantConfig *)variant
                                label:(nullable NSString *)label
                              iconUri:(nullable NSString *)iconUri
+                       iconTintColor:(nullable UIColor *)iconTintColor
                                 font:(nullable UIFont *)font
                       requestHeaders:(nullable NSDictionary<NSString *, NSString *> *)requestHeaders;
 

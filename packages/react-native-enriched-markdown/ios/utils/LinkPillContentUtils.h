@@ -4,6 +4,7 @@
 #import <Foundation/Foundation.h>
 
 #ifdef __cplusplus
+#import <React/RCTConversions.h>
 #include <vector>
 
 // The `linkPillContent` prop: per-link pill label and icon, keyed by exact URL.
@@ -16,7 +17,7 @@ static bool ENRMLinkPillContentChanged(const std::vector<T> &oldContent, const s
   }
   for (size_t i = 0; i < newContent.size(); i++) {
     if (newContent[i].url != oldContent[i].url || newContent[i].label != oldContent[i].label ||
-        newContent[i].iconUri != oldContent[i].iconUri) {
+        newContent[i].iconUri != oldContent[i].iconUri || newContent[i].iconTintColor != oldContent[i].iconTintColor) {
       return true;
     }
   }
@@ -36,6 +37,7 @@ static NSDictionary<NSString *, LinkPillContent *> *_Nullable ENRMLinkPillConten
     LinkPillContent *value = [[LinkPillContent alloc] init];
     value.label = @(entry.label.c_str());
     value.iconUri = @(entry.iconUri.c_str());
+    value.iconTintColor = entry.iconTintColor ? RCTUIColorFromSharedColor(entry.iconTintColor) : nil;
     result[@(entry.url.c_str())] = value;
   }
   return [result copy];

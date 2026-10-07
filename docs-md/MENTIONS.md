@@ -123,6 +123,7 @@ const markdownStyle = {
 | ------------------------ | ------------------ | --------------------------------------------------------------------- |
 | `pill.label`             | Original link text | Label shown by every link the pattern matches.                        |
 | `pill.iconUri`           | No icon            | Icon shown by every link the pattern matches. See icon sources below. |
+| `pill.iconTintColor`     | No tint            | Tints the variant's icon and keeps its alpha. Omit for no tint.       |
 | `pill.borderRadius`      | `8`                | Corner radius in points/DIP.                                          |
 | `pill.paddingHorizontal` | `6`                | Horizontal inset in points/DIP.                                       |
 | `pill.paddingVertical`   | `2`                | Vertical inset in points/DIP.                                         |
@@ -139,7 +140,9 @@ For text that streams in, set the block's own `lineHeight` to that value instead
 
 ### Per-link content: `linkPillContent`
 
-`linkPillContent` maps an exact link URL to `{ label?, iconUri? }`. It only affects links whose variant enables `pill`. For both label and icon the order is: `linkPillContent` entry, then the variant's `pill.label` / `pill.iconUri`, then the link's own text (and no icon).
+`linkPillContent` maps an exact link URL to `{ label?, iconUri?, iconTintColor? }`. It only affects links whose variant enables `pill`. For both label and icon the order is: `linkPillContent` entry, then the variant's `pill.label` / `pill.iconUri`, then the link's own text (and no icon).
+
+The variant's `pill.iconTintColor` tints the variant's own icon only. An icon set per link, such as an avatar, keeps its colors unless its entry has an `iconTintColor`. An entry with only `iconTintColor` recolors the variant's icon for that link.
 
 Lookup is by exact URL, so it stays cheap with hundreds of links, and changing it re-renders without touching `markdownStyle`. Keep the object reference stable between renders when its content has not changed.
 

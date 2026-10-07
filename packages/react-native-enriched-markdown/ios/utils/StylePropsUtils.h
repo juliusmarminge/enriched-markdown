@@ -563,6 +563,7 @@ BOOL applyMarkdownStyleToConfig(StyleConfig *config, const MarkdownStyle &newSty
             newVariant.underline != oldVariant.underline || newVariant.backgroundColor != oldVariant.backgroundColor ||
             newVariant.fontFamily != oldVariant.fontFamily || newVariant.pill.enabled != oldVariant.pill.enabled ||
             newVariant.pill.label != oldVariant.pill.label || newVariant.pill.iconUri != oldVariant.pill.iconUri ||
+            newVariant.pill.iconTintColor != oldVariant.pill.iconTintColor ||
             newVariant.pill.borderRadius != oldVariant.pill.borderRadius ||
             newVariant.pill.paddingHorizontal != oldVariant.pill.paddingHorizontal ||
             newVariant.pill.paddingVertical != oldVariant.pill.paddingVertical ||
@@ -587,6 +588,7 @@ BOOL applyMarkdownStyleToConfig(StyleConfig *config, const MarkdownStyle &newSty
           LinkPillConfig *pill = [[LinkPillConfig alloc] init];
           pill.label = [[NSString alloc] initWithUTF8String:entry.pill.label.c_str()];
           pill.iconUri = [[NSString alloc] initWithUTF8String:entry.pill.iconUri.c_str()];
+          pill.iconTintColor = entry.pill.iconTintColor ? RCTUIColorFromSharedColor(entry.pill.iconTintColor) : nil;
           pill.borderRadius = entry.pill.borderRadius;
           pill.paddingHorizontal = entry.pill.paddingHorizontal;
           pill.paddingVertical = entry.pill.paddingVertical;

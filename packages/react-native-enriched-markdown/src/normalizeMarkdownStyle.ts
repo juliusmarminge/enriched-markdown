@@ -345,6 +345,9 @@ export const normalizeMarkdownStyle = (
         pattern,
         pill: {
           ...pill,
+          iconTintColor: normalizeColor(pill.iconTintColor) as
+            | string
+            | undefined,
           borderColor: (normalizeColor(pill.borderColor) ??
             transparent) as string,
         },

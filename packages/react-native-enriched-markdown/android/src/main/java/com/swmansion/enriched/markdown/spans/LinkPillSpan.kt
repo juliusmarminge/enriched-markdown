@@ -3,7 +3,10 @@ package com.swmansion.enriched.markdown.spans
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.ColorFilter
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
@@ -89,6 +92,12 @@ class LinkPillSpan(
 
   /** The minimum line height the pill asks of the block that holds it; 0 for none. */
   val lineHeight: Float = pill.lineHeight
+
+  // A tint set for the link wins. The variant's tint is for the variant's own icon, not
+  // for an icon supplied per link (an avatar would become a silhouette).
+  private val iconTint: ColorFilter? =
+    content?.iconTintColor?.let { PorterDuffColorFilter(it, PorterDuff.Mode.SRC_IN) }
+      ?: pill.iconTint.takeIf { content?.iconUri.isNullOrEmpty() }
 
   init {
     val iconUri = resolved.iconUri
@@ -297,6 +306,8 @@ class LinkPillSpan(
         val scale = fontSize / max(it.width, it.height)
         innerRect.set(left, iconTop, left + it.width * scale, iconTop + it.height * scale)
         innerRect.offset((fontSize - innerRect.width()) / 2, (fontSize - innerRect.height()) / 2)
+        // The paint is shared by all pills, so the tint is set for every icon, tinted or not.
+        iconPaint.colorFilter = iconTint
         canvas.drawBitmap(it, null, innerRect, iconPaint)
       }
       left += fontSize * ICON_SLOT_RATIO

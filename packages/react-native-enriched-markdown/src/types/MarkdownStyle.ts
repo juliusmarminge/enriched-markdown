@@ -132,6 +132,11 @@ export interface LinkPillStyle {
   label?: string;
   /** Local file, bundled asset or `http(s)` URL. A source that fails shows no icon. */
   iconUri?: string;
+  /**
+   * Tints this variant's icon, keeping its alpha. Omit to keep the image's own colors.
+   * Icons set per link through `linkPillContent` are not tinted by it.
+   */
+  iconTintColor?: string;
   borderRadius?: number;
   paddingHorizontal?: number;
   paddingVertical?: number;

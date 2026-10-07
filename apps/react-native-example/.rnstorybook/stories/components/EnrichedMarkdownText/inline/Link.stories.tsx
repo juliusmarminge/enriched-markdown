@@ -1,4 +1,5 @@
 import React from 'react';
+import { Image } from 'react-native';
 import { EnrichedMarkdownTextStory } from '../EnrichedMarkdownTextStory';
 import { storyMeta } from '../shared/storyMeta';
 import {
@@ -40,6 +41,10 @@ const PILLS_MARKDOWN =
   'Open [src/components/Button.tsx](https://example.com/files/src/components/Button.tsx), ' +
   'see [README.md](https://example.com/files/README.md), or visit [React Native](https://reactnative.dev).';
 
+const PILL_ICON_URI = Image.resolveAssetSource(
+  require('../../../../../src/assets/logo_icon.png')
+).uri;
+
 // Per-link content is separate from the style: one exact URL -> its label / icon.
 const PILLS_CONTENT = {
   'https://example.com/files/src/components/Button.tsx': {
@@ -71,6 +76,12 @@ const pillsArgTypes = {
     description:
       'pill.label: shown by every matching link without its own content',
   },
+  tintIcon: {
+    control: 'boolean',
+    description:
+      'off: pill.iconTintColor is omitted and the icon keeps its colors',
+  },
+  iconTintColor: { control: 'color', description: 'pill.iconTintColor' },
 };
 
 const linkBaseArgTypes = {
@@ -237,9 +248,9 @@ export const Pills: TextStory<LinkPillControls> = {
     return (
       <EnrichedMarkdownTextStory
         title="Link Pills"
-        description="linkVariants[pattern].pill presents matching links as pills (iOS and Android). linkPillContent gives one exact URL its own label: the Button.tsx link uses it, README.md shows its link text, and the unmatched reactnative.dev link stays an ordinary link."
+        description="linkVariants[pattern].pill presents matching links as pills (iOS and Android). linkPillContent gives one exact URL its own label: the Button.tsx link uses it, README.md shows its link text, and the unmatched reactnative.dev link stays an ordinary link. pill.iconTintColor recolors the variant's icon and keeps its alpha."
         {...rest}
-        style={toLinkPillStyle(controls)}
+        style={toLinkPillStyle(controls, PILL_ICON_URI)}
       />
     );
   },

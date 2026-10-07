@@ -29,12 +29,17 @@ static NSRange ENRMCollapseLinkIntoPill(NSMutableAttributedString *output, NSRan
                                         LinkVariantConfig *variant, StyleConfig *config, RenderContext *context)
 {
   LinkPillContent *content = [config linkPillContent][url];
+  BOOL hasOwnIcon = content.iconUri.length > 0;
+  // A tint set for the link wins. The variant's tint is for the variant's own icon, not for an
+  // icon supplied per link (an avatar would become a silhouette).
+  RCTUIColor *iconTint = content.iconTintColor ?: (hasOwnIcon ? nil : variant.pill.iconTintColor);
   NSDictionary<NSAttributedStringKey, id> *attributes = [output attributesAtIndex:range.location effectiveRange:NULL];
   ENRMLinkPillAttachment *pill = [[ENRMLinkPillAttachment alloc]
       initWithOriginalText:[output attributedSubstringFromRange:range]
                    variant:variant
                      label:content.label.length > 0 ? content.label : variant.pill.label
-                   iconUri:content.iconUri.length > 0 ? content.iconUri : variant.pill.iconUri
+                   iconUri:hasOwnIcon ? content.iconUri : variant.pill.iconUri
+             iconTintColor:iconTint
                       font:attributes[NSFontAttributeName] ?: [context getBlockStyle].cachedFont
             requestHeaders:[config imageRequestHeaders]];
   pill.lineHeight = [config lineHeightForLinkPill:variant.pill];

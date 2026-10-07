@@ -416,6 +416,8 @@ export type LinkPillControls = {
   paddingVertical: number;
   maxWidth: number;
   variantLabel: string;
+  tintIcon: boolean;
+  iconTintColor: string;
 };
 
 export const linkPillDefaults: LinkPillControls = {
@@ -429,6 +431,8 @@ export const linkPillDefaults: LinkPillControls = {
   paddingVertical: 2,
   maxWidth: 0,
   variantLabel: '',
+  tintIcon: true,
+  iconTintColor: '#3730A3',
 };
 
 export type InlineCodeStyleControls = {
