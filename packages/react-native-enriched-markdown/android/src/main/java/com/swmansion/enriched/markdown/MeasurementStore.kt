@@ -352,8 +352,6 @@ object MeasurementStore {
     result = 31 * result + props.getIntOrDefault("imageSourcesRevision", -1)
     result = 31 * result + props.getIntOrDefault("imageSourcesContinuityStart", 1)
     result = 31 * result + parseImageSources(props.getArrayOrNull("imageSources")).hashCode()
-    result = 31 * result + props.getIntOrDefault("documentRevision", 0)
-
     result = 31 * result + props.getIntOrDefault("numberOfLines", 0)
     result = 31 * result + props.getStringOrDefault("ellipsizeMode", EllipsizeUtils.DEFAULT_MODE).hashCode()
     result = 31 * result + props.getIntOrDefault("documentRevision", 0)
