@@ -49,6 +49,11 @@ void applyParagraphSpacingAfter(NSMutableAttributedString *output, NSUInteger st
 NSUInteger applyParagraphSpacingBefore(NSMutableAttributedString *output, NSRange range, CGFloat marginTop);
 NSUInteger applyBlockSpacingBefore(NSMutableAttributedString *output, NSUInteger insertionPoint, CGFloat marginTop);
 void applyBlockSpacingAfter(NSMutableAttributedString *output, CGFloat marginBottom);
+/// `lineHeight`, raised to the largest `pill.lineHeight` among the link pills in `range`.
+/// A line grows to fit a pill on its own, but only that line and only to the pill's box, so
+/// pills on consecutive lines touch. A style that sets `pill.lineHeight` gets a floor for
+/// the whole block instead, which keeps its lines even and the pills apart.
+CGFloat ENRMLineHeightWithLinkPills(NSAttributedString *text, NSRange range, CGFloat lineHeight);
 void applyLineHeight(NSMutableAttributedString *output, NSRange range, CGFloat lineHeight);
 
 /// Stamps every styled run in `range` with `NSOriginalFont` set to its own

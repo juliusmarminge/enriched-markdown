@@ -24,6 +24,7 @@ import com.swmansion.enriched.markdown.utils.common.markdownEventTypeConstants
 import com.swmansion.enriched.markdown.utils.common.parseAccessibilityLabels
 import com.swmansion.enriched.markdown.utils.common.parseContextMenuItems
 import com.swmansion.enriched.markdown.utils.common.parseImageRequestHeaders
+import com.swmansion.enriched.markdown.utils.common.parseLinkPillContent
 import com.swmansion.enriched.markdown.utils.common.parseMd4cFlags
 import com.swmansion.enriched.markdown.utils.common.parseSelectionMenuConfig
 import com.swmansion.enriched.markdown.utils.text.interaction.TaskListTapUtils
@@ -309,6 +310,15 @@ class EnrichedMarkdownTextManager :
   ) {
     if (view == null) return
     view.setImageRequestHeaders(parseImageRequestHeaders(value))
+  }
+
+  @ReactProp(name = "linkPillContent")
+  override fun setLinkPillContent(
+    view: EnrichedMarkdownText?,
+    value: ReadableArray?,
+  ) {
+    if (view == null) return
+    view.setLinkPillContent(parseLinkPillContent(value))
   }
 
   @ReactProp(name = "selectionMenuConfig")

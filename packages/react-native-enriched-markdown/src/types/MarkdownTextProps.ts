@@ -11,6 +11,11 @@ import type {
   CodeBlockPressEvent,
 } from './events';
 
+export interface LinkPillContent {
+  label?: string;
+  iconUri?: string;
+}
+
 /**
  * Public context menu item. Each item includes a JS-side `onPress` callback
  * that is called when the user taps the item in the selection context menu.
@@ -359,6 +364,18 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * @platform ios, android
    */
   imageRequestHeaders?: Record<string, string>;
+  /**
+   * Label and icon for individual link pills, keyed by the exact link URL.
+   * Applies only to links whose `markdownStyle.linkVariants` entry enables `pill`.
+   * It is content, not style, so `markdownStyle` can stay stable while this changes.
+   *
+   * @example
+   * linkPillContent={{
+   *   'https://example.com/files/a/long/path/file.ts': { label: 'file.ts' },
+   * }}
+   * @platform ios, android
+   */
+  linkPillContent?: Record<string, LinkPillContent>;
   /**
    * Controls the built-in items added to the native text selection menu and
    * lets you localize their labels. Custom app-provided actions are controlled

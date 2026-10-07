@@ -2,6 +2,7 @@
 #import "AttributedRenderer.h"
 #import "ENRMAccessibilityLabels.h"
 #import "ENRMImageAttachment.h"
+#import "ENRMLinkPillAttachment.h"
 #import "HTMLGenerator.h"
 #import "LinkTapUtils.h"
 #import "MarkdownASTNode.h"
@@ -125,6 +126,11 @@ static void ENRMTableWireImageRedraw(NSArray<NSArray<TableCellData *> *> *rows, 
                       if ([value isKindOfClass:[ENRMImageAttachment class]]) {
                         ((ENRMImageAttachment *)value).onImageLoaded = redraw;
                       }
+#if !TARGET_OS_OSX
+                      if ([value isKindOfClass:[ENRMLinkPillAttachment class]]) {
+                        ((ENRMLinkPillAttachment *)value).onIconLoaded = redraw;
+                      }
+#endif
                     }];
     }
   }
@@ -490,7 +496,8 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
 
 // A dynamic cell image (maxHeight / aspectRatio) resolves its box height only after
 // loading. Recompute this table's layout locally; if a row height actually changed
-// (the maxHeight fitted case), re-render and ask the host to re-measure its Fabric
+// (the maxHeight fitted case) or a column width did (a link pill whose icon failed gives
+// up its slot), re-render and ask the host to re-measure its Fabric
 // height, otherwise just repaint the freshly loaded pixels. The height guard makes this
 // a no-op once heights are stable, so a deterministic image never churns, and the host's
 // own needs-update guard stops the propagation from looping.
@@ -516,11 +523,13 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
   if (_rows.count == 0) {
     return;
   }
+  NSArray<NSNumber *> *oldColWidths = _colWidths;
   NSArray<NSNumber *> *oldRowHeights = _rowHeights;
   CGFloat oldTotalHeight = _totalTableHeight;
   [self computeLayout];
 
-  BOOL changed = ![_rowHeights isEqualToArray:oldRowHeights] || fabs(_totalTableHeight - oldTotalHeight) > 0.5;
+  BOOL changed = ![_colWidths isEqualToArray:oldColWidths] || ![_rowHeights isEqualToArray:oldRowHeights] ||
+                 fabs(_totalTableHeight - oldTotalHeight) > 0.5;
   if (!changed) {
 #if TARGET_OS_OSX
     _gridContainer.needsDisplay = YES;

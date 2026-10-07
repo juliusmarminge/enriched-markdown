@@ -405,6 +405,32 @@ export const linkVariantFontDefaults: LinkVariantFontControls = {
   docsVariantFontFamily: 'Poppins-SemiBold',
 };
 
+export type LinkPillControls = {
+  pill: boolean;
+  color: string;
+  backgroundColor: string;
+  borderColor: string;
+  borderWidth: number;
+  borderRadius: number;
+  paddingHorizontal: number;
+  paddingVertical: number;
+  maxWidth: number;
+  variantLabel: string;
+};
+
+export const linkPillDefaults: LinkPillControls = {
+  pill: true,
+  color: '#3730A3',
+  backgroundColor: '#EEF2FF',
+  borderColor: '#C7D2FE',
+  borderWidth: 1,
+  borderRadius: 10,
+  paddingHorizontal: 7,
+  paddingVertical: 2,
+  maxWidth: 0,
+  variantLabel: '',
+};
+
 export type InlineCodeStyleControls = {
   fontFamily: string;
   fontSize: number;

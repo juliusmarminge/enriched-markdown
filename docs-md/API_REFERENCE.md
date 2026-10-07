@@ -496,6 +496,30 @@ Headers participate in image cache identity, so the same URL requested with diff
 />
 ```
 
+### `linkPillContent`
+
+Per-link content for [link pills](./MENTIONS.md#native-link-pills): a label and icon for one exact link URL. It only affects links whose `markdownStyle.linkVariants` entry enables `pill`, and wins over that variant's `pill.label` and `pill.iconUri`.
+
+| Type                                                   | Default Value | Platform     |
+| ------------------------------------------------------ | ------------- | ------------ |
+| `Record<string, { label?: string; iconUri?: string }>` | -             | iOS, Android |
+
+This is content, not style: keep `markdownStyle` stable and change this map as links appear. Keep the object reference stable between renders when its content has not changed.
+
+**Example:**
+
+```tsx
+<EnrichedMarkdownText
+  markdown={markdown}
+  markdownStyle={markdownStyle}
+  linkPillContent={{
+    'https://example.com/files/src/components/Button.tsx': {
+      label: 'Button.tsx',
+    },
+  }}
+/>
+```
+
 ### `contextMenuItems`
 
 Custom items to add to the text selection context menu. Items appear before the system actions (Copy, etc.). Items with `visible: false` are hidden from the menu.

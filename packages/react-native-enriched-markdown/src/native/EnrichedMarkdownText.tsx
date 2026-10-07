@@ -3,6 +3,10 @@ import EnrichedMarkdownTextNativeComponent from '../EnrichedMarkdownTextNativeCo
 import type { MarkdownStyleInternal } from '../EnrichedMarkdownTextNativeComponent';
 import EnrichedMarkdownNativeComponent from '../EnrichedMarkdownNativeComponent';
 import { normalizeMarkdownStyle } from '../normalizeMarkdownStyle';
+import {
+  isLinkPillContentEqual,
+  normalizeLinkPillContent,
+} from '../linkVariantUtils';
 import { resolveAccessibilityLabels } from '../accessibilityLabelDefaults';
 import {
   normalizeMenuItem,
@@ -143,6 +147,7 @@ export const EnrichedMarkdownText = ({
   spoilerOverlay = 'particles',
   contextMenuItems,
   imageRequestHeaders,
+  linkPillContent,
   selectionMenuConfig,
   accessibilityLabels,
   selectionColor,
@@ -211,6 +216,18 @@ export const EnrichedMarkdownText = ({
         : undefined,
     [imageRequestHeaders]
   );
+
+  // An equal map keeps the previous array, so passing the prop inline does not
+  // re-send it to native on every render.
+  const linkPillContentRef =
+    useRef<ReturnType<typeof normalizeLinkPillContent>>(undefined);
+  const nativeLinkPillContent = useMemo(() => {
+    const next = normalizeLinkPillContent(linkPillContent);
+    if (!isLinkPillContentEqual(linkPillContentRef.current, next)) {
+      linkPillContentRef.current = next;
+    }
+    return linkPillContentRef.current;
+  }, [linkPillContent]);
 
   const handleContextMenuItemPress = useCallback(
     (e: NativeSyntheticEvent<OnContextMenuItemPressEvent>) => {
@@ -366,6 +383,7 @@ export const EnrichedMarkdownText = ({
     style: containerStyle,
     contextMenuItems: nativeContextMenuItems,
     imageRequestHeaders: nativeImageRequestHeaders,
+    linkPillContent: nativeLinkPillContent,
     selectionMenuConfig: normalizedSelectionMenuConfig,
     accessibilityLabels: resolvedAccessibilityLabels,
     onContextMenuItemPress: handleContextMenuItemPress,

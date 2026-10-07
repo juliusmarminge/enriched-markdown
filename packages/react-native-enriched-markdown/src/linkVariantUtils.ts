@@ -1,4 +1,5 @@
 import type { LinkVariantStyle } from './types/MarkdownStyle';
+import type { LinkPillContent } from './types/MarkdownTextProps';
 
 type LinkVariantEntry = [pattern: string, style: LinkVariantStyle];
 
@@ -39,4 +40,60 @@ export function normalizeLinkVariantEntries(
       }
       return true;
     });
+}
+
+/** Native pill geometry is finite and nonnegative before crossing codegen. */
+export function normalizeLinkPillStyle(style: LinkVariantStyle) {
+  const hasConfig = typeof style.pill === 'object' && style.pill !== null;
+  const config =
+    typeof style.pill === 'object' && style.pill !== null ? style.pill : {};
+  const dimension = (value: number | undefined, fallback: number) =>
+    value === undefined || !Number.isFinite(value)
+      ? fallback
+      : Math.max(0, value);
+  return {
+    enabled: style.pill === true || hasConfig,
+    borderColor: config.borderColor ?? 'transparent',
+    label: config.label ?? '',
+    iconUri: config.iconUri ?? '',
+    borderRadius: dimension(config.borderRadius, 8),
+    paddingHorizontal: dimension(config.paddingHorizontal, 6),
+    paddingVertical: dimension(config.paddingVertical, 2),
+    lineHeight: dimension(config.lineHeight, 0),
+    borderWidth: dimension(config.borderWidth, 0),
+    maxWidth: dimension(config.maxWidth, 0),
+  };
+}
+
+/** Flattens `linkPillContent` for native; sorted so equal maps produce the same array. */
+export function normalizeLinkPillContent(
+  content: Record<string, LinkPillContent> | undefined
+) {
+  if (!content) return undefined;
+  return Object.entries(content)
+    .map(([url, { label, iconUri }]) => ({
+      url,
+      label: label ?? '',
+      iconUri: iconUri ?? '',
+    }))
+    .sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
+}
+
+type NativeLinkPillContent = ReturnType<typeof normalizeLinkPillContent>;
+
+/** Whether two flattened `linkPillContent` arrays hold the same entries. */
+export function isLinkPillContentEqual(
+  a: NativeLinkPillContent,
+  b: NativeLinkPillContent
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((entry, index) => {
+    const other = b[index]!;
+    return (
+      entry.url === other.url &&
+      entry.label === other.label &&
+      entry.iconUri === other.iconUri
+    );
+  });
 }

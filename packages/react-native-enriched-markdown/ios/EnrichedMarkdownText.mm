@@ -8,6 +8,7 @@
 #import "ENRMImageAttachment.h"
 #import "ENRMLatexErrorCoordinator.h"
 #import "ENRMMarkdownParser.h"
+#import "ENRMMarkdownTextView.h"
 #import "ENRMSpoilerOverlayManager.h"
 #import "ENRMSpoilerTapUtils.h"
 #import "ENRMTailFadeInAnimator.h"
@@ -20,12 +21,14 @@
 #import "FontUtils.h"
 #import "HeightUpdateUtils.h"
 #import "ImageRequestHeaderUtils.h"
+#import "LinkPillContentUtils.h"
 #import "LinkTapUtils.h"
 #import "MarkdownASTNode.h"
 #import "MarkdownAccessibilityElementBuilder.h"
 #import "MarkdownExtractor.h"
 #import "MeasurementCache.h"
 #import "ParagraphStyleUtils.h"
+#import "PasteboardUtils.h"
 #import "RenderContext.h"
 #import "RuntimeKeys.h"
 #import "SelectionColorUtils.h"
@@ -255,6 +258,10 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
 // pre-load fallback height, so drop those entries and re-measure.
 - (void)imageAttachmentDidResolveLayout
 {
+  // The text around the attachment moved, and the spoiler overlays with it.
+  [_spoilerManager setNeedsUpdate];
+  [_spoilerManager updateIfNeeded];
+
   if (_renderedMarkdown.length > 0) {
     facebook::react::MeasurementCache::shared().removeMatchingMarkdown(std::string(_renderedMarkdown.UTF8String));
   }
@@ -338,7 +345,17 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
 - (void)setupTextView
 {
 #if !TARGET_OS_OSX
-  _textView = [[ENRMPlatformTextView alloc] init];
+  ENRMMarkdownTextView *markdownTextView = [[ENRMMarkdownTextView alloc] init];
+  __weak EnrichedMarkdownText *weakCopyOwner = self;
+  markdownTextView.copySelectionHandler = ^(NSRange range) {
+    EnrichedMarkdownText *owner = weakCopyOwner;
+    if (!owner)
+      return;
+    NSAttributedString *text = owner->_textView.textStorage;
+    copyAttributedStringToPasteboard([text attributedSubstringFromRange:range],
+                                     markdownForRange(text, range, owner->_cachedMarkdown), owner -> _config);
+  };
+  _textView = markdownTextView;
   _textView.text = @"";
 #else
   _textView = [[ENRMContextMenuTextView alloc] init];
@@ -593,6 +610,13 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
 
   if (ENRMImageRequestHeadersChanged(oldViewProps.imageRequestHeaders, newViewProps.imageRequestHeaders)) {
     [_config setImageRequestHeaders:ENRMImageRequestHeadersFromProps(newViewProps.imageRequestHeaders)];
+    _dirtyFlags |= ENRMDirtyRender;
+  }
+
+  // Pill labels change layout, so treat new content like a style change.
+  if (ENRMLinkPillContentChanged(oldViewProps.linkPillContent, newViewProps.linkPillContent)) {
+    [_config setLinkPillContent:ENRMLinkPillContentFromProps(newViewProps.linkPillContent)];
+    _forceHeightUpdateOnNextRender = YES;
     _dirtyFlags |= ENRMDirtyRender;
   }
 
