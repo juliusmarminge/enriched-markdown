@@ -458,6 +458,7 @@ interface TextLinkNativeRegex {
 }
 
 export interface NativeProps extends ViewProps {
+  selectionClipboardConfig?: string;
   linkRegex?: Readonly<TextLinkNativeRegex>;
   inlineCodeLinkRegex?: Readonly<TextLinkNativeRegex>;
   /**

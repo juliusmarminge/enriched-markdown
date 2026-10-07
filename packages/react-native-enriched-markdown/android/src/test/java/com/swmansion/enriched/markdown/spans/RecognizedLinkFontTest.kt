@@ -51,6 +51,47 @@ class RecognizedLinkFontTest {
     assertEquals(Color.BLUE, paint.color)
   }
 
+  @Test
+  fun copiedLinkTextRetainsApplicationIdentityInPartialSelections() {
+    val text = android.text.SpannableString("before Context after")
+    text.setSpan(LinkSpan("ref:one", null, null, styleCache(), block, context), 7, 14, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    val config =
+      com.swmansion.enriched.markdown.utils.text.view
+        .SelectionClipboardConfig(mapOf("ref:one" to "[Context](ref:one)"))
+    assertEquals(
+      "before [Context](ref:one) after",
+      com.swmansion.enriched.markdown.utils.text.view
+        .canonicalClipboardText(text, config),
+    )
+    assertEquals(
+      "[Context](ref:one)",
+      com.swmansion.enriched.markdown.utils.text.view
+        .canonicalClipboardText(text.subSequence(9, 12) as android.text.Spanned, config),
+    )
+    assertEquals(
+      null,
+      com.swmansion.enriched.markdown.utils.text.view
+        .canonicalClipboardText(text.subSequence(0, 6) as android.text.Spanned, config),
+    )
+  }
+
+  @Test
+  fun clipboardMetadataKeepsHtmlContentAndEscapesAttributes() {
+    val config =
+      com.swmansion.enriched.markdown.utils.text.view.SelectionClipboardConfig(
+        htmlAttributes =
+          mapOf(
+            "data-context" to "a\"&<",
+            "bad name" to "ignored",
+          ),
+      )
+    assertEquals(
+      "<div data-context=\"a&quot;&amp;&lt;\"><b>Context</b></div>",
+      com.swmansion.enriched.markdown.utils.text.view
+        .clipboardHtml("<b>Context</b>", config),
+    )
+  }
+
   private fun styleCache(): SpanStyleCache {
     DisplayMetricsHolder.initDisplayMetricsIfNotInitialized(context)
 

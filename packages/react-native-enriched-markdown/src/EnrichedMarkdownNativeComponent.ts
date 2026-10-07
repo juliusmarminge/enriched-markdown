@@ -519,6 +519,7 @@ export interface MediaOverrideInternal {
 }
 
 export interface NativeProps extends ViewProps {
+  selectionClipboardConfig?: string;
   enableImageSourceResolution?: CodegenTypes.WithDefault<boolean, false>;
   imageSourcesRevision?: CodegenTypes.WithDefault<CodegenTypes.Int32, -1>;
   imageSourcesContinuityStart?: CodegenTypes.WithDefault<CodegenTypes.Int32, 1>;

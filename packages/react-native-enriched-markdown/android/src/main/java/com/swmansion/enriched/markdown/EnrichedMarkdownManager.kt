@@ -122,6 +122,14 @@ class EnrichedMarkdownManager :
       put("onMediaLayout", mapOf("registrationName" to "onMediaLayout"))
     }
 
+  @ReactProp(name = "selectionClipboardConfig")
+  override fun setSelectionClipboardConfig(
+    view: EnrichedMarkdown?,
+    value: String?,
+  ) {
+    view?.setSelectionClipboardConfig(value)
+  }
+
   @ReactProp(name = "enableImageSourceResolution", defaultBoolean = false)
   override fun setEnableImageSourceResolution(
     view: EnrichedMarkdown?,

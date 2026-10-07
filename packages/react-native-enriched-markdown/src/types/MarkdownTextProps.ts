@@ -160,6 +160,15 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * and accessibility; its intrinsic height reserves native layout space.
    */
   renderMedia?: (asset: MarkdownMediaAsset) => ReactNode | null;
+  /** Clipboard metadata for selections containing an exact configured link URL.
+   * Replaces that link's plain copy text, wraps HTML with escaped attributes,
+   * and adds custom pasteboard types on iOS. No effect on rendering or layout.
+   */
+  selectionClipboard?: {
+    linkTextByUrl: Record<string, string>;
+    htmlAttributes?: Record<string, string>;
+    mimeTypes?: Record<string, string>;
+  };
   /** Native parsed media and link occurrences, including unsupported placements.
    * Supported in GitHub flavor on iOS and Android.
    */

@@ -142,6 +142,7 @@ export const EnrichedMarkdownText = ({
   onImagePress,
   renderMedia,
   onDocumentAssets,
+  selectionClipboard,
   resolveImageSource,
   onTaskListItemPress,
   enableTaskListItemToggle = true,
@@ -409,6 +410,9 @@ export const EnrichedMarkdownText = ({
   );
 
   const sharedProps = {
+    selectionClipboardConfig: selectionClipboard
+      ? JSON.stringify(selectionClipboard)
+      : '',
     markdown,
     linkRegex,
     inlineCodeLinkRegex,
