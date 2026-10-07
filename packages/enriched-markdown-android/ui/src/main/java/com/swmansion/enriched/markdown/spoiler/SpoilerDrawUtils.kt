@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.text.Layout
 import android.text.Spanned
+import com.swmansion.enriched.markdown.spans.ImageSpan
 import com.swmansion.enriched.markdown.spans.SpoilerSpan
 
 internal fun computeSegmentRect(
@@ -26,12 +27,27 @@ internal fun computeSegmentRect(
 
   val left = minOf(startHorizontal, endHorizontal) + paddingLeft
   val right = maxOf(startHorizontal, endHorizontal) + paddingLeft
-  val top = baseline + fontMetrics.ascent + paddingTop
-  val bottom = baseline + fontMetrics.descent + paddingTop
+  var top = baseline + fontMetrics.ascent + paddingTop
+  var bottom = baseline + fontMetrics.descent + paddingTop
+
+  val imageHeight = (layout.text as? Spanned)?.blockImageHeight(segmentStart, segmentEnd) ?: 0
+  if (imageHeight > 0) {
+    val lineTop = layout.getLineTop(line) + paddingTop
+    top = minOf(top, lineTop)
+    bottom = maxOf(bottom, lineTop + imageHeight)
+  }
   val width = right - left
   val height = bottom - top
   return if (width > 0 && height > 0) SegmentRect(left, top, width, height) else null
 }
+
+private fun Spanned.blockImageHeight(
+  start: Int,
+  end: Int,
+): Int =
+  getSpans(start, end, ImageSpan::class.java)
+    .filterNot { it.isInline }
+    .maxOfOrNull { it.drawable.bounds.height() } ?: 0
 
 internal fun colorWithAlpha(
   color: Int,
