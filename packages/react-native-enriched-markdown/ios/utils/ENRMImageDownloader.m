@@ -15,14 +15,20 @@ NSUInteger ENRMImageByteCost(RCTUIImage *image)
   return CGImageGetBytesPerRow(cgImage) * CGImageGetHeight(cgImage);
 }
 
+static NSDictionary<NSString *, NSString *> *ENRMNormalizedImageHeaders(NSDictionary<NSString *, NSString *> *headers)
+{
+  NSMutableDictionary<NSString *, NSString *> *normalized = [NSMutableDictionary dictionary];
+  for (NSString *name in [headers.allKeys sortedArrayUsingSelector:@selector(compare:)])
+    normalized[name.lowercaseString] = headers[name];
+  return normalized;
+}
+
 NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> *headers)
 {
   if (headers.count == 0) {
     return url;
   }
-  NSMutableDictionary<NSString *, NSString *> *normalized = [NSMutableDictionary dictionary];
-  for (NSString *name in [headers.allKeys sortedArrayUsingSelector:@selector(compare:)])
-    normalized[name.lowercaseString] = headers[name];
+  NSDictionary<NSString *, NSString *> *normalized = ENRMNormalizedImageHeaders(headers);
   NSArray<NSString *> *names = [normalized.allKeys sortedArrayUsingSelector:@selector(compare:)];
   NSMutableArray<NSString *> *pairs = [NSMutableArray arrayWithCapacity:names.count];
   for (NSString *name in names) {
@@ -85,6 +91,7 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
     return;
   }
 
+  headers = ENRMNormalizedImageHeaders(headers);
   BOOL isLocal = ENRMIsLocalImageURL(url);
   NSString *cacheKey = ENRMImageCacheKey(url, headers);
 
