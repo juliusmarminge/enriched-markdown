@@ -461,6 +461,12 @@ static char kENRMSegmentFadeAnimatorKey;
       [strongSelf emitLinkLongPress:url];
   };
 
+  view.onImagePress = ^(NSString *url, NSString *altText) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && strongSelf->_enableImagePress && url)
+      [strongSelf emitImagePress:url altText:altText];
+  };
+
   [view applyBlockquoteNode:blockquoteSegment.blockquoteNode];
   return view;
 }

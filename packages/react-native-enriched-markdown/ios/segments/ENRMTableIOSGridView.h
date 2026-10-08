@@ -12,9 +12,9 @@ typedef void (^ENRMTableIOSLinkBlock)(NSString *url);
 /// An interactive item found under a point of the grid.
 @interface ENRMTableIOSItemHit : NSObject
 @property (nonatomic, copy) NSString *url;
-/// What the user sees the link as: its pill label, or its text.
+/// The link's visible label, or an image's alt text.
 @property (nonatomic, copy, nullable) NSString *title;
-/// The link's frame in grid coordinates.
+/// The item's frame in grid coordinates.
 @property (nonatomic, assign) CGRect frame;
 @end
 
