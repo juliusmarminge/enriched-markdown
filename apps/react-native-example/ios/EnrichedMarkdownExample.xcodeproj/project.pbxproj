@@ -479,6 +479,7 @@
 					"${PODS_ROOT}/../../../../packages/core/cpp/parser",
 					"${PODS_ROOT}/../../../../packages/core/cpp/highlight",
 					"${PODS_ROOT}/../../../../packages/react-native-enriched-markdown/ios/internals",
+					"${PODS_ROOT}/../../../../packages/react-native-enriched-markdown/ios/utils",
 					"${PODS_ROOT}/../../../../packages/react-native-enriched-markdown/ios/input/internals",
 				);
 				INFOPLIST_FILE = EnrichedMarkdownExampleTests/Info.plist;
@@ -518,6 +519,7 @@
 					"${PODS_ROOT}/../../../../packages/core/cpp/parser",
 					"${PODS_ROOT}/../../../../packages/core/cpp/highlight",
 					"${PODS_ROOT}/../../../../packages/react-native-enriched-markdown/ios/internals",
+					"${PODS_ROOT}/../../../../packages/react-native-enriched-markdown/ios/utils",
 					"${PODS_ROOT}/../../../../packages/react-native-enriched-markdown/ios/input/internals",
 				);
 				INFOPLIST_FILE = EnrichedMarkdownExampleTests/Info.plist;
