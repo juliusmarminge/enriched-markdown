@@ -254,6 +254,9 @@ export default function PlaygroundScreen() {
               onLinkPress={({ url }) =>
                 Alert.alert('Link', url, [{ text: 'OK' }])
               }
+              onImagePress={({ url, altText }) =>
+                Alert.alert('Image', `${altText}\n${url}`, [{ text: 'OK' }])
+              }
               onTaskListItemPress={({ checked, index }) =>
                 Alert.alert(
                   'Task item',

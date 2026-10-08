@@ -6,7 +6,7 @@
 @interface ENRMTableIOSGridView () <UIGestureRecognizerDelegate>
 @end
 
-@implementation ENRMTableIOSLinkHit
+@implementation ENRMTableIOSItemHit
 @end
 
 @implementation ENRMTableIOSRowData
@@ -152,7 +152,8 @@
   return NO;
 }
 
-static ENRMTableIOSLinkHit *linkInAttributedString(NSAttributedString *text, CGRect textRect, CGPoint point)
+static ENRMTableIOSItemHit *itemInAttributedString(NSAttributedString *text, CGRect textRect, CGPoint point,
+                                                   NSString *urlAttribute)
 {
   if (text.length == 0)
     return nil;
@@ -176,24 +177,28 @@ static ENRMTableIOSLinkHit *linkInAttributedString(NSAttributedString *text, CGR
   if (charIndex >= text.length)
     return nil;
 
-  NSRange linkRange;
-  NSString *url = [text attribute:@"linkURL"
+  NSRange itemRange;
+  NSString *url = [text attribute:urlAttribute
                           atIndex:charIndex
-            longestEffectiveRange:&linkRange
+            longestEffectiveRange:&itemRange
                           inRange:NSMakeRange(0, text.length)];
   if (!url)
     return nil;
-  NSRange glyphRange = [layoutManager glyphRangeForCharacterRange:linkRange actualCharacterRange:NULL];
+  NSRange glyphRange = [layoutManager glyphRangeForCharacterRange:itemRange actualCharacterRange:NULL];
   CGRect frame = [layoutManager boundingRectForGlyphRange:glyphRange inTextContainer:textContainer];
+  if (!CGRectContainsPoint(frame, local))
+    return nil;
 
-  ENRMTableIOSLinkHit *hit = [[ENRMTableIOSLinkHit alloc] init];
+  ENRMTableIOSItemHit *hit = [[ENRMTableIOSItemHit alloc] init];
   hit.url = url;
-  hit.title = linkTitleAtIndex(text, charIndex);
+  hit.title = [urlAttribute isEqualToString:@"imageURL"]
+                  ? [text attribute:@"imageAltText" atIndex:charIndex effectiveRange:NULL]
+                  : linkTitleAtIndex(text, charIndex);
   hit.frame = CGRectOffset(frame, textRect.origin.x, textRect.origin.y);
   return hit;
 }
 
-- (ENRMTableIOSLinkHit *)linkAtPoint:(CGPoint)point
+- (ENRMTableIOSItemHit *)itemAtPoint:(CGPoint)point urlAttribute:(NSString *)urlAttribute
 {
   CGFloat rowY, rowH, colX, colW;
   NSAttributedString *text;
@@ -205,7 +210,12 @@ static ENRMTableIOSLinkHit *linkInAttributedString(NSAttributedString *text, CGR
   if (!CGRectContainsPoint(textRect, point))
     return nil;
 
-  return linkInAttributedString(text, textRect, point);
+  return itemInAttributedString(text, textRect, point, urlAttribute);
+}
+
+- (ENRMTableIOSItemHit *)linkAtPoint:(CGPoint)point
+{
+  return [self itemAtPoint:point urlAttribute:@"linkURL"];
 }
 
 #pragma mark - Gesture handlers
@@ -222,7 +232,16 @@ static ENRMTableIOSLinkHit *linkInAttributedString(NSAttributedString *text, CGR
 - (void)handleTap:(UITapGestureRecognizer *)recognizer
 {
   if (recognizer.state == UIGestureRecognizerStateEnded) {
-    [self handleLinkGesture:recognizer block:self.onLinkTap];
+    CGPoint point = [recognizer locationInView:self];
+    ENRMTableIOSItemHit *link = [self linkAtPoint:point];
+    if (link) {
+      if (self.onLinkTap)
+        self.onLinkTap(link.url);
+      return;
+    }
+    ENRMTableIOSItemHit *image = [self itemAtPoint:point urlAttribute:@"imageURL"];
+    if (image && self.onImageTap)
+      self.onImageTap(image.url, image.title ?: @"");
   }
 }
 

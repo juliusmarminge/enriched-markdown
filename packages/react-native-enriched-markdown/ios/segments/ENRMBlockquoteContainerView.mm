@@ -240,6 +240,7 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
                                   s.onLinkLongPress(url);
                               };
                             }
+                            view.onImagePress = strongSelf.onImagePress;
                             [view applyTableNode:segment.tableSegment.tableNode];
                             return view;
                           }
@@ -289,6 +290,7 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
                               view.accessibilityLabels = strongSelf.accessibilityLabels;
                               view.onCopyPress = strongSelf.onCopyPress;
                               view.onCodeBlockPress = strongSelf.onCodeBlockPress;
+                              view.onImagePress = strongSelf.onImagePress;
                               view.onLinkPress = ^(NSString *url) {
                                 ENRMBlockquoteContainerView *s = weakSelf;
                                 if (s.onLinkPress && url)
