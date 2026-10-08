@@ -88,6 +88,7 @@ static NSMutableAttributedString *ENRMTableRenderCellNode(MarkdownASTNode *cellN
   NSMutableAttributedString *attributedText = [renderer renderNodes:cellNode.children context:context block:nil];
 
   [context applyLinkAttributesToString:attributedText];
+  [context applyImageAttributesToString:attributedText];
 
   ENRMPinLineMetricsToStyledFonts(attributedText, NSMakeRange(0, attributedText.length));
   ENRMApplyWritingDirectionMode(attributedText, writingDirectionMode, resolvedLayoutDirection);
