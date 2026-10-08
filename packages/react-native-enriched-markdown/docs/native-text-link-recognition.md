@@ -1,6 +1,6 @@
 # Native text link recognition
 
-`EnrichedMarkdownText` accepts optional `linkRegex` and `inlineCodeLinkRegex` props on iOS and Android, in both CommonMark and GitHub flavors. Both default to disabled. See the [API reference](../../../docs/API_REFERENCE.md#linkregex-and-inlinecodelinkregex) for matching rules and an example.
+`EnrichedMarkdownText` accepts optional `linkRegex` and `inlineCodeLinkRegex` props on iOS and Android, in both CommonMark and GitHub flavors. Both default to disabled. See the [API reference](../../../docs/docs/react-native/api-reference/enriched-markdown-text.md#linkregex-and-inlinecodelinkregex) for matching rules and an example.
 
 Recognition uses the same regex normalization as `EnrichedMarkdownTextInput.linkRegex`. The renderer maps the input API's default or rejected-pattern fallback to disabled recognition. It never supplies a built-in detection pattern.
 
