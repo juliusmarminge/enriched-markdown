@@ -29,7 +29,11 @@ export default function HorizontalBlocksScreen() {
             markdown={markdown}
             flavor="github"
             markdownStyle={{
-              codeBlock: { fontSize: 16, backgroundColor: '#f3f4f6' },
+              codeBlock: {
+                fontSize: 16,
+                color: '#111827',
+                backgroundColor: '#f3f4f6',
+              },
               table: { cellPaddingHorizontal: 12, cellPaddingVertical: 8 },
               math: { fontSize: 20 },
             }}
