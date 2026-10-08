@@ -27,6 +27,7 @@ import com.swmansion.enriched.markdown.segments.SegmentViewFactory
 import com.swmansion.enriched.markdown.segments.TableContainerView
 import com.swmansion.enriched.markdown.segments.splitASTIntoSegments
 import com.swmansion.enriched.markdown.spoiler.SpoilerOverlay
+import com.swmansion.enriched.markdown.styles.LinkPillContent
 import com.swmansion.enriched.markdown.styles.StyleConfig
 import com.swmansion.enriched.markdown.utils.common.BreakStrategyUtils
 import com.swmansion.enriched.markdown.utils.common.CodeBlockStreamingMode
@@ -86,6 +87,7 @@ class EnrichedMarkdown(
   private var allowFontScaling: Boolean = true
   private var maxFontSizeMultiplier: Float = 0f
   private var imageRequestHeaders: Map<String, String> = emptyMap()
+  private var linkPillContent: Map<String, LinkPillContent> = emptyMap()
   private var selectable: Boolean = true
   private var selectionColor: Int? = null
   private var selectionHandleColor: Int? = null
@@ -153,6 +155,7 @@ class EnrichedMarkdown(
     markdownStyleMap = style
     val newConfig = style?.let { StyleConfig(it, context, allowFontScaling, maxFontSizeMultiplier) }
     newConfig?.imageRequestHeaders = imageRequestHeaders
+    newConfig?.linkPillContent = linkPillContent
     if (markdownStyle == newConfig) return
     markdownStyle = newConfig
     dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
@@ -165,6 +168,16 @@ class EnrichedMarkdown(
     imageRequestHeaders = headers
     markdownStyle?.imageRequestHeaders = headers
     dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
+    renderPending = true
+  }
+
+  fun setLinkPillContent(content: Map<String, LinkPillContent>) {
+    if (linkPillContent == content) return
+    linkPillContent = content
+    markdownStyle?.linkPillContent = content
+    // A label can change the pill's width and so the wrapped height.
+    dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
     renderPending = true
   }
 
@@ -372,6 +385,7 @@ class EnrichedMarkdown(
       markdownStyle =
         StyleConfig(it, context, allowFontScaling, maxFontSizeMultiplier).also { config ->
           config.imageRequestHeaders = imageRequestHeaders
+          config.linkPillContent = linkPillContent
         }
     }
   }

@@ -4,6 +4,7 @@
 #import "CodeBackground.h"
 #import "ENRMFeatureFlags.h"
 #import "ENRMImageAttachment.h"
+#import "ENRMLinkPillText.h"
 #import "ENRMTextLinkAttributes.h"
 #import "ENRMUIKit.h"
 #import "HighlightRenderer.h"
@@ -129,6 +130,7 @@ NSString *_Nullable extractMarkdownFromAttributedString(NSAttributedString *attr
   }
 
   range.length = MIN(range.length, attributedText.length - range.location);
+  attributedText = ENRMAttributedStringByExpandingLinkPills(attributedText, &range);
 
   NSMutableString *result = [NSMutableString string];
 
