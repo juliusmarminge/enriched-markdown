@@ -4541,8 +4541,8 @@ md_analyze_permissive_autolink(MD_CTX* ctx, int mark_index)
             return;
     }
 
-    /* Scan for hostname segment. Hostname is mandatory and requires at least two
-     * components delimited with a dot. */
+    /* Hostnames are mandatory. Scheme links allow a single-label host; other
+     * permissive forms require at least two components delimited with a dot. */
     if(md_analyze_permissive_autolink_segment(ctx, end, line_end, &end, false,
             _T('.'), NULL, _T("-_"), &right_cursor) < (opener->ch == ':' ? 1 : 2))
         return;
