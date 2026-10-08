@@ -17,6 +17,13 @@ type ScreenItem = {
 
 const SCREENS: ScreenItem[] = [
   {
+    route: 'HorizontalBlocks',
+    label: 'Horizontal blocks',
+    subtext: 'scroll bounce and back navigation',
+    testID: 'home-block-horizontal',
+    color: '#007AFF',
+  },
+  {
     route: 'Playground',
     label: 'Playground',
     subtext: 'live editor with preview',

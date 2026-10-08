@@ -1,0 +1,23 @@
+appId: swmansion.enriched.markdown.example
+tags:
+  - block
+  - advanced
+  - text
+  - ios
+---
+- launchApp
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: home-block-horizontal
+      - assertVisible:
+          id: horizontal-blocks-screen
+      # Starts over the code pane rather than the screen edge.
+      - swipe:
+          start: 25%, 36%
+          end: 85%, 36%
+          duration: 600
+      - assertVisible:
+          id: home-screen

@@ -3,6 +3,7 @@ import { Stack } from './navigation/Stack';
 import HomeScreen from './screens/home/HomeScreen';
 import PlaygroundScreen from './screens/playground/PlaygroundScreen';
 import TextScreen from './screens/text/TextScreen';
+import HorizontalBlocksScreen from './screens/scroll/HorizontalBlocksScreen';
 import InputScreen from './screens/input/InputScreen';
 import StreamingMarkdownSimulator from './screens/streaming/StreamingMarkdownSimulator';
 import StorybookScreen from './screens/storybook/StorybookScreen';
@@ -32,6 +33,14 @@ export default function App() {
           name="Playground"
           component={PlaygroundScreen}
           options={{ title: 'Playground' }}
+        />
+        <Stack.Screen
+          name="HorizontalBlocks"
+          component={HorizontalBlocksScreen}
+          options={{
+            title: 'Horizontal blocks',
+            fullScreenGestureEnabled: true,
+          }}
         />
         <Stack.Screen
           name="Text"
