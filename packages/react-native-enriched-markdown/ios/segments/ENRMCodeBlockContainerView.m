@@ -1,6 +1,7 @@
 #import "ENRMCodeBlockContainerView.h"
 #import "ENRMCodeBlockContent.h"
 #import "ENRMCodeBlockHighlighter.h"
+#import "ENRMHorizontalScrollView.h"
 #import "MarkdownASTNode.h"
 #import "PasteboardUtils.h"
 #if TARGET_OS_OSX
@@ -302,13 +303,12 @@ static BOOL ENRMColorIsDark(RCTUIColor *color)
 
 - (void)setupScrollView
 {
-  _scrollView = [[RCTUIScrollView alloc] init];
+  _scrollView = [[ENRMHorizontalScrollView alloc] init];
   _scrollView.showsVerticalScrollIndicator = NO;
   _scrollView.showsHorizontalScrollIndicator = YES;
   _codeContentView = [[ENRMCodeBlockContentView alloc] initWithFrame:CGRectZero];
   BOOL darkBackground = ENRMColorIsDark([_config codeBlockBackgroundColor]);
 #if !TARGET_OS_OSX
-  _scrollView.bounces = YES;
   _scrollView.alwaysBounceHorizontal = NO;
   _scrollView.backgroundColor = [UIColor clearColor];
   _scrollView.isAccessibilityElement = NO;
