@@ -15,20 +15,20 @@ tags:
           id: home-block-horizontal
       - swipe:
           start: 85%, 30%
-          end: 25%, 30%
-          duration: 600
+          end: 65%, 30%
+          duration: 1000
       - assertVisible:
           id: horizontal-blocks-screen
       - swipe:
           start: 25%, 30%
-          end: 85%, 30%
-          duration: 600
+          end: 95%, 30%
+          duration: 1000
       - assertVisible:
           id: horizontal-blocks-screen
       - swipe:
           start: 25%, 30%
-          end: 85%, 30%
-          duration: 600
+          end: 95%, 30%
+          duration: 1000
       - assertVisible:
           id: home-screen
       # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
@@ -36,20 +36,20 @@ tags:
           id: home-block-horizontal
       - swipe:
           start: 85%, 46%
-          end: 25%, 46%
-          duration: 600
+          end: 65%, 46%
+          duration: 1000
       - assertVisible:
           id: horizontal-blocks-screen
       - swipe:
           start: 25%, 46%
-          end: 85%, 46%
-          duration: 600
+          end: 95%, 46%
+          duration: 1000
       - assertVisible:
           id: horizontal-blocks-screen
       - swipe:
           start: 25%, 46%
-          end: 85%, 46%
-          duration: 600
+          end: 95%, 46%
+          duration: 1000
       - assertVisible:
           id: home-screen
       # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
@@ -57,19 +57,19 @@ tags:
           id: home-block-horizontal
       - swipe:
           start: 85%, 56%
-          end: 25%, 56%
-          duration: 600
+          end: 65%, 56%
+          duration: 1000
       - assertVisible:
           id: horizontal-blocks-screen
       - swipe:
           start: 25%, 56%
-          end: 85%, 56%
-          duration: 600
+          end: 95%, 56%
+          duration: 1000
       - assertVisible:
           id: horizontal-blocks-screen
       - swipe:
           start: 25%, 56%
-          end: 85%, 56%
-          duration: 600
+          end: 95%, 56%
+          duration: 1000
       - assertVisible:
           id: home-screen
