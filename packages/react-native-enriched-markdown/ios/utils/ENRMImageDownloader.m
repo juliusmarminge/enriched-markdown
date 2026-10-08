@@ -20,10 +20,13 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
   if (headers.count == 0) {
     return url;
   }
-  NSArray<NSString *> *names = [headers.allKeys sortedArrayUsingSelector:@selector(compare:)];
+  NSMutableDictionary<NSString *, NSString *> *normalized = [NSMutableDictionary dictionary];
+  for (NSString *name in [headers.allKeys sortedArrayUsingSelector:@selector(compare:)])
+    normalized[name.lowercaseString] = headers[name];
+  NSArray<NSString *> *names = [normalized.allKeys sortedArrayUsingSelector:@selector(compare:)];
   NSMutableArray<NSString *> *pairs = [NSMutableArray arrayWithCapacity:names.count];
   for (NSString *name in names) {
-    [pairs addObject:[NSString stringWithFormat:@"%@:%@", name, headers[name]]];
+    [pairs addObject:[NSString stringWithFormat:@"%@:%@", name, normalized[name]]];
   }
   NSString *joined = [pairs componentsJoinedByString:@"\n"];
   NSData *data = [joined dataUsingEncoding:NSUTF8StringEncoding];
@@ -38,6 +41,7 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
 
 @implementation ENRMImageDownloader {
   NSURLSession *_session;
+  NSURLSession *_headerSession;
   NSMutableDictionary<NSString *, NSMutableArray<ENRMImageDownloadCompletion> *> *_inFlightRequests;
 }
 
@@ -61,6 +65,12 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
     config.timeoutIntervalForRequest = 15;
     config.timeoutIntervalForResource = 30;
     _session = [NSURLSession sessionWithConfiguration:config];
+    // URLCache does not provide our effective URI/header identity. Header-bearing
+    // requests use only the decoded cache above, which includes every header.
+    NSURLSessionConfiguration *headerConfig = [config copy];
+    headerConfig.URLCache = nil;
+    headerConfig.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+    _headerSession = [NSURLSession sessionWithConfiguration:headerConfig];
     _inFlightRequests = [NSMutableDictionary dictionary];
   }
   return self;
@@ -76,7 +86,7 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
   }
 
   BOOL isLocal = ENRMIsLocalImageURL(url);
-  NSString *cacheKey = isLocal ? url : ENRMImageCacheKey(url, headers);
+  NSString *cacheKey = ENRMImageCacheKey(url, headers);
 
   RCTUIImage *cached = [[ENRMImageAttachment originalImageCache] objectForKey:cacheKey];
   if (cached) {
@@ -113,22 +123,25 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
     [request setValue:value forHTTPHeaderField:name];
   }];
 
-  [[_session dataTaskWithRequest:request
-               completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+  NSURLSession *session = headers.count > 0 ? _headerSession : _session;
+  if (headers.count > 0)
+    request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+  [[session dataTaskWithRequest:request
+              completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
 #if !TARGET_OS_OSX
-                 RCTUIImage *image = (data && !error) ? [RCTUIImage imageWithData:data] : nil;
+                RCTUIImage *image = (data && !error) ? [RCTUIImage imageWithData:data] : nil;
 #else
         RCTUIImage *image = (data && !error) ? [[RCTUIImage alloc] initWithData:data] : nil;
 #endif
 
-                 if (image) {
-                   [[ENRMImageAttachment originalImageCache] setObject:image
-                                                                forKey:cacheKey
-                                                                  cost:ENRMImageByteCost(image)];
-                 }
+                if (image) {
+                  [[ENRMImageAttachment originalImageCache] setObject:image
+                                                               forKey:cacheKey
+                                                                 cost:ENRMImageByteCost(image)];
+                }
 
-                 [self dispatchCallbacksForKey:cacheKey image:image];
-               }] resume];
+                [self dispatchCallbacksForKey:cacheKey image:image];
+              }] resume];
 }
 
 - (void)dispatchCallbacksForKey:(NSString *)cacheKey image:(RCTUIImage *_Nullable)image
