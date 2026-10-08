@@ -643,3 +643,29 @@ interface LatexErrorEvent {
 - [Accessibility](/user-experience/accessibility) - VoiceOver and TalkBack support, custom rotors, and semantic traits.
 - [Testing with Jest](/react-native/guides/testing) - the shipped Jest mock for rendering and asserting on the components in tests.
 - [RTL support](/user-experience/rtl) - right-to-left languages and per-element RTL behavior.
+
+### `selectionClipboard` <IosBadge /> <AndroidBadge />
+
+Optional application metadata for native copied selections. `linkTextByUrl` maps
+exact link destinations to plain-copy text. When a selection contains a configured
+link, including part of its label, Copy substitutes that text and wraps the HTML
+in a `div` carrying the escaped `htmlAttributes`. iOS additionally writes the
+UTF-8 values in `mimeTypes` as custom pasteboard types. Other selections keep the
+ordinary clipboard formats. Copy as Markdown keeps the Markdown text and attaches
+the same metadata. This prop does not change rendering or layout and is ignored
+on web.
+
+```tsx
+<EnrichedMarkdownText
+  markdown="See [Context](ref:one)."
+  selectionClipboard={{
+    linkTextByUrl: { 'ref:one': '[Context](ref:one)' },
+    htmlAttributes: { 'data-reference': 'ref:one' },
+    mimeTypes: { 'com.example.reference': 'ref:one' },
+  }}
+/>
+```
+
+The configuration defaults to disabled. Removing it restores ordinary copy
+behavior. Choose custom pasteboard type names that the receiving application
+understands; standard clipboard types are retained.
