@@ -104,6 +104,7 @@ static void addSelectionMetadata(NSMutableDictionary *items, StyleConfig *config
   if (html && encoded.count > 0)
     items[kUTIHTML] = [[NSString stringWithFormat:@"<div %@>%@</div>", [encoded componentsJoinedByString:@" "], html]
         dataUsingEncoding:NSUTF8StringEncoding];
+#if !TARGET_OS_OSX
   NSDictionary *types = config.selectionClipboard[@"mimeTypes"];
   if ([types isKindOfClass:NSDictionary.class]) {
     for (id type in types) {
@@ -112,6 +113,7 @@ static void addSelectionMetadata(NSMutableDictionary *items, StyleConfig *config
         items[type] = [value dataUsingEncoding:NSUTF8StringEncoding];
     }
   }
+#endif
 }
 
 void copySelectionMarkdownToPasteboard(NSString *markdown, NSAttributedString *selection, StyleConfig *config)
