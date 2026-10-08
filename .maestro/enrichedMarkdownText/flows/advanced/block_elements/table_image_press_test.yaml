@@ -1,0 +1,73 @@
+appId: swmansion.enriched.markdown.example
+tags:
+  - block
+  - advanced
+  - image
+  - table
+  - text
+  - ios-only
+---
+- launchApp
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - runFlow:
+          file: '../../../../subflows/move_to_playground.yaml'
+      - runFlow:
+          file: '../../../subflows/set_enriched_text_value.yaml'
+          env:
+            VALUE: "| Image |\n| --- |\n| ![Table preview](https://placehold.co/160x100.webp) |"
+      - tapOn:
+          id: blur-button
+      - scrollUntilVisible:
+          element:
+            id: preview-text
+          direction: DOWN
+      - tapOn:
+          id: preview-text
+          point: '50%,65%'
+      - assertVisible: Image
+      - assertVisible: '(?s)Table preview.*https://placehold[.]co/160x100[.]webp'
+      - tapOn: OK
+      - scrollUntilVisible:
+          element:
+            id: set-markdown-button
+          direction: UP
+      - runFlow:
+          file: '../../../subflows/set_enriched_text_value.yaml'
+          env:
+            VALUE: "> > | Image |\n> > | --- |\n> > | ![Nested preview](https://placehold.co/160x100.webp) |"
+      - tapOn:
+          id: blur-button
+      - scrollUntilVisible:
+          element:
+            id: preview-text
+          direction: DOWN
+      - tapOn:
+          id: preview-text
+          point: '50%,65%'
+      - assertVisible: Image
+      - assertVisible: '(?s)Nested preview.*https://placehold[.]co/160x100[.]webp'
+      - tapOn: OK
+      - scrollUntilVisible:
+          element:
+            id: set-markdown-button
+          direction: UP
+      - runFlow:
+          file: '../../../subflows/set_enriched_text_value.yaml'
+          env:
+            VALUE: "| Image |\n| --- |\n| [![Linked preview](https://placehold.co/160x100.webp)](https://example.com/destination) |"
+      - tapOn:
+          id: blur-button
+      - scrollUntilVisible:
+          element:
+            id: preview-text
+          direction: DOWN
+      - tapOn:
+          id: preview-text
+          point: '50%,65%'
+      - assertVisible: Link
+      - assertVisible: https://example.com/destination
+      - assertNotVisible: Image
+      - tapOn: OK
