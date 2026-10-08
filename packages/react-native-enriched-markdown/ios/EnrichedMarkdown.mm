@@ -1094,6 +1094,12 @@ static char kENRMSegmentFadeAnimatorKey;
       [strongSelf emitLinkLongPress:url];
   };
 
+  tableView.onImagePress = ^(NSString *url, NSString *altText) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && strongSelf->_enableImagePress && url)
+      [strongSelf emitImagePress:url altText:altText];
+  };
+
   [tableView applyTableNode:tableSegment.tableNode];
 
   return tableView;

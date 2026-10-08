@@ -7,7 +7,7 @@
 {
   self = [super initWithFrame:frame];
   if (self) {
-    self.bounces = NO;
+    self.bounces = YES;
   }
   return self;
 }
@@ -17,7 +17,9 @@
   if (gestureRecognizer == self.panGestureRecognizer) {
     CGPoint velocity = [self.panGestureRecognizer velocityInView:self];
     CGFloat leftBoundary = -self.adjustedContentInset.left;
-    if (velocity.x > fabs(velocity.y) && self.contentOffset.x <= leftBoundary + 0.5) {
+    // Decide only when the pan begins. A pan returning from inside the content keeps its bounce.
+    BOOL atSettledLeftBoundary = !self.isDecelerating && fabs(self.contentOffset.x - leftBoundary) <= 0.5;
+    if (velocity.x > fabs(velocity.y) && atSettledLeftBoundary) {
       return NO;
     }
   }
