@@ -349,11 +349,16 @@ static BOOL ENRMColorIsDark(RCTUIColor *color)
 #endif
 }
 
-// Header is the top content inset plus one label line; the code text's own
-// top inset then forms the single gap below the label.
+// The code pane starts after the content inset and one header-label line.
 - (CGFloat)headerHeight
 {
   return [self contentInset] + _headerLabelLineHeight;
+}
+
+- (CGFloat)headerCenterY
+{
+  // The divider sits halfway into the code pane's top inset.
+  return ([self headerHeight] + [self contentInset] / 2) / 2;
 }
 
 - (void)layoutHeaderButton
@@ -365,8 +370,7 @@ static BOOL ENRMColorIsDark(RCTUIColor *color)
   }
   CGFloat iconSlack = (headerH - iconWidth) / 2;
   CGFloat buttonLeft = MAX(self.bounds.size.width - [self contentInset] - headerH + iconSlack, 0);
-  CGFloat labelCenterY = headerH - _headerLabelLineHeight / 2;
-  CGFloat buttonTop = MAX(labelCenterY - headerH / 2, 0);
+  CGFloat buttonTop = MAX([self headerCenterY] - headerH / 2, 0);
   _copyButton.frame = CGRectMake(buttonLeft, buttonTop, headerH, headerH);
 }
 
@@ -529,7 +533,7 @@ static BOOL ENRMColorIsDark(RCTUIColor *color)
   }
 
   if (_languageLabel.length > 0) {
-    [_languageLabel drawAtPoint:CGPointMake(inset, headerH - _languageLabelSize.height)];
+    [_languageLabel drawAtPoint:CGPointMake(inset, [self headerCenterY] - _languageLabelSize.height / 2)];
   }
 }
 
