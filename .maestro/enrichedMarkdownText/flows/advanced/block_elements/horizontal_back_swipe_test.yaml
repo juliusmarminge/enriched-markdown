@@ -3,21 +3,73 @@ tags:
   - block
   - advanced
   - text
-  - ios
+  - ios-only
 ---
 - launchApp
 - runFlow:
     when:
       platform: iOS
     commands:
+      # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
       - tapOn:
           id: home-block-horizontal
+      - swipe:
+          start: 85%, 30%
+          end: 25%, 30%
+          duration: 600
       - assertVisible:
           id: horizontal-blocks-screen
-      # Starts over the code pane rather than the screen edge.
       - swipe:
-          start: 25%, 36%
-          end: 85%, 36%
+          start: 25%, 30%
+          end: 85%, 30%
+          duration: 600
+      - assertVisible:
+          id: horizontal-blocks-screen
+      - swipe:
+          start: 25%, 30%
+          end: 85%, 30%
+          duration: 600
+      - assertVisible:
+          id: home-screen
+      # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
+      - tapOn:
+          id: home-block-horizontal
+      - swipe:
+          start: 85%, 46%
+          end: 25%, 46%
+          duration: 600
+      - assertVisible:
+          id: horizontal-blocks-screen
+      - swipe:
+          start: 25%, 46%
+          end: 85%, 46%
+          duration: 600
+      - assertVisible:
+          id: horizontal-blocks-screen
+      - swipe:
+          start: 25%, 46%
+          end: 85%, 46%
+          duration: 600
+      - assertVisible:
+          id: home-screen
+      # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
+      - tapOn:
+          id: home-block-horizontal
+      - swipe:
+          start: 85%, 56%
+          end: 25%, 56%
+          duration: 600
+      - assertVisible:
+          id: horizontal-blocks-screen
+      - swipe:
+          start: 25%, 56%
+          end: 85%, 56%
+          duration: 600
+      - assertVisible:
+          id: horizontal-blocks-screen
+      - swipe:
+          start: 25%, 56%
+          end: 85%, 56%
           duration: 600
       - assertVisible:
           id: home-screen
