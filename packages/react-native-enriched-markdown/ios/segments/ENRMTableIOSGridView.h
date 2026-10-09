@@ -41,8 +41,6 @@ typedef NS_ENUM(NSInteger, ENRMTableIOSItemKind) {
 /// interaction, so the long-press recognizer must not take that touch.
 @property (nonatomic, copy, nullable) BOOL (^hasLinkContextMenu)(NSString *url);
 - (nullable ENRMTableIOSItemHit *)linkAtPoint:(CGPoint)point;
-/// Unlinked image whose glyph bounds contain `point`; a linked image is a link.
-- (nullable ENRMTableIOSItemHit *)imageAtPoint:(CGPoint)point;
 
 - (void)updateWithRows:(NSArray<ENRMTableIOSRowData *> *)rows
              columnWidths:(NSArray<NSNumber *> *)columnWidths

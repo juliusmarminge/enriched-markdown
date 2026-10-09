@@ -220,12 +220,6 @@ static ENRMTableIOSItemHit *itemInAttributedString(NSAttributedString *text, CGR
   return hit.kind == ENRMTableIOSItemKindLink ? hit : nil;
 }
 
-- (ENRMTableIOSItemHit *)imageAtPoint:(CGPoint)point
-{
-  ENRMTableIOSItemHit *hit = [self itemAtPoint:point];
-  return hit.kind == ENRMTableIOSItemKindImage ? hit : nil;
-}
-
 #pragma mark - Gesture handlers
 
 - (void)handleLinkGesture:(UIGestureRecognizer *)recognizer block:(ENRMTableIOSLinkBlock)block
