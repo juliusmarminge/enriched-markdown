@@ -4,7 +4,6 @@ export type RootStackParamList = {
   Home: undefined;
   Playground: undefined;
   Text: undefined;
-  HorizontalBlocks: undefined;
   Input: { channel: string };
   Stream: undefined;
   Storybook: undefined;

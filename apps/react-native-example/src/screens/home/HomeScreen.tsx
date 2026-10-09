@@ -51,13 +51,6 @@ const SCREENS: ScreenItem[] = [
     testID: 'home-block-storybook',
     color: '#FF2D55',
   },
-  {
-    route: 'HorizontalBlocks',
-    label: 'Horizontal blocks',
-    subtext: 'scroll bounce and back navigation',
-    testID: 'home-block-horizontal',
-    color: '#5856D6',
-  },
 ];
 
 export default function HomeScreen({ navigation }: Props) {
