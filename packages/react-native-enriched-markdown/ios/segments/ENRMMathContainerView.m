@@ -53,7 +53,7 @@
 
 #if !TARGET_OS_OSX
 @interface ENRMMathContainerView () <UIContextMenuInteractionDelegate>
-@property (nonatomic, strong, readonly) RCTUIScrollView *scrollView;
+@property (nonatomic, strong, readonly) ENRMHorizontalScrollView *scrollView;
 #else
 @interface ENRMMathContainerView ()
 #endif

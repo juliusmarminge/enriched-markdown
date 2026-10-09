@@ -5,71 +5,24 @@ tags:
   - text
   - ios-only
 ---
+# Code, table and math blocks keep scrolling and bouncing, and yield a fresh
+# outward pan at the settled leading edge to the full-screen back gesture.
 - launchApp
+
+# Code block
 - runFlow:
-    when:
-      platform: iOS
-    commands:
-      # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
-      - tapOn:
-          id: home-block-horizontal
-      - swipe:
-          start: 85%, 30%
-          end: 65%, 30%
-          duration: 1000
-      - assertVisible:
-          id: horizontal-blocks-screen
-      - swipe:
-          start: 25%, 30%
-          end: 95%, 30%
-          duration: 1000
-      - assertVisible:
-          id: horizontal-blocks-screen
-      - swipe:
-          start: 25%, 30%
-          end: 95%, 30%
-          duration: 1000
-      - assertVisible:
-          id: home-screen
-      # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
-      - tapOn:
-          id: home-block-horizontal
-      - swipe:
-          start: 85%, 46%
-          end: 65%, 46%
-          duration: 1000
-      - assertVisible:
-          id: horizontal-blocks-screen
-      - swipe:
-          start: 25%, 46%
-          end: 95%, 46%
-          duration: 1000
-      - assertVisible:
-          id: horizontal-blocks-screen
-      - swipe:
-          start: 25%, 46%
-          end: 95%, 46%
-          duration: 1000
-      - assertVisible:
-          id: home-screen
-      # The return pan keeps scrolling and bouncing; only a new outward pan goes back.
-      - tapOn:
-          id: home-block-horizontal
-      - swipe:
-          start: 85%, 56%
-          end: 65%, 56%
-          duration: 1000
-      - assertVisible:
-          id: horizontal-blocks-screen
-      - swipe:
-          start: 25%, 56%
-          end: 95%, 56%
-          duration: 1000
-      - assertVisible:
-          id: horizontal-blocks-screen
-      - swipe:
-          start: 25%, 56%
-          end: 95%, 56%
-          duration: 1000
-      - assertVisible:
-          id: home-screen
+    file: '../../../subflows/horizontal_block_back_swipe.yaml'
+    env:
+      SWIPE_Y: '30%'
+
+# Table
+- runFlow:
+    file: '../../../subflows/horizontal_block_back_swipe.yaml'
+    env:
+      SWIPE_Y: '46%'
+
+# Display math
+- runFlow:
+    file: '../../../subflows/horizontal_block_back_swipe.yaml'
+    env:
+      SWIPE_Y: '56%'

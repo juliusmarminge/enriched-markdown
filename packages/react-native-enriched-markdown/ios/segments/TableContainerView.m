@@ -242,7 +242,7 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
 #endif
 
 @implementation TableContainerView {
-  RCTUIScrollView *_scrollView;
+  ENRMHorizontalScrollView *_scrollView;
   RCTUIView *_gridContainer;
   NSArray<NSArray<TableCellData *> *> *_rows;
   NSUInteger _colCount;

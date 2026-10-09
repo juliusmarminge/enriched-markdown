@@ -215,7 +215,7 @@ static BOOL ENRMColorIsDark(RCTUIColor *color)
   NSString *_cachedLanguage;
   NSString *_displayLanguage;
   NSString *_fenceChar;
-  RCTUIScrollView *_scrollView;
+  ENRMHorizontalScrollView *_scrollView;
   ENRMCodeBlockContentView *_codeContentView;
   CGSize _codeSize;
   CGFloat _headerLabelLineHeight;

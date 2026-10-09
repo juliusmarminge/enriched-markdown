@@ -1,86 +1,47 @@
 #import "../../ios/utils/ENRMHorizontalScrollView.h"
 #import <XCTest/XCTest.h>
 
-@interface ENRMTestPan : UIPanGestureRecognizer
-@property (nonatomic) CGPoint testVelocity;
-@end
-@implementation ENRMTestPan
-- (CGPoint)velocityInView:(UIView *)view
-{
-  return self.testVelocity;
-}
-@end
-
-@interface ENRMTestHorizontalScroll : ENRMHorizontalScrollView
-@property (nonatomic, strong) ENRMTestPan *testPan;
-@property (nonatomic) BOOL testDecelerating;
-@end
-@implementation ENRMTestHorizontalScroll
-- (UIPanGestureRecognizer *)panGestureRecognizer
-{
-  return self.testPan ?: [super panGestureRecognizer];
-}
-- (BOOL)isDecelerating
-{
-  return self.testDecelerating;
-}
-@end
+static const CGPoint kOutwardPan = {100, 0};
 
 @interface ENRMHorizontalScrollViewTests : XCTestCase
 @end
+
 @implementation ENRMHorizontalScrollViewTests
-- (ENRMTestHorizontalScroll *)scroll
+
+- (void)testSettledLeadingEdgeYieldsOutwardPan
 {
-  ENRMTestHorizontalScroll *scroll = [[ENRMTestHorizontalScroll alloc] initWithFrame:CGRectMake(0, 0, 300, 100)];
-  scroll.contentSize = CGSizeMake(900, 100);
-  scroll.testPan = [[ENRMTestPan alloc] init];
-  scroll.testPan.testVelocity = CGPointMake(100, 0);
-  return scroll;
+  XCTAssertTrue(ENRMShouldYieldOutwardPan(0, 0, NO, kOutwardPan));
 }
-- (void)testSettledLeftBoundaryYieldsOutwardPan
+
+- (void)testPanFromInsideContentIsKept
 {
-  ENRMTestHorizontalScroll *scroll = [self scroll];
-  XCTAssertFalse([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
-  XCTAssertTrue(scroll.bounces);
+  XCTAssertFalse(ENRMShouldYieldOutwardPan(80, 0, NO, kOutwardPan));
 }
-- (void)testReturnFromInsideContentRetainsPanAndBounce
+
+- (void)testInwardPanIsKept
 {
-  ENRMTestHorizontalScroll *scroll = [self scroll];
-  scroll.contentOffset = CGPointMake(80, 0);
-  XCTAssertTrue([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
-  XCTAssertTrue(scroll.bounces);
+  XCTAssertFalse(ENRMShouldYieldOutwardPan(0, 0, NO, CGPointMake(-100, 0)));
 }
-- (void)testInwardPanStillScrollsFromLeftBoundary
+
+- (void)testVerticalPanIsKept
 {
-  ENRMTestHorizontalScroll *scroll = [self scroll];
-  scroll.testPan.testVelocity = CGPointMake(-100, 0);
-  XCTAssertTrue([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
+  XCTAssertFalse(ENRMShouldYieldOutwardPan(0, 0, NO, CGPointMake(20, 100)));
 }
-- (void)testVerticalPanUsesNormalScrollBehavior
+
+- (void)testPanDuringDecelerationIsKept
 {
-  ENRMTestHorizontalScroll *scroll = [self scroll];
-  scroll.testPan.testVelocity = CGPointMake(20, 100);
-  XCTAssertTrue([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
+  XCTAssertFalse(ENRMShouldYieldOutwardPan(0, 0, YES, kOutwardPan));
 }
-- (void)testDeceleratingAtBoundaryDoesNotHandOff
+
+- (void)testPanDuringUnfinishedBounceIsKept
 {
-  ENRMTestHorizontalScroll *scroll = [self scroll];
-  scroll.testDecelerating = YES;
-  XCTAssertTrue([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
+  XCTAssertFalse(ENRMShouldYieldOutwardPan(-12, 0, NO, kOutwardPan));
 }
-- (void)testUnsettledBounceDoesNotHandOff
+
+- (void)testLeadingEdgeIncludesContentInset
 {
-  ENRMTestHorizontalScroll *scroll = [self scroll];
-  scroll.contentOffset = CGPointMake(-12, 0);
-  XCTAssertTrue([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
+  XCTAssertTrue(ENRMShouldYieldOutwardPan(-16, -16, NO, kOutwardPan));
+  XCTAssertFalse(ENRMShouldYieldOutwardPan(0, -16, NO, kOutwardPan));
 }
-- (void)testLeftBoundaryIncludesContentInset
-{
-  ENRMTestHorizontalScroll *scroll = [self scroll];
-  scroll.contentInset = UIEdgeInsetsMake(0, 16, 0, 0);
-  scroll.contentOffset = CGPointMake(-16, 0);
-  XCTAssertFalse([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
-  scroll.contentOffset = CGPointMake(0, 0);
-  XCTAssertTrue([scroll gestureRecognizerShouldBegin:scroll.panGestureRecognizer]);
-}
+
 @end

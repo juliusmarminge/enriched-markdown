@@ -1,30 +1,17 @@
 #import "ENRMHorizontalScrollView.h"
 
-#if !TARGET_OS_OSX
 @implementation ENRMHorizontalScrollView
 
-- (instancetype)initWithFrame:(CGRect)frame
-{
-  self = [super initWithFrame:frame];
-  if (self) {
-    self.bounces = YES;
-  }
-  return self;
-}
-
+#if !TARGET_OS_OSX
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
-  if (gestureRecognizer == self.panGestureRecognizer) {
-    CGPoint velocity = [self.panGestureRecognizer velocityInView:self];
-    CGFloat leftBoundary = -self.adjustedContentInset.left;
-    // Decide only when the pan begins. A pan returning from inside the content keeps its bounce.
-    BOOL atSettledLeftBoundary = !self.isDecelerating && fabs(self.contentOffset.x - leftBoundary) <= 0.5;
-    if (velocity.x > fabs(velocity.y) && atSettledLeftBoundary) {
-      return NO;
-    }
+  if (gestureRecognizer == self.panGestureRecognizer &&
+      ENRMShouldYieldOutwardPan(self.contentOffset.x, -self.adjustedContentInset.left, self.isDecelerating,
+                                [self.panGestureRecognizer velocityInView:self])) {
+    return NO;
   }
   return [super gestureRecognizerShouldBegin:gestureRecognizer];
 }
+#endif
 
 @end
-#endif
