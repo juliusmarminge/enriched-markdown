@@ -1,36 +1,16 @@
 #import "../../ios/segments/ENRMTableIOSGridView.h"
 #import <XCTest/XCTest.h>
 
-@interface ENRMTableIOSGridView (ImagePressTests)
-- (ENRMTableIOSItemHit *)itemAtPoint:(CGPoint)point urlAttribute:(NSString *)attribute;
-- (void)handleTap:(UITapGestureRecognizer *)recognizer;
-@end
-@interface ENRMTableTestTap : UITapGestureRecognizer
-@property (nonatomic) CGPoint testPoint;
-@end
-@implementation ENRMTableTestTap
-- (CGPoint)locationInView:(UIView *)view
-{
-  return self.testPoint;
-}
-- (UIGestureRecognizerState)state
-{
-  return UIGestureRecognizerStateEnded;
-}
-@end
+static NSString *const kImageURL = @"https://example.com/image.png";
+static NSString *const kLinkURL = @"https://example.com/destination";
 
 @interface ENRMTableImagePressTests : XCTestCase
 @end
+
 @implementation ENRMTableImagePressTests
-- (ENRMTableIOSGridView *)gridWithLink:(BOOL)linked
+
+- (ENRMTableIOSGridView *)gridWithCellText:(NSAttributedString *)text
 {
-  NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
-  attachment.bounds = CGRectMake(0, 0, 48, 48);
-  NSMutableAttributedString *text = [[NSAttributedString attributedStringWithAttachment:attachment] mutableCopy];
-  [text addAttributes:@{@"imageURL" : @"https://example.com/image.png", @"imageAltText" : @"Table image"}
-                range:NSMakeRange(0, 1)];
-  if (linked)
-    [text addAttribute:@"linkURL" value:@"https://example.com/destination" range:NSMakeRange(0, 1)];
   ENRMTableIOSRowData *row = [[ENRMTableIOSRowData alloc] init];
   row.cellTexts = @[ text ];
   row.backgroundColor = UIColor.whiteColor;
@@ -45,44 +25,54 @@
                cornerRadius:0];
   return grid;
 }
+
+- (ENRMTableIOSGridView *)gridWithImageLinked:(BOOL)linked
+{
+  NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+  attachment.bounds = CGRectMake(0, 0, 48, 48);
+  NSMutableAttributedString *text = [[NSAttributedString attributedStringWithAttachment:attachment] mutableCopy];
+  [text addAttributes:@{@"imageURL" : kImageURL, @"imageAltText" : @"Table image"} range:NSMakeRange(0, 1)];
+  if (linked)
+    [text addAttribute:@"linkURL" value:kLinkURL range:NSMakeRange(0, 1)];
+  return [self gridWithCellText:text];
+}
+
 - (void)testImageHitPreservesOriginalURLAndAltText
 {
-  ENRMTableIOSItemHit *hit = [[self gridWithLink:NO] itemAtPoint:CGPointMake(30, 30) urlAttribute:@"imageURL"];
-  XCTAssertEqualObjects(hit.url, @"https://example.com/image.png");
+  ENRMTableIOSItemHit *hit = [[self gridWithImageLinked:NO] imageAtPoint:CGPointMake(30, 30)];
+  XCTAssertEqual(hit.kind, ENRMTableIOSItemKindImage);
+  XCTAssertEqualObjects(hit.url, kImageURL);
   XCTAssertEqualObjects(hit.title, @"Table image");
 }
+
+- (void)testImageIsNotALink
+{
+  XCTAssertNil([[self gridWithImageLinked:NO] linkAtPoint:CGPointMake(30, 30)]);
+}
+
 - (void)testCellPaddingDoesNotHitNearestImage
 {
-  ENRMTableIOSGridView *grid = [self gridWithLink:NO];
-  XCTAssertNil([grid itemAtPoint:CGPointMake(8, 30) urlAttribute:@"imageURL"]);
-  XCTAssertNil([grid itemAtPoint:CGPointMake(130, 30) urlAttribute:@"imageURL"]);
-  XCTAssertNil([grid itemAtPoint:CGPointMake(30, 85) urlAttribute:@"imageURL"]);
+  ENRMTableIOSGridView *grid = [self gridWithImageLinked:NO];
+  XCTAssertNil([grid imageAtPoint:CGPointMake(8, 30)]);
+  XCTAssertNil([grid imageAtPoint:CGPointMake(130, 30)]);
+  XCTAssertNil([grid imageAtPoint:CGPointMake(30, 85)]);
 }
-- (void)testImageTapCallsImageCallback
+
+- (void)testLinkedImageIsALink
 {
-  ENRMTableIOSGridView *grid = [self gridWithLink:NO];
-  __block NSString *url, *alt;
-  grid.onImageTap = ^(NSString *value, NSString *label) {
-    url = value;
-    alt = label;
-  };
-  ENRMTableTestTap *tap = [[ENRMTableTestTap alloc] init];
-  tap.testPoint = CGPointMake(30, 30);
-  [grid handleTap:tap];
-  XCTAssertEqualObjects(url, @"https://example.com/image.png");
-  XCTAssertEqualObjects(alt, @"Table image");
+  ENRMTableIOSGridView *grid = [self gridWithImageLinked:YES];
+  ENRMTableIOSItemHit *hit = [grid linkAtPoint:CGPointMake(30, 30)];
+  XCTAssertEqual(hit.kind, ENRMTableIOSItemKindLink);
+  XCTAssertEqualObjects(hit.url, kLinkURL);
+  XCTAssertNil([grid imageAtPoint:CGPointMake(30, 30)]);
 }
-- (void)testLinkedImageKeepsLinkPriority
+
+- (void)testLinkStillResolvesToNearestGlyph
 {
-  ENRMTableIOSGridView *grid = [self gridWithLink:YES];
-  __block NSString *url;
-  __block BOOL imagePressed = NO;
-  grid.onLinkTap = ^(NSString *value) { url = value; };
-  grid.onImageTap = ^(NSString *value, NSString *label) { imagePressed = YES; };
-  ENRMTableTestTap *tap = [[ENRMTableTestTap alloc] init];
-  tap.testPoint = CGPointMake(30, 30);
-  [grid handleTap:tap];
-  XCTAssertEqualObjects(url, @"https://example.com/destination");
-  XCTAssertFalse(imagePressed);
+  NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:@"Go"];
+  [text addAttribute:@"linkURL" value:kLinkURL range:NSMakeRange(0, 2)];
+  ENRMTableIOSGridView *grid = [self gridWithCellText:text];
+  XCTAssertEqualObjects([grid linkAtPoint:CGPointMake(100, 20)].url, kLinkURL);
 }
+
 @end

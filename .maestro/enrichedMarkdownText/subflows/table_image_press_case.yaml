@@ -1,0 +1,23 @@
+appId: swmansion.enriched.markdown.example
+---
+# Renders VALUE in the Playground, taps the table image, expects an alert TITLE with BODY.
+- runFlow:
+    file: 'set_enriched_text_value.yaml'
+    env:
+      VALUE: ${VALUE}
+- tapOn:
+    id: blur-button
+- scrollUntilVisible:
+    element:
+      id: preview-text
+    direction: DOWN
+- tapOn:
+    id: preview-text
+    point: '50%,65%'
+- assertVisible: ${TITLE}
+- assertVisible: ${BODY}
+- tapOn: OK
+- scrollUntilVisible:
+    element:
+      id: set-markdown-button
+    direction: UP

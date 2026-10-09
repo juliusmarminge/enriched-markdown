@@ -152,8 +152,7 @@
   return NO;
 }
 
-static ENRMTableIOSItemHit *itemInAttributedString(NSAttributedString *text, CGRect textRect, CGPoint point,
-                                                   NSString *urlAttribute)
+static ENRMTableIOSItemHit *itemInAttributedString(NSAttributedString *text, CGRect textRect, CGPoint point)
 {
   if (text.length == 0)
     return nil;
@@ -178,27 +177,29 @@ static ENRMTableIOSItemHit *itemInAttributedString(NSAttributedString *text, CGR
     return nil;
 
   NSRange itemRange;
-  NSString *url = [text attribute:urlAttribute
-                          atIndex:charIndex
-            longestEffectiveRange:&itemRange
-                          inRange:NSMakeRange(0, text.length)];
-  if (!url)
+  NSRange whole = NSMakeRange(0, text.length);
+  NSString *linkURL = [text attribute:@"linkURL" atIndex:charIndex longestEffectiveRange:&itemRange inRange:whole];
+  NSString *imageURL =
+      linkURL ? nil : [text attribute:@"imageURL" atIndex:charIndex longestEffectiveRange:&itemRange inRange:whole];
+  if (!linkURL && !imageURL)
     return nil;
+
   NSRange glyphRange = [layoutManager glyphRangeForCharacterRange:itemRange actualCharacterRange:NULL];
   CGRect frame = [layoutManager boundingRectForGlyphRange:glyphRange inTextContainer:textContainer];
-  if (!CGRectContainsPoint(frame, local))
+  // Links keep nearest-glyph hits; an image needs the tap inside its bounds.
+  if (imageURL && !CGRectContainsPoint(frame, local))
     return nil;
 
   ENRMTableIOSItemHit *hit = [[ENRMTableIOSItemHit alloc] init];
-  hit.url = url;
-  hit.title = [urlAttribute isEqualToString:@"imageURL"]
-                  ? [text attribute:@"imageAltText" atIndex:charIndex effectiveRange:NULL]
-                  : linkTitleAtIndex(text, charIndex);
+  hit.kind = linkURL ? ENRMTableIOSItemKindLink : ENRMTableIOSItemKindImage;
+  hit.url = linkURL ?: imageURL;
+  hit.title = linkURL ? linkTitleAtIndex(text, charIndex)
+                      : [text attribute:@"imageAltText" atIndex:charIndex effectiveRange:NULL];
   hit.frame = CGRectOffset(frame, textRect.origin.x, textRect.origin.y);
   return hit;
 }
 
-- (ENRMTableIOSItemHit *)itemAtPoint:(CGPoint)point urlAttribute:(NSString *)urlAttribute
+- (ENRMTableIOSItemHit *)itemAtPoint:(CGPoint)point
 {
   CGFloat rowY, rowH, colX, colW;
   NSAttributedString *text;
@@ -210,12 +211,19 @@ static ENRMTableIOSItemHit *itemInAttributedString(NSAttributedString *text, CGR
   if (!CGRectContainsPoint(textRect, point))
     return nil;
 
-  return itemInAttributedString(text, textRect, point, urlAttribute);
+  return itemInAttributedString(text, textRect, point);
 }
 
 - (ENRMTableIOSItemHit *)linkAtPoint:(CGPoint)point
 {
-  return [self itemAtPoint:point urlAttribute:@"linkURL"];
+  ENRMTableIOSItemHit *hit = [self itemAtPoint:point];
+  return hit.kind == ENRMTableIOSItemKindLink ? hit : nil;
+}
+
+- (ENRMTableIOSItemHit *)imageAtPoint:(CGPoint)point
+{
+  ENRMTableIOSItemHit *hit = [self itemAtPoint:point];
+  return hit.kind == ENRMTableIOSItemKindImage ? hit : nil;
 }
 
 #pragma mark - Gesture handlers
@@ -231,17 +239,16 @@ static ENRMTableIOSItemHit *itemInAttributedString(NSAttributedString *text, CGR
 
 - (void)handleTap:(UITapGestureRecognizer *)recognizer
 {
-  if (recognizer.state == UIGestureRecognizerStateEnded) {
-    CGPoint point = [recognizer locationInView:self];
-    ENRMTableIOSItemHit *link = [self linkAtPoint:point];
-    if (link) {
-      if (self.onLinkTap)
-        self.onLinkTap(link.url);
-      return;
-    }
-    ENRMTableIOSItemHit *image = [self itemAtPoint:point urlAttribute:@"imageURL"];
-    if (image && self.onImageTap)
-      self.onImageTap(image.url, image.title ?: @"");
+  if (recognizer.state != UIGestureRecognizerStateEnded)
+    return;
+  ENRMTableIOSItemHit *hit = [self itemAtPoint:[recognizer locationInView:self]];
+  if (!hit)
+    return;
+  if (hit.kind == ENRMTableIOSItemKindLink) {
+    if (self.onLinkTap)
+      self.onLinkTap(hit.url);
+  } else if (self.onImageTap) {
+    self.onImageTap(hit.url, hit.title ?: @"");
   }
 }
 

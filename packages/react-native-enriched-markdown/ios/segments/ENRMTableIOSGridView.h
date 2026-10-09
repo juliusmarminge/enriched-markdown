@@ -9,8 +9,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^ENRMTableIOSLinkBlock)(NSString *url);
 
+typedef NS_ENUM(NSInteger, ENRMTableIOSItemKind) {
+  ENRMTableIOSItemKindLink,
+  ENRMTableIOSItemKindImage,
+};
+
 /// An interactive item found under a point of the grid.
 @interface ENRMTableIOSItemHit : NSObject
+@property (nonatomic, assign) ENRMTableIOSItemKind kind;
 @property (nonatomic, copy) NSString *url;
 /// The link's visible label, or an image's alt text.
 @property (nonatomic, copy, nullable) NSString *title;
@@ -35,6 +41,8 @@ typedef void (^ENRMTableIOSLinkBlock)(NSString *url);
 /// interaction, so the long-press recognizer must not take that touch.
 @property (nonatomic, copy, nullable) BOOL (^hasLinkContextMenu)(NSString *url);
 - (nullable ENRMTableIOSItemHit *)linkAtPoint:(CGPoint)point;
+/// Unlinked image whose glyph bounds contain `point`; a linked image is a link.
+- (nullable ENRMTableIOSItemHit *)imageAtPoint:(CGPoint)point;
 
 - (void)updateWithRows:(NSArray<ENRMTableIOSRowData *> *)rows
              columnWidths:(NSArray<NSNumber *> *)columnWidths
