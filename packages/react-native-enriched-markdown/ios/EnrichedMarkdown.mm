@@ -422,6 +422,12 @@ static char kENRMSegmentFadeAnimatorKey;
       [strongSelf emitLinkLongPress:url];
   };
 
+  view.onImagePress = ^(NSString *url, NSString *altText) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && strongSelf->_enableImagePress && url)
+      [strongSelf emitImagePress:url altText:altText];
+  };
+
   [view applyBlockquoteNode:blockquoteSegment.blockquoteNode];
   return view;
 }
@@ -990,6 +996,12 @@ static char kENRMSegmentFadeAnimatorKey;
     EnrichedMarkdown *strongSelf = weakSelf;
     if (strongSelf && url)
       [strongSelf emitLinkLongPress:url];
+  };
+
+  tableView.onImagePress = ^(NSString *url, NSString *altText) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && strongSelf->_enableImagePress && url)
+      [strongSelf emitImagePress:url altText:altText];
   };
 
   [tableView applyTableNode:tableSegment.tableNode];

@@ -61,6 +61,8 @@ const INLINE_IMAGE_URI = Image.resolveAssetSource(
 ).uri;
 
 const REFERENCE_REGEX = /ref:[a-z]+/;
+const DEFAULT_INPUT_LINE_HEIGHT = undefined;
+const TALL_INPUT_LINE_HEIGHT = 36;
 
 export default function PlaygroundScreen() {
   const headerHeight = useHeaderHeight();
@@ -73,6 +75,9 @@ export default function PlaygroundScreen() {
   const [setMarkdownModalVisible, setSetMarkdownModalVisible] = useState(false);
   const [rawInput, setRawInput] = useState('');
   const [recognitionMode, setRecognitionMode] = useState(0);
+  const [inputLineHeight, setInputLineHeight] = useState<number | undefined>(
+    DEFAULT_INPUT_LINE_HEIGHT
+  );
   const handleGetMarkdown = useCallback(async () => {
     const md = await inputRef.current?.getMarkdown();
     Alert.alert('Markdown', md ?? '(empty)', [{ text: 'OK' }]);
@@ -159,6 +164,30 @@ export default function PlaygroundScreen() {
         </View>
         <View style={styles.buttonRow}>
           <TouchableOpacity
+            style={[
+              styles.button,
+              inputLineHeight === TALL_INPUT_LINE_HEIGHT && styles.buttonActive,
+            ]}
+            onPress={() =>
+              setInputLineHeight((current) =>
+                current === TALL_INPUT_LINE_HEIGHT
+                  ? DEFAULT_INPUT_LINE_HEIGHT
+                  : TALL_INPUT_LINE_HEIGHT
+              )
+            }
+            testID="line-height-toggle"
+          >
+            <Text
+              style={[
+                styles.buttonText,
+                inputLineHeight === TALL_INPUT_LINE_HEIGHT &&
+                  styles.buttonTextActive,
+              ]}
+            >
+              Line height {inputLineHeight ?? 'auto'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.button}
             onPress={async () => {
               const current = (await inputRef.current?.getMarkdown()) ?? '';
@@ -191,11 +220,11 @@ export default function PlaygroundScreen() {
             ref={inputRef}
             placeholder="Type markdown here..."
             placeholderTextColor="#9CA3AF"
-            style={
-              sizeMode === 'max'
-                ? { ...styles.input, ...styles.inputMax }
-                : styles.input
-            }
+            style={[
+              styles.input,
+              sizeMode === 'max' && styles.inputMax,
+              inputLineHeight != null && { lineHeight: inputLineHeight },
+            ]}
             markdownStyle={MARKDOWN_STYLE}
             onChangeState={setState}
             onChangeMarkdown={setMarkdown}
