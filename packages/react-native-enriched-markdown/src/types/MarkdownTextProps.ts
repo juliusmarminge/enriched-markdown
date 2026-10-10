@@ -11,6 +11,14 @@ import type {
   CodeBlockPressEvent,
 } from './events';
 
+/** Patterns for `linkRecognition`. An omitted key is off. */
+export interface LinkRecognition {
+  /** Matched inside plain-text runs. */
+  text?: RegExp;
+  /** Must match an inline-code span's whole content. */
+  inlineCode?: RegExp;
+}
+
 export interface LinkPillContent {
   label?: string;
   iconUri?: string;
@@ -146,24 +154,6 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * @platform ios, android, web
    */
   markdown: string;
-  /**
-   * Recognize nonempty matches within parsed plain-text nodes as native links.
-   * The exact matched text is the URL. Existing links and code are excluded.
-   * Uses the input linkRegex conventions: native regex source plus i/s flags.
-   * Other JS flags are not transported; all non-overlapping matches are found.
-   * Patterns must work in NSRegularExpression and java.util.regex.Pattern.
-   * Undefined, null, rejected lookbehinds and invalid native patterns disable it.
-   * @default null
-   * @platform ios, android
-   */
-  linkRegex?: RegExp | null;
-  /**
-   * Recognize an entire inline-code span as a native link, preserving its code
-   * node and text. Partial matches are ignored. Uses linkRegex conventions.
-   * @default null
-   * @platform ios, android
-   */
-  inlineCodeLinkRegex?: RegExp | null;
   /**
    * Style configuration for markdown elements.
    * @platform ios, android, web
@@ -430,6 +420,15 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * @platform ios, android
    */
   linkPillContent?: Record<string, LinkPillContent>;
+  /**
+   * Turns regex matches in plain text (`text`) and whole inline-code spans
+   * (`inlineCode`) into links. The matched text is the URL; the source is unchanged.
+   *
+   * @example
+   * linkRecognition={{ text: /#\d+/, inlineCode: /[\w./-]+\.tsx?/ }}
+   * @platform ios, android, web
+   */
+  linkRecognition?: LinkRecognition;
   /**
    * Controls the built-in items added to the native text selection menu and
    * lets you localize their labels. Custom app-provided actions are controlled

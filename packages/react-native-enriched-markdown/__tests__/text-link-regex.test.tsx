@@ -4,6 +4,8 @@ import { createRoot } from 'test-renderer';
 import type { TestInstance } from 'test-renderer';
 import { EnrichedMarkdownText } from '../src/native/EnrichedMarkdownText';
 import {
+  isLinkRecognitionEqual,
+  toNativeLinkRecognition,
   toNativeRegexConfig,
   toNativeTextLinkRegexConfig,
 } from '../src/utils/regexParser';
@@ -38,8 +40,8 @@ it.each(['commonmark', 'github'] as const)(
     const native = renderNative(
       <EnrichedMarkdownText markdown="ref:one `ref:two`" flavor={flavor} />
     );
-    expect(native.props.linkRegex.isDisabled).toBe(true);
-    expect(native.props.inlineCodeLinkRegex.isDisabled).toBe(true);
+    expect(native.props.linkRecognition.text.isDisabled).toBe(true);
+    expect(native.props.linkRecognition.inlineCode.isDisabled).toBe(true);
   }
 );
 
@@ -51,19 +53,18 @@ it.each(['commonmark', 'github'] as const)(
       <EnrichedMarkdownText
         markdown={markdown}
         flavor={flavor}
-        linkRegex={/ref:\w+/gims}
-        inlineCodeLinkRegex={/ref:[\w-]+/i}
+        linkRecognition={{ text: /ref:\w+/gims, inlineCode: /ref:[\w-]+/i }}
       />
     );
     expect(native.props.markdown).toBe(markdown);
-    expect(native.props.linkRegex).toEqual({
+    expect(native.props.linkRecognition.text).toEqual({
       pattern: 'ref:\\w+',
       caseInsensitive: true,
       dotAll: true,
       isDisabled: false,
       isDefault: false,
     });
-    expect(native.props.inlineCodeLinkRegex).toEqual({
+    expect(native.props.linkRecognition.inlineCode).toEqual({
       pattern: 'ref:[\\w-]+',
       caseInsensitive: true,
       dotAll: false,
@@ -73,8 +74,7 @@ it.each(['commonmark', 'github'] as const)(
   }
 );
 
-it('null and undefined disable rendering recognition, leaving input defaults intact', () => {
-  expect(toNativeTextLinkRegexConfig(null).isDisabled).toBe(true);
+it('an omitted pattern disables rendering recognition, leaving input defaults intact', () => {
   expect(toNativeTextLinkRegexConfig(undefined).isDisabled).toBe(true);
   expect(toNativeRegexConfig(undefined).isDefault).toBe(true);
 });
@@ -100,4 +100,18 @@ it('ignores JavaScript execution state and only transports supported i/s options
     isDefault: false,
   });
   expect(regex.lastIndex).toBe(14);
+});
+
+it('keeps the native prop object when an inline config is equal by value', () => {
+  const first = toNativeLinkRecognition({
+    text: /#\d+/,
+    inlineCode: undefined,
+  });
+  const second = toNativeLinkRecognition({ text: /#\d+/ });
+  expect(isLinkRecognitionEqual(first, second)).toBe(true);
+  expect(
+    isLinkRecognitionEqual(first, toNativeLinkRecognition({ text: /#\d+/i }))
+  ).toBe(false);
+  expect(isLinkRecognitionEqual(undefined, second)).toBe(false);
+  expect(toNativeLinkRecognition(undefined).text.isDisabled).toBe(true);
 });

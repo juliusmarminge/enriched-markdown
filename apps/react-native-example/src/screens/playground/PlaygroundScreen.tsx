@@ -285,8 +285,11 @@ export default function PlaygroundScreen() {
               markdown={markdown}
               markdownStyle={MARKDOWN_STYLE}
               flavor={recognitionMode === 1 ? 'commonmark' : 'github'}
-              linkRegex={recognitionMode ? REFERENCE_REGEX : null}
-              inlineCodeLinkRegex={recognitionMode ? REFERENCE_REGEX : null}
+              linkRecognition={
+                recognitionMode
+                  ? { text: REFERENCE_REGEX, inlineCode: REFERENCE_REGEX }
+                  : undefined
+              }
               spoilerOverlay="solid"
               md4cFlags={{
                 underline: underlineEnabled,

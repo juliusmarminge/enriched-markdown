@@ -2,7 +2,11 @@ import { useMemo, useCallback, useRef, useEffect } from 'react';
 import EnrichedMarkdownTextNativeComponent from '../EnrichedMarkdownTextNativeComponent';
 import type { MarkdownStyleInternal } from '../EnrichedMarkdownTextNativeComponent';
 import EnrichedMarkdownNativeComponent from '../EnrichedMarkdownNativeComponent';
-import { toNativeTextLinkRegexConfig } from '../utils/regexParser';
+import {
+  isLinkRecognitionEqual,
+  toNativeLinkRecognition,
+  type LinkRecognitionNative,
+} from '../utils/regexParser';
 import { normalizeMarkdownStyle } from '../normalizeMarkdownStyle';
 import {
   isLinkPillContentEqual,
@@ -131,8 +135,6 @@ const defaultMd4cFlags: Md4cFlags = {
 
 export const EnrichedMarkdownText = ({
   markdown,
-  linkRegex: _linkRegex,
-  inlineCodeLinkRegex: _inlineCodeLinkRegex,
   markdownStyle = {},
   containerStyle,
   onLinkPress,
@@ -158,6 +160,7 @@ export const EnrichedMarkdownText = ({
   linkContextMenuItems,
   imageRequestHeaders,
   linkPillContent,
+  linkRecognition,
   selectionMenuConfig,
   accessibilityLabels,
   selectionColor,
@@ -169,14 +172,18 @@ export const EnrichedMarkdownText = ({
   ellipsizeMode,
   ...rest
 }: EnrichedMarkdownTextProps) => {
-  const linkRegex = useMemo(
-    () => toNativeTextLinkRegexConfig(_linkRegex),
-    [_linkRegex]
+  // An equal config keeps the previous object, so an inline literal does not
+  // re-send the prop on every render.
+  const linkRecognitionRef = useRef<LinkRecognitionNative | undefined>(
+    undefined
   );
-  const inlineCodeLinkRegex = useMemo(
-    () => toNativeTextLinkRegexConfig(_inlineCodeLinkRegex),
-    [_inlineCodeLinkRegex]
-  );
+  const nativeLinkRecognition = useMemo(() => {
+    const next = toNativeLinkRecognition(linkRecognition);
+    if (!isLinkRecognitionEqual(linkRecognitionRef.current, next)) {
+      linkRecognitionRef.current = next;
+    }
+    return linkRecognitionRef.current!;
+  }, [linkRecognition]);
   const normalizedStyleRef = useRef<MarkdownStyleInternal | null>(null);
   const normalized = normalizeMarkdownStyle(markdownStyle);
   // normalizeMarkdownStyle returns cached objects for structurally equal inputs,
@@ -405,8 +412,7 @@ export const EnrichedMarkdownText = ({
 
   const sharedProps = {
     markdown,
-    linkRegex,
-    inlineCodeLinkRegex,
+    linkRecognition: nativeLinkRecognition,
     markdownStyle: normalizedStyle,
     onLinkPress: handleLinkPress,
     onLinkLongPress: handleLinkLongPress,

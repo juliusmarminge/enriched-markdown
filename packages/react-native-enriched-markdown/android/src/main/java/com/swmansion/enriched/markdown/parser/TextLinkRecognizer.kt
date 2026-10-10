@@ -1,9 +1,8 @@
 package com.swmansion.enriched.markdown.parser
 
-import com.swmansion.enriched.markdown.input.autolink.LinkRegexConfig
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode.NodeType
+import com.swmansion.enriched.markdown.utils.common.LinkRegexConfig
 import java.util.regex.Pattern
-import java.util.regex.PatternSyntaxException
 
 /** Native regex parity with iOS ENRMTextLinkRecognizer, applied before AST consumers. */
 object TextLinkRecognizer {
@@ -12,20 +11,20 @@ object TextLinkRecognizer {
     linkRegex: LinkRegexConfig? = null,
     inlineCodeLinkRegex: LinkRegexConfig? = null,
   ): MarkdownASTNode {
-    val textPattern = compile(linkRegex)
-    val codePattern = compile(inlineCodeLinkRegex, wholeSpan = true)
+    val textPattern = linkRegex?.compiled
+    val codePattern = inlineCodeLinkRegex?.compiledWholeSpan
     if (textPattern == null && codePattern == null) return ast
 
-    fun link(
-      child: MarkdownASTNode,
-      url: String,
-    ): MarkdownASTNode =
-      MarkdownASTNode(
-        NodeType.Link,
-        attributes = mapOf("url" to url, "recognizedLink" to "true"),
-        children = listOf(child),
-      )
+    val pass = Pass(textPattern, codePattern)
+    // Documents are containers, so recognition never changes their root type.
+    val children = pass.transformChildren(ast.children)
+    return if (children === ast.children) ast else ast.copy(children = children)
+  }
 
+  private class Pass(
+    private val textPattern: Pattern?,
+    private val codePattern: Pattern?,
+  ) {
     fun transform(node: MarkdownASTNode): List<MarkdownASTNode> {
       when (node.type) {
         NodeType.Link, NodeType.CodeBlock, NodeType.Image, NodeType.Video,
@@ -63,27 +62,35 @@ object TextLinkRecognizer {
         }
 
         else -> {
-          return listOf(node.copy(children = node.children.flatMap { transform(it) }))
+          val children = transformChildren(node.children)
+          return listOf(if (children === node.children) node else node.copy(children = children))
         }
       }
     }
 
-    // Documents are containers, so recognition never changes their root type.
-    return ast.copy(children = ast.children.flatMap { transform(it) })
-  }
-
-  private fun compile(
-    config: LinkRegexConfig?,
-    wholeSpan: Boolean = false,
-  ): Pattern? {
-    if (config == null || config.isDisabled || config.isDefault || config.pattern.isEmpty()) return null
-    var flags = 0
-    if (config.caseInsensitive) flags = flags or Pattern.CASE_INSENSITIVE
-    if (config.dotAll) flags = flags or Pattern.DOTALL
-    return try {
-      Pattern.compile(if (wholeSpan) "\\A(?:${config.pattern})\\z" else config.pattern, flags)
-    } catch (_: PatternSyntaxException) {
-      null
+    /** Returns the same list when no child changed, so untouched subtrees are not copied. */
+    fun transformChildren(children: List<MarkdownASTNode>): List<MarkdownASTNode> {
+      var result: MutableList<MarkdownASTNode>? = null
+      children.forEachIndexed { index, child ->
+        val transformed = transform(child)
+        val unchanged = transformed.size == 1 && transformed[0] === child
+        if (result == null) {
+          if (unchanged) return@forEachIndexed
+          result = children.subList(0, index).toMutableList()
+        }
+        result.addAll(transformed)
+      }
+      return result ?: children
     }
+
+    private fun link(
+      child: MarkdownASTNode,
+      url: String,
+    ): MarkdownASTNode =
+      MarkdownASTNode(
+        NodeType.Link,
+        attributes = mapOf("url" to url, "recognizedLink" to "true"),
+        children = listOf(child),
+      )
   }
 }

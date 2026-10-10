@@ -13,7 +13,6 @@ import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.viewmanagers.EnrichedMarkdownManagerDelegate
 import com.facebook.react.viewmanagers.EnrichedMarkdownManagerInterface
 import com.facebook.yoga.YogaMeasureMode
-import com.swmansion.enriched.markdown.parser.parseTextLinkRegex
 import com.swmansion.enriched.markdown.spoiler.SpoilerOverlay
 import com.swmansion.enriched.markdown.utils.common.CodeBlockStreamingMode
 import com.swmansion.enriched.markdown.utils.common.TableStreamingMode
@@ -30,6 +29,7 @@ import com.swmansion.enriched.markdown.utils.common.parseAccessibilityLabels
 import com.swmansion.enriched.markdown.utils.common.parseContextMenuItems
 import com.swmansion.enriched.markdown.utils.common.parseImageRequestHeaders
 import com.swmansion.enriched.markdown.utils.common.parseLinkPillContent
+import com.swmansion.enriched.markdown.utils.common.parseLinkRecognition
 import com.swmansion.enriched.markdown.utils.common.parseMd4cFlags
 import com.swmansion.enriched.markdown.utils.common.parseSelectionMenuConfig
 import com.swmansion.enriched.markdown.utils.text.interaction.TaskListToggleUtils
@@ -154,20 +154,14 @@ class EnrichedMarkdownManager :
     view?.setSelectionHandleColor(value)
   }
 
-  @ReactProp(name = "linkRegex")
-  override fun setLinkRegex(
+  @ReactProp(name = "linkRecognition")
+  override fun setLinkRecognition(
     view: EnrichedMarkdown?,
     value: ReadableMap?,
   ) {
-    view?.setLinkRegex(parseTextLinkRegex(value))
-  }
-
-  @ReactProp(name = "inlineCodeLinkRegex")
-  override fun setInlineCodeLinkRegex(
-    view: EnrichedMarkdown?,
-    value: ReadableMap?,
-  ) {
-    view?.setInlineCodeLinkRegex(parseTextLinkRegex(value))
+    val recognition = parseLinkRecognition(value)
+    view?.setLinkRegex(recognition.text)
+    view?.setInlineCodeLinkRegex(recognition.inlineCode)
   }
 
   @ReactProp(name = "md4cFlags")

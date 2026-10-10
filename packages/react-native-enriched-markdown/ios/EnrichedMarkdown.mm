@@ -185,8 +185,8 @@ static char kENRMSegmentFadeAnimatorKey;
     _parser = [[ENRMMarkdownParser alloc] init];
     _md4cFlags = [EnrichedMarkdown flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
-    _linkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRegex);
-    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->inlineCodeLinkRegex);
+    _linkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.text);
+    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.inlineCode);
     _segmentViews = [NSMutableArray array];
     _segmentSignatures = [NSMutableArray array];
     __weak __typeof(self) weakLatexSelf = self;
@@ -1173,15 +1173,13 @@ static char kENRMSegmentFadeAnimatorKey;
     _dirtyFlags |= ENRMDirtyRecreateSegments | ENRMDirtyForceHeight | ENRMDirtyRender;
   }
 
-  ENRMLinkRegexConfig *linkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRegex);
-  ENRMLinkRegexConfig *inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.inlineCodeLinkRegex);
-  if ((_linkRegex || linkRegex) && ![_linkRegex isEqualToConfig:linkRegex]) {
-    _linkRegex = linkRegex;
+  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.text, newViewProps.linkRecognition.text)) {
+    _linkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.text);
     _dirtyFlags |= ENRMDirtyRender;
     _dirtyFlags |= ENRMDirtyForceHeight;
   }
-  if ((_inlineCodeLinkRegex || inlineCodeLinkRegex) && ![_inlineCodeLinkRegex isEqualToConfig:inlineCodeLinkRegex]) {
-    _inlineCodeLinkRegex = inlineCodeLinkRegex;
+  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.inlineCode, newViewProps.linkRecognition.inlineCode)) {
+    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.inlineCode);
     _dirtyFlags |= ENRMDirtyRender;
     _dirtyFlags |= ENRMDirtyForceHeight;
   }
@@ -1378,8 +1376,8 @@ static char kENRMSegmentFadeAnimatorKey;
   _config = nil;
   _md4cFlags = [EnrichedMarkdown flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
-  _linkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRegex);
-  _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->inlineCodeLinkRegex);
+  _linkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.text);
+  _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.inlineCode);
   _maxFontSizeMultiplier = 0;
   _allowTrailingMargin = NO;
   _streamingAnimation = NO;

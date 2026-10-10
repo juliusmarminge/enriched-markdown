@@ -182,11 +182,12 @@ static inline CGSize ENRMMeasureMarkdownViewFree(const PropsT &typedProps, CGFlo
 
     ENRMMd4cFlags *flags = ENRMMd4cFlagsFromProps(typedProps.md4cFlags);
     ENRMMarkdownParser *parser = [[ENRMMarkdownParser alloc] init];
-    MarkdownASTNode *ast = [parser parseMarkdown:markdown
-                                           flags:flags
-                                           isGFM:typedProps.isGFM
-                                       linkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRegex)
-                             inlineCodeLinkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.inlineCodeLinkRegex)];
+    MarkdownASTNode *ast =
+        [parser parseMarkdown:markdown
+                          flags:flags
+                          isGFM:typedProps.isGFM
+                      linkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.text)
+            inlineCodeLinkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.inlineCode)];
     if (!ast) {
       return fallback;
     }
@@ -264,11 +265,12 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
 
     ENRMMd4cFlags *flags = ENRMMd4cFlagsFromProps(typedProps.md4cFlags);
     ENRMMarkdownParser *parser = [[ENRMMarkdownParser alloc] init];
-    MarkdownASTNode *ast = [parser parseMarkdown:markdown
-                                           flags:flags
-                                           isGFM:typedProps.isGFM
-                                       linkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRegex)
-                             inlineCodeLinkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.inlineCodeLinkRegex)];
+    MarkdownASTNode *ast =
+        [parser parseMarkdown:markdown
+                          flags:flags
+                          isGFM:typedProps.isGFM
+                      linkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.text)
+            inlineCodeLinkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.inlineCode)];
     if (!ast) {
       return fallback;
     }

@@ -91,27 +91,27 @@ The Markdown content to render. Which syntax elements are recognized depends on 
 
 <LivePreview src={MarkdownSrc} />
 
-### `linkRegex` and `inlineCodeLinkRegex`
+### `linkRecognition`
 
-Optional consumer patterns for native link recognition in both CommonMark and GitHub flavors. Both default to disabled; `undefined` and `null` disable recognition.
+Opt-in link recognition for text that is not written as a Markdown link, such as `#1234`, `@name`, `$skill` or a file path. Off by default. Works in both flavors on every platform.
 
-`linkRegex` finds every nonempty, non-overlapping match within individual parsed plain-text nodes. It does not match across formatting boundaries or inside existing Markdown links, autolinks, inline code, block code, media or math. `inlineCodeLinkRegex` recognizes only nonempty matches covering an entire inline-code span, retaining the code node and its formatting. Partial code matches are ignored.
+| Key | Type | Matches |
+| --- | ---- | ------- |
+| `text` | `RegExp` | Every nonempty, non-overlapping match inside a plain-text run |
+| `inlineCode` | `RegExp` | An inline-code span whose whole content matches; the span keeps its code formatting |
 
-Recognized links use the exact matched rendered text as their URL, without normalization. They use existing `linkVariants`, `onLinkPress` and `onLinkLongPress` handling. Consumers own recognition patterns, styles and routing. The Markdown source and copy semantics are preserved.
+A recognized link's URL is the matched text itself, so `linkVariants`, `linkPillContent`, `linkContextMenuItems`, `onLinkPress` and `onLinkLongPress` apply to it like to any other link. Existing links, autolinks, code blocks, images, video and math are never touched. The Markdown source is unchanged: copying, including Copy as Markdown, returns the original text without link syntax.
 
-| Prop | Type | Default | Platform |
-| ---- | ---- | ------- | -------- |
-| `linkRegex` | `RegExp \| null` | Disabled | iOS, Android |
-| `inlineCodeLinkRegex` | `RegExp \| null` | Disabled | iOS, Android |
+Matching happens per parsed text run, after Markdown parsing, so a pattern cannot match across formatting. `__init__.py` as plain text is split by emphasis parsing and will not match, while `` `__init__.py` `` as inline code matches whole. With the `latexMath` flag on (the default), two `$` on one line form a math span, so `$deploy ... $test` is math, not two skills; turn the flag off or escape the `$` in such content.
 
-The native transport follows `EnrichedMarkdownTextInput.linkRegex`: only regex source, case-insensitive `i`, and dot-all `s` are transported. Other JavaScript flags and `lastIndex` are ignored. Patterns must compile with both `NSRegularExpression` and `java.util.regex.Pattern`. Rejected variable-width lookbehinds and invalid native expressions disable that recognizer.
+Only the regex source and the `i` and `s` flags are used. Patterns must be valid for `NSRegularExpression` and `java.util.regex.Pattern` as well as JavaScript; an invalid pattern turns that recognizer off. This is different from the input's `linkRegex`, which detects URLs and is on by default. Pass the object inline or hoisted as you like: an equal config does not re-send the prop.
 
 ```tsx
 <EnrichedMarkdownText
-  markdown="ref:one and `ref:two`"
-  linkRegex={/ref:[a-z]+/i}
-  inlineCodeLinkRegex={/ref:[a-z]+/i}
-  onLinkPress={({ url }) => routeReference(url)}
+  markdown="Fixed in #1284, see `src/App.tsx`"
+  linkRecognition={{ text: /#\d+/, inlineCode: /[\w./-]+\.tsx?/ }}
+  markdownStyle={{ linkVariants: { '^#\\d+$': { pill: true } } }}
+  onLinkPress={({ url }) => openReference(url)}
 />
 ```
 

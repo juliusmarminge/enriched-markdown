@@ -1,8 +1,8 @@
 package com.swmansion.enriched.markdown.parser
 
 import android.util.Log
-import com.swmansion.enriched.markdown.input.autolink.LinkRegexConfig
 import com.swmansion.enriched.markdown.utils.common.FeatureFlags
+import com.swmansion.enriched.markdown.utils.common.LinkRegexConfig
 
 data class Md4cFlags(
   val underline: Boolean = false,

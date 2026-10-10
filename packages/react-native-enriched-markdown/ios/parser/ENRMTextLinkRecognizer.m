@@ -1,5 +1,26 @@
 #import "ENRMTextLinkRecognizer.h"
 
+ENRMLinkRegexConfig *ENRMCachedTextLinkRegexConfig(NSString *pattern, BOOL caseInsensitive, BOOL dotAll)
+{
+  static NSCache<NSString *, ENRMLinkRegexConfig *> *cache;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    cache = [[NSCache alloc] init];
+    cache.countLimit = 64;
+  });
+  NSString *key = [NSString stringWithFormat:@"%d%d%@", caseInsensitive, dotAll, pattern];
+  ENRMLinkRegexConfig *config = [cache objectForKey:key];
+  if (!config) {
+    config = [[ENRMLinkRegexConfig alloc] initWithPattern:pattern
+                                          caseInsensitive:caseInsensitive
+                                                   dotAll:dotAll
+                                               isDisabled:NO
+                                                isDefault:NO];
+    [cache setObject:config forKey:key];
+  }
+  return config;
+}
+
 static MarkdownASTNode *ENRMRecognizedLink(MarkdownASTNode *child, NSString *url)
 {
   MarkdownASTNode *link = [[MarkdownASTNode alloc] initWithType:MarkdownNodeTypeLink];
@@ -70,11 +91,22 @@ static NSArray<MarkdownASTNode *> *ENRMRecognizeNode(MarkdownASTNode *node, NSRe
     }
 
     default: {
-      NSMutableArray<MarkdownASTNode *> *children = [NSMutableArray array];
-      for (MarkdownASTNode *child in node.children) {
-        [children addObjectsFromArray:ENRMRecognizeNode(child, textRegex, codeRegex)];
+      // Rebuild the children array only once a child actually changed.
+      NSArray<MarkdownASTNode *> *original = node.children;
+      NSMutableArray<MarkdownASTNode *> *children = nil;
+      for (NSUInteger index = 0; index < original.count; index++) {
+        MarkdownASTNode *child = original[index];
+        NSArray<MarkdownASTNode *> *transformed = ENRMRecognizeNode(child, textRegex, codeRegex);
+        BOOL unchanged = transformed.count == 1 && transformed[0] == child;
+        if (!children) {
+          if (unchanged)
+            continue;
+          children = [[original subarrayWithRange:NSMakeRange(0, index)] mutableCopy];
+        }
+        [children addObjectsFromArray:transformed];
       }
-      node.children = children;
+      if (children)
+        node.children = children;
       return @[ node ];
     }
   }
@@ -84,14 +116,9 @@ void ENRMRecognizeTextLinks(MarkdownASTNode *ast, ENRMLinkRegexConfig *linkRegex
                             ENRMLinkRegexConfig *inlineCodeLinkRegex)
 {
   NSRegularExpression *textRegex = (!linkRegex.isDefault && !linkRegex.isDisabled) ? linkRegex.parsedRegex : nil;
-  NSRegularExpression *codeRegex = nil;
-  if (!inlineCodeLinkRegex.isDefault && !inlineCodeLinkRegex.isDisabled && inlineCodeLinkRegex.parsedRegex) {
-    // Full-span matching, including alternatives that first match a shorter prefix.
-    codeRegex = [NSRegularExpression
-        regularExpressionWithPattern:[NSString stringWithFormat:@"\\A(?:%@)\\z", inlineCodeLinkRegex.pattern]
-                             options:inlineCodeLinkRegex.parsedRegex.options
-                               error:nil];
-  }
+  NSRegularExpression *codeRegex = (!inlineCodeLinkRegex.isDefault && !inlineCodeLinkRegex.isDisabled)
+                                       ? inlineCodeLinkRegex.parsedWholeSpanRegex
+                                       : nil;
   if (ast && (textRegex || codeRegex)) {
     ENRMRecognizeNode(ast, textRegex, codeRegex);
   }

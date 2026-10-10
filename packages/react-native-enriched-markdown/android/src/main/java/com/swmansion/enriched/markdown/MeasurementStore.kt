@@ -13,10 +13,8 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.uimanager.PixelUtil
 import com.facebook.yoga.YogaMeasureMode
 import com.facebook.yoga.YogaMeasureOutput
-import com.swmansion.enriched.markdown.input.autolink.LinkRegexConfig
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
-import com.swmansion.enriched.markdown.parser.parseTextLinkRegex
 import com.swmansion.enriched.markdown.renderer.Renderer
 import com.swmansion.enriched.markdown.segments.BlockquoteContainerView
 import com.swmansion.enriched.markdown.segments.CodeBlockContainerView
@@ -34,6 +32,7 @@ import com.swmansion.enriched.markdown.utils.common.BreakStrategyUtils
 import com.swmansion.enriched.markdown.utils.common.CodeBlockStreamingMode
 import com.swmansion.enriched.markdown.utils.common.EllipsizeUtils
 import com.swmansion.enriched.markdown.utils.common.FeatureFlags
+import com.swmansion.enriched.markdown.utils.common.LinkRegexConfig
 import com.swmansion.enriched.markdown.utils.common.StreamingMarkdownFilter
 import com.swmansion.enriched.markdown.utils.common.TableStreamingMode
 import com.swmansion.enriched.markdown.utils.common.getArrayOrNull
@@ -43,6 +42,7 @@ import com.swmansion.enriched.markdown.utils.common.getMapOrNull
 import com.swmansion.enriched.markdown.utils.common.getStringOrDefault
 import com.swmansion.enriched.markdown.utils.common.parseImageRequestHeaders
 import com.swmansion.enriched.markdown.utils.common.parseLinkPillContent
+import com.swmansion.enriched.markdown.utils.common.parseLinkRecognition
 import com.swmansion.enriched.markdown.utils.text.extensions.replaceMathSpansWithPlaceholders
 import com.swmansion.enriched.markdown.utils.text.span.prepareWidthAwareSpans
 import java.util.concurrent.ConcurrentHashMap
@@ -334,8 +334,7 @@ object MeasurementStore {
     var result = markdown.hashCode()
     result = 31 * result + (styleMap?.hashCode() ?: 0)
     result = 31 * result + (md4cFlagsMap?.hashCode() ?: 0)
-    result = 31 * result + (parseTextLinkRegex(props.getMapOrNull("linkRegex"))?.hashCode() ?: 0)
-    result = 31 * result + (parseTextLinkRegex(props.getMapOrNull("inlineCodeLinkRegex"))?.hashCode() ?: 0)
+    result = 31 * result + parseLinkRecognition(props.getMapOrNull("linkRecognition")).hashCode()
     result = 31 * result + fontScale.toBits()
     result = 31 * result + allowFontScaling.hashCode()
     result = 31 * result + maxFontSizeMultiplier.toBits()
@@ -404,6 +403,7 @@ object MeasurementStore {
     // 2. Render & Measure
     measurePaint.textSize = fontSize
     val imageRequestHeaders = parseImageRequestHeaders(props.getArrayOrNull("imageRequestHeaders"))
+    val linkRecognition = parseLinkRecognition(props.getMapOrNull("linkRecognition"))
     val spannable =
       tryRenderMarkdown(
         markdown,
@@ -415,8 +415,8 @@ object MeasurementStore {
         maxFontSizeMultiplier,
         imageRequestHeaders,
         parseLinkPillContent(props.getArrayOrNull("linkPillContent")),
-        parseTextLinkRegex(props.getMapOrNull("linkRegex")),
-        parseTextLinkRegex(props.getMapOrNull("inlineCodeLinkRegex")),
+        linkRecognition.text,
+        linkRecognition.inlineCode,
       )
     spannable?.replaceMathSpansWithPlaceholders(context)
     val textToMeasure = spannable ?: markdown
@@ -507,14 +507,16 @@ object MeasurementStore {
     val allowTrailingMargin = props.getBooleanOrDefault("allowTrailingMargin", false)
     val fontSize = getInitialFontSize(styleMap, context, allowFontScaling, fontScale, maxFontSizeMultiplier)
 
+    val linkRecognition = parseLinkRecognition(props.getMapOrNull("linkRecognition"))
+
     return try {
       val ast =
         Parser.shared.parseMarkdown(
           markdown,
           md4cFlags,
           isGFM,
-          parseTextLinkRegex(props.getMapOrNull("linkRegex")),
-          parseTextLinkRegex(props.getMapOrNull("inlineCodeLinkRegex")),
+          linkRecognition.text,
+          linkRecognition.inlineCode,
         )
           ?: return YogaMeasureOutput.make(PixelUtil.toDIPFromPixel(width), 0f)
 

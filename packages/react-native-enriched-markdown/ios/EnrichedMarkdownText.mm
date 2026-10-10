@@ -302,8 +302,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
     };
     _md4cFlags = [EnrichedMarkdownText flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
-    _linkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRegex);
-    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->inlineCodeLinkRegex);
+    _linkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.text);
+    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.inlineCode);
 
     _renderCoordinator =
         [[ENRMAsyncRenderCoordinator alloc] initWithQueueLabel:"com.swmansion.enriched.markdown.render"];
@@ -693,15 +693,13 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
     _dirtyFlags |= ENRMDirtyRender;
   }
 
-  ENRMLinkRegexConfig *linkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRegex);
-  ENRMLinkRegexConfig *inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.inlineCodeLinkRegex);
-  if ((_linkRegex || linkRegex) && ![_linkRegex isEqualToConfig:linkRegex]) {
-    _linkRegex = linkRegex;
+  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.text, newViewProps.linkRecognition.text)) {
+    _linkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.text);
     _dirtyFlags |= ENRMDirtyRender;
     _forceHeightUpdateOnNextRender = YES;
   }
-  if ((_inlineCodeLinkRegex || inlineCodeLinkRegex) && ![_inlineCodeLinkRegex isEqualToConfig:inlineCodeLinkRegex]) {
-    _inlineCodeLinkRegex = inlineCodeLinkRegex;
+  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.inlineCode, newViewProps.linkRecognition.inlineCode)) {
+    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.inlineCode);
     _dirtyFlags |= ENRMDirtyRender;
     _forceHeightUpdateOnNextRender = YES;
   }
@@ -867,8 +865,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
   _config = nil;
   _md4cFlags = [EnrichedMarkdownText flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
-  _linkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRegex);
-  _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->inlineCodeLinkRegex);
+  _linkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.text);
+  _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.inlineCode);
   _maxFontSizeMultiplier = 0;
   _lastElementMarginBottom = 0;
   _allowTrailingMargin = NO;

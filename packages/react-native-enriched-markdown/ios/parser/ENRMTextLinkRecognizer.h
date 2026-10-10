@@ -11,6 +11,9 @@ extern "C" {
 void ENRMRecognizeTextLinks(MarkdownASTNode *ast, ENRMLinkRegexConfig *linkRegex,
                             ENRMLinkRegexConfig *inlineCodeLinkRegex);
 
+/// Cached per pattern; thread-safe.
+ENRMLinkRegexConfig *ENRMCachedTextLinkRegexConfig(NSString *pattern, BOOL caseInsensitive, BOOL dotAll);
+
 #ifdef __cplusplus
 }
 #endif
@@ -22,10 +25,15 @@ static inline ENRMLinkRegexConfig *ENRMTextLinkRegexConfigFromProps(const RegexP
 {
   if (props.isDisabled || props.isDefault || props.pattern.empty())
     return nil;
-  return [[ENRMLinkRegexConfig alloc] initWithPattern:[NSString stringWithUTF8String:props.pattern.c_str()]
-                                      caseInsensitive:props.caseInsensitive
-                                               dotAll:props.dotAll
-                                           isDisabled:props.isDisabled
-                                            isDefault:props.isDefault];
+  return ENRMCachedTextLinkRegexConfig([NSString stringWithUTF8String:props.pattern.c_str()], props.caseInsensitive,
+                                       props.dotAll);
+}
+
+template <typename RegexProps>
+static inline BOOL ENRMTextLinkRegexPropsEqual(const RegexProps &oldProps, const RegexProps &newProps)
+{
+  return oldProps.isDisabled == newProps.isDisabled && oldProps.isDefault == newProps.isDefault &&
+         oldProps.caseInsensitive == newProps.caseInsensitive && oldProps.dotAll == newProps.dotAll &&
+         oldProps.pattern == newProps.pattern;
 }
 #endif

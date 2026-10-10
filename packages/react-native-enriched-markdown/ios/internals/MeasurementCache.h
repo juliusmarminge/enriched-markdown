@@ -218,8 +218,8 @@ inline MeasurementCacheKey buildMeasurementCacheKey(const PropsType &props, CGFl
       .writingDirection = props.writingDirection,
       .numberOfLines = props.numberOfLines,
       .ellipsizeMode = props.ellipsizeMode,
-      .linkRegexKey = buildLinkRecognitionCacheKey(props.linkRegex),
-      .inlineCodeLinkRegexKey = buildLinkRecognitionCacheKey(props.inlineCodeLinkRegex),
+      .linkRegexKey = buildLinkRecognitionCacheKey(props.linkRecognition.text),
+      .inlineCodeLinkRegexKey = buildLinkRecognitionCacheKey(props.linkRecognition.inlineCode),
   };
 }
 
