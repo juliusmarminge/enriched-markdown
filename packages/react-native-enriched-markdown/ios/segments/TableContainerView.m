@@ -1,6 +1,7 @@
 #import "TableContainerView.h"
 #import "AttributedRenderer.h"
 #import "ENRMAccessibilityLabels.h"
+#import "ENRMHorizontalScrollView.h"
 #import "ENRMImageAttachment.h"
 #import "ENRMLinkPillAttachment.h"
 #import "HTMLGenerator.h"
@@ -241,7 +242,7 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
 #endif
 
 @implementation TableContainerView {
-  RCTUIScrollView *_scrollView;
+  ENRMHorizontalScrollView *_scrollView;
   RCTUIView *_gridContainer;
   NSArray<NSArray<TableCellData *> *> *_rows;
   NSUInteger _colCount;
@@ -281,11 +282,10 @@ static void ENRMTableComputeLayout(NSArray<NSArray<TableCellData *> *> *rows, NS
 
 - (void)setupScrollView
 {
-  _scrollView = [[RCTUIScrollView alloc] init];
+  _scrollView = [[ENRMHorizontalScrollView alloc] init];
   _scrollView.showsVerticalScrollIndicator = NO;
   _scrollView.showsHorizontalScrollIndicator = YES;
 #if !TARGET_OS_OSX
-  _scrollView.bounces = YES;
   _scrollView.alwaysBounceHorizontal = NO;
   _scrollView.isAccessibilityElement = NO;
   _scrollView.accessibilityElementsHidden = YES;
