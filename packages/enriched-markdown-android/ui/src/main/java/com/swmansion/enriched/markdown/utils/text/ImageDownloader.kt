@@ -25,6 +25,11 @@ object ImageDownloader {
 
   @Volatile
   private var client: OkHttpClient? = null
+
+  // OkHttp's cache keys responses by URL alone, so header-bearing requests skip it and
+  // rely on the decoded cache, whose key includes the headers.
+  @Volatile
+  private var headerClient: OkHttpClient? = null
   private var maxTargetWidth: Int = 0
 
   private val inFlight = HashMap<String, MutableList<(Bitmap?) -> Unit>>()
@@ -35,6 +40,15 @@ object ImageDownloader {
         client = it
         maxTargetWidth = context.applicationContext.resources.displayMetrics.widthPixels
       }
+    }
+
+  private fun getHeaderClient(context: Context): OkHttpClient =
+    headerClient ?: synchronized(this) {
+      headerClient ?: getClient(context)
+        .newBuilder()
+        .cache(null)
+        .build()
+        .also { headerClient = it }
     }
 
   private fun buildClient(context: Context): OkHttpClient {
@@ -53,6 +67,7 @@ object ImageDownloader {
     headers: Map<String, String> = emptyMap(),
     callback: (Bitmap?) -> Unit,
   ) {
+    val headers = ImageCache.normalizedHeaders(headers)
     val requestKey = ImageCache.requestKey(url, headers)
 
     ImageCache.getOriginal(requestKey)?.let {
@@ -75,7 +90,8 @@ object ImageDownloader {
         .url(url)
         .apply { headers.forEach { (name, value) -> addHeader(name, value) } }
         .build()
-    getClient(context).newCall(request).enqueue(
+    val client = if (headers.isEmpty()) getClient(context) else getHeaderClient(context)
+    client.newCall(request).enqueue(
       object : Callback {
         override fun onResponse(
           call: Call,

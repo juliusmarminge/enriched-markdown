@@ -71,11 +71,10 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
     config.timeoutIntervalForRequest = 15;
     config.timeoutIntervalForResource = 30;
     _session = [NSURLSession sessionWithConfiguration:config];
-    // URLCache does not provide our effective URI/header identity. Header-bearing
-    // requests use only the decoded cache above, which includes every header.
+    // NSURLCache keys responses by URL alone, so header-bearing requests skip it and
+    // rely on the decoded cache, whose key includes the headers.
     NSURLSessionConfiguration *headerConfig = [config copy];
     headerConfig.URLCache = nil;
-    headerConfig.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
     _headerSession = [NSURLSession sessionWithConfiguration:headerConfig];
     _inFlightRequests = [NSMutableDictionary dictionary];
   }
@@ -93,7 +92,7 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
 
   headers = ENRMNormalizedImageHeaders(headers);
   BOOL isLocal = ENRMIsLocalImageURL(url);
-  NSString *cacheKey = ENRMImageCacheKey(url, headers);
+  NSString *cacheKey = isLocal ? url : ENRMImageCacheKey(url, headers);
 
   RCTUIImage *cached = [[ENRMImageAttachment originalImageCache] objectForKey:cacheKey];
   if (cached) {
@@ -131,8 +130,6 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
   }];
 
   NSURLSession *session = headers.count > 0 ? _headerSession : _session;
-  if (headers.count > 0)
-    request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
   [[session dataTaskWithRequest:request
               completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
 #if !TARGET_OS_OSX
