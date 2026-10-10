@@ -207,8 +207,7 @@ localization or break strategy; accessibility labels are hardcoded with no
 override at any layer; the composable renders nothing in @Preview.
 
 Also unrecorded anywhere: task-list accessibility is entirely absent from the
-React Native package on both platforms, and onImagePress does not fire for
-images inside GFM tables. */}
+React Native package on both platforms. */}
 
 ## Something missing?
 

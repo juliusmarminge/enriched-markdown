@@ -239,6 +239,11 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
                                 if (s.onLinkLongPress && url)
                                   s.onLinkLongPress(url);
                               };
+                              view.onImagePress = ^(NSString *url, NSString *altText) {
+                                ENRMBlockquoteContainerView *s = weakSelf;
+                                if (s.onImagePress && url)
+                                  s.onImagePress(url, altText);
+                              };
                             }
                             [view applyTableNode:segment.tableSegment.tableNode];
                             return view;
@@ -289,6 +294,11 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
                               view.accessibilityLabels = strongSelf.accessibilityLabels;
                               view.onCopyPress = strongSelf.onCopyPress;
                               view.onCodeBlockPress = strongSelf.onCodeBlockPress;
+                              view.onImagePress = ^(NSString *url, NSString *altText) {
+                                ENRMBlockquoteContainerView *s = weakSelf;
+                                if (s.onImagePress && url)
+                                  s.onImagePress(url, altText);
+                              };
                               view.onLinkPress = ^(NSString *url) {
                                 ENRMBlockquoteContainerView *s = weakSelf;
                                 if (s.onLinkPress && url)
@@ -364,11 +374,19 @@ static UIEdgeInsets ENRMBlockquoteContentInsets(StyleConfig *config)
 {
   ENRMPlatformTextView *textView = (ENRMPlatformTextView *)recognizer.view;
   __weak ENRMBlockquoteContainerView *weakSelf = self;
-  ENRMHandleTapOnTextView(textView, recognizer, ^(NSString *url) {
-    ENRMBlockquoteContainerView *strongSelf = weakSelf;
-    if (strongSelf.onLinkPress && url)
-      strongSelf.onLinkPress(url);
-  });
+  if (ENRMHandleTapOnTextView(textView, recognizer, ^(NSString *url) {
+        ENRMBlockquoteContainerView *strongSelf = weakSelf;
+        if (strongSelf.onLinkPress && url)
+          strongSelf.onLinkPress(url);
+      })) {
+    return;
+  }
+
+  if (self.onImagePress) {
+    NSDictionary<NSString *, NSString *> *image = imageAtTapLocation(textView, recognizer);
+    if (image)
+      self.onImagePress(image[@"url"], image[@"altText"]);
+  }
 }
 
 - (CGFloat)measureHeight:(CGFloat)maxWidth
