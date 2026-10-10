@@ -26,8 +26,7 @@ object ImageDownloader {
   @Volatile
   private var client: OkHttpClient? = null
 
-  // OkHttp's cache keys responses by URL alone, so header-bearing requests skip it and
-  // rely on the decoded cache, whose key includes the headers.
+  // No disk cache: it keys by URL alone and would mix header sets.
   @Volatile
   private var headerClient: OkHttpClient? = null
   private var maxTargetWidth: Int = 0

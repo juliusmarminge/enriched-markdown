@@ -71,8 +71,7 @@ NSString *ENRMImageCacheKey(NSString *url, NSDictionary<NSString *, NSString *> 
     config.timeoutIntervalForRequest = 15;
     config.timeoutIntervalForResource = 30;
     _session = [NSURLSession sessionWithConfiguration:config];
-    // NSURLCache keys responses by URL alone, so header-bearing requests skip it and
-    // rely on the decoded cache, whose key includes the headers.
+    // No URL cache: it keys by URL alone and would mix header sets.
     NSURLSessionConfiguration *headerConfig = [config copy];
     headerConfig.URLCache = nil;
     _headerSession = [NSURLSession sessionWithConfiguration:headerConfig];

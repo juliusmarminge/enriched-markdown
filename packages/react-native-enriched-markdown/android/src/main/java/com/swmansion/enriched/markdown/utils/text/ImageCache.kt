@@ -11,7 +11,7 @@ object ImageCache {
   private val originalCache = bitmapLruCache(ORIGINAL_CACHE_SIZE)
   private val processedCache = bitmapLruCache(PROCESSED_CACHE_SIZE)
 
-  /** Lower-cases header names, which HTTP treats case-insensitively; sorted first so case aliases resolve deterministically. */
+  /** Header names lower-cased; sorted first so case aliases collapse deterministically. */
   fun normalizedHeaders(headers: Map<String, String>): Map<String, String> =
     headers.entries
       .sortedBy { it.key }
