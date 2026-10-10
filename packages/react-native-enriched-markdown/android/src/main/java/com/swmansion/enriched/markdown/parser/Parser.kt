@@ -39,6 +39,8 @@ class Parser {
       markdown: String,
       flags: Md4cFlags,
       isGFM: Boolean,
+      textLinkRegex: LinkRegexConfig?,
+      inlineCodeLinkRegex: LinkRegexConfig?,
     ): MarkdownASTNode?
 
     /**
@@ -60,10 +62,18 @@ class Parser {
     }
 
     try {
-      val ast = nativeParseMarkdown(markdown, flags, isGFM)
+      // Only active patterns cross JNI.
+      val ast =
+        nativeParseMarkdown(
+          markdown,
+          flags,
+          isGFM,
+          linkRegex?.takeIf { it.compiled != null },
+          inlineCodeLinkRegex?.takeIf { it.compiledWholeSpan != null },
+        )
 
       if (ast != null) {
-        return TextLinkRecognizer.recognize(ast, linkRegex, inlineCodeLinkRegex)
+        return ast
       } else {
         Log.w("MarkdownParser", "Native parser returned null")
         return null

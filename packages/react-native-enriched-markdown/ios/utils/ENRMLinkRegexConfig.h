@@ -20,6 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
                      isDisabled:(BOOL)isDisabled
                       isDefault:(BOOL)isDefault;
 
+/// Shared instance per pattern and flags; the renderer's props go through here. Thread-safe.
++ (instancetype)cachedConfigWithPattern:(NSString *)pattern caseInsensitive:(BOOL)caseInsensitive dotAll:(BOOL)dotAll;
+
 - (BOOL)isEqualToConfig:(nullable ENRMLinkRegexConfig *)other;
 
 @end

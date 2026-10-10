@@ -6,10 +6,10 @@
 #import "ENRMImageAttachment.h"
 #import "ENRMLatexErrorCoordinator.h"
 #import "ENRMLinkContextMenus.h"
+#import "ENRMLinkRegexProps.h"
 #import "ENRMMarkdownParser.h"
 #import "ENRMTailFadeInAnimator.h"
 #import "ENRMTextInteractionUtils.h"
-#import "ENRMTextLinkRecognizer.h"
 #import "ENRMTextRenderer.h"
 #import "ENRMTextViewSetup.h"
 #import "ENRMUIKit.h"
@@ -185,8 +185,8 @@ static char kENRMSegmentFadeAnimatorKey;
     _parser = [[ENRMMarkdownParser alloc] init];
     _md4cFlags = [EnrichedMarkdown flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
-    _linkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.text);
-    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.inlineCode);
+    _linkRegex = ENRMLinkRegexConfigFromProps(defaultProps->linkRecognition.text);
+    _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(defaultProps->linkRecognition.inlineCode);
     _segmentViews = [NSMutableArray array];
     _segmentSignatures = [NSMutableArray array];
     __weak __typeof(self) weakLatexSelf = self;
@@ -1173,13 +1173,13 @@ static char kENRMSegmentFadeAnimatorKey;
     _dirtyFlags |= ENRMDirtyRecreateSegments | ENRMDirtyForceHeight | ENRMDirtyRender;
   }
 
-  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.text, newViewProps.linkRecognition.text)) {
-    _linkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.text);
+  if (!ENRMLinkRegexPropsEqual(oldViewProps.linkRecognition.text, newViewProps.linkRecognition.text)) {
+    _linkRegex = ENRMLinkRegexConfigFromProps(newViewProps.linkRecognition.text);
     _dirtyFlags |= ENRMDirtyRender;
     _dirtyFlags |= ENRMDirtyForceHeight;
   }
-  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.inlineCode, newViewProps.linkRecognition.inlineCode)) {
-    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.inlineCode);
+  if (!ENRMLinkRegexPropsEqual(oldViewProps.linkRecognition.inlineCode, newViewProps.linkRecognition.inlineCode)) {
+    _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(newViewProps.linkRecognition.inlineCode);
     _dirtyFlags |= ENRMDirtyRender;
     _dirtyFlags |= ENRMDirtyForceHeight;
   }
@@ -1376,8 +1376,8 @@ static char kENRMSegmentFadeAnimatorKey;
   _config = nil;
   _md4cFlags = [EnrichedMarkdown flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
-  _linkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.text);
-  _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.inlineCode);
+  _linkRegex = ENRMLinkRegexConfigFromProps(resetProps->linkRecognition.text);
+  _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(resetProps->linkRecognition.inlineCode);
   _maxFontSizeMultiplier = 0;
   _allowTrailingMargin = NO;
   _streamingAnimation = NO;

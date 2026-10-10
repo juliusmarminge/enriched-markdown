@@ -3,8 +3,8 @@
 #import "ENRMBlockquoteContainerView.h"
 #import "ENRMCodeBlockContainerView.h"
 #import "ENRMFeatureFlags.h"
+#import "ENRMLinkRegexProps.h"
 #import "ENRMMarkdownParser.h"
-#import "ENRMTextLinkRecognizer.h"
 #import "ENRMTextRenderer.h"
 #import "ENRMTextViewSetup.h"
 #import "ImageRequestHeaderUtils.h"
@@ -182,12 +182,11 @@ static inline CGSize ENRMMeasureMarkdownViewFree(const PropsT &typedProps, CGFlo
 
     ENRMMd4cFlags *flags = ENRMMd4cFlagsFromProps(typedProps.md4cFlags);
     ENRMMarkdownParser *parser = [[ENRMMarkdownParser alloc] init];
-    MarkdownASTNode *ast =
-        [parser parseMarkdown:markdown
-                          flags:flags
-                          isGFM:typedProps.isGFM
-                      linkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.text)
-            inlineCodeLinkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.inlineCode)];
+    MarkdownASTNode *ast = [parser parseMarkdown:markdown
+                                           flags:flags
+                                           isGFM:typedProps.isGFM
+                                       linkRegex:ENRMLinkRegexConfigFromProps(typedProps.linkRecognition.text)
+                             inlineCodeLinkRegex:ENRMLinkRegexConfigFromProps(typedProps.linkRecognition.inlineCode)];
     if (!ast) {
       return fallback;
     }
@@ -265,12 +264,11 @@ static inline CGSize ENRMMeasureSegmentedMarkdownViewFree(const PropsT &typedPro
 
     ENRMMd4cFlags *flags = ENRMMd4cFlagsFromProps(typedProps.md4cFlags);
     ENRMMarkdownParser *parser = [[ENRMMarkdownParser alloc] init];
-    MarkdownASTNode *ast =
-        [parser parseMarkdown:markdown
-                          flags:flags
-                          isGFM:typedProps.isGFM
-                      linkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.text)
-            inlineCodeLinkRegex:ENRMTextLinkRegexConfigFromProps(typedProps.linkRecognition.inlineCode)];
+    MarkdownASTNode *ast = [parser parseMarkdown:markdown
+                                           flags:flags
+                                           isGFM:typedProps.isGFM
+                                       linkRegex:ENRMLinkRegexConfigFromProps(typedProps.linkRecognition.text)
+                             inlineCodeLinkRegex:ENRMLinkRegexConfigFromProps(typedProps.linkRecognition.inlineCode)];
     if (!ast) {
       return fallback;
     }

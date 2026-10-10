@@ -8,13 +8,13 @@
 #import "ENRMImageAttachment.h"
 #import "ENRMLatexErrorCoordinator.h"
 #import "ENRMLinkContextMenus.h"
+#import "ENRMLinkRegexProps.h"
 #import "ENRMMarkdownParser.h"
 #import "ENRMMarkdownTextView.h"
 #import "ENRMSpoilerOverlayManager.h"
 #import "ENRMSpoilerTapUtils.h"
 #import "ENRMTailFadeInAnimator.h"
 #import "ENRMTextInteractionUtils.h"
-#import "ENRMTextLinkRecognizer.h"
 #import "ENRMTextRenderer.h"
 #import "ENRMTextViewSetup.h"
 #import "ENRMUIKit.h"
@@ -302,8 +302,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
     };
     _md4cFlags = [EnrichedMarkdownText flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
-    _linkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.text);
-    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(defaultProps->linkRecognition.inlineCode);
+    _linkRegex = ENRMLinkRegexConfigFromProps(defaultProps->linkRecognition.text);
+    _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(defaultProps->linkRecognition.inlineCode);
 
     _renderCoordinator =
         [[ENRMAsyncRenderCoordinator alloc] initWithQueueLabel:"com.swmansion.enriched.markdown.render"];
@@ -693,13 +693,13 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
     _dirtyFlags |= ENRMDirtyRender;
   }
 
-  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.text, newViewProps.linkRecognition.text)) {
-    _linkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.text);
+  if (!ENRMLinkRegexPropsEqual(oldViewProps.linkRecognition.text, newViewProps.linkRecognition.text)) {
+    _linkRegex = ENRMLinkRegexConfigFromProps(newViewProps.linkRecognition.text);
     _dirtyFlags |= ENRMDirtyRender;
     _forceHeightUpdateOnNextRender = YES;
   }
-  if (!ENRMTextLinkRegexPropsEqual(oldViewProps.linkRecognition.inlineCode, newViewProps.linkRecognition.inlineCode)) {
-    _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(newViewProps.linkRecognition.inlineCode);
+  if (!ENRMLinkRegexPropsEqual(oldViewProps.linkRecognition.inlineCode, newViewProps.linkRecognition.inlineCode)) {
+    _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(newViewProps.linkRecognition.inlineCode);
     _dirtyFlags |= ENRMDirtyRender;
     _forceHeightUpdateOnNextRender = YES;
   }
@@ -865,8 +865,8 @@ typedef NS_OPTIONS(NSUInteger, ENRMDirtyFlags) {
   _config = nil;
   _md4cFlags = [EnrichedMarkdownText flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
-  _linkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.text);
-  _inlineCodeLinkRegex = ENRMTextLinkRegexConfigFromProps(resetProps->linkRecognition.inlineCode);
+  _linkRegex = ENRMLinkRegexConfigFromProps(resetProps->linkRecognition.text);
+  _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(resetProps->linkRecognition.inlineCode);
   _maxFontSizeMultiplier = 0;
   _lastElementMarginBottom = 0;
   _allowTrailingMargin = NO;

@@ -41,6 +41,27 @@
   return self;
 }
 
++ (instancetype)cachedConfigWithPattern:(NSString *)pattern caseInsensitive:(BOOL)caseInsensitive dotAll:(BOOL)dotAll
+{
+  static NSCache<NSString *, ENRMLinkRegexConfig *> *cache;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    cache = [[NSCache alloc] init];
+    cache.countLimit = 64;
+  });
+  NSString *key = [NSString stringWithFormat:@"%d%d%@", caseInsensitive, dotAll, pattern];
+  ENRMLinkRegexConfig *config = [cache objectForKey:key];
+  if (!config) {
+    config = [[self alloc] initWithPattern:pattern
+                           caseInsensitive:caseInsensitive
+                                    dotAll:dotAll
+                                isDisabled:NO
+                                 isDefault:NO];
+    [cache setObject:config forKey:key];
+  }
+  return config;
+}
+
 - (NSRegularExpressionOptions)options
 {
   NSRegularExpressionOptions options = 0;
