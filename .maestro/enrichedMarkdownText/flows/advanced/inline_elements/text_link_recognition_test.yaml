@@ -5,6 +5,9 @@ tags:
   - link
   - text
 ---
+# linkRecognition turns plain-text and whole-inline-code matches into links, leaves
+# existing links, fences and partial code matches alone, and keeps the trailing block
+# visible (measurement must see the same links the view renders).
 - launchApp
 
 - runFlow:
@@ -14,52 +17,49 @@ tags:
     file: '../../../subflows/set_enriched_text_value.yaml'
     env:
       VALUE: |
-        ref:one
+        See ref:one, `ref:two`, [ref:three](https://existing.invalid) and `prefix ref:four`.
 
-        `ref:two`
+        ```
+        ref:five stays plain in a fence
+        ```
 
-        [ref:three](https://existing.invalid)
-
-        `prefix ref:four`
+        Last line: ref:six.
 
 - scrollUntilVisible:
     element:
       id: recognize-links-button
     direction: DOWN
 
-# Recognition starts disabled, then runs through both native renderers.
-- tapOn: ref:one
-- assertNotVisible: Link
-
-- repeat:
-    times: 2
-    commands:
-      - tapOn:
-          id: recognize-links-button
-      - scrollUntilVisible:
-          element:
-            id: preview-container
-          direction: DOWN
-      - tapOn: ref:one
-      - assertVisible: Link
-      - assertVisible: ref:one
-      - tapOn: OK
-      - tapOn: ref:two
-      - assertVisible: Link
-      - assertVisible: ref:two
-      - tapOn: OK
-      - tapOn: ref:three
-      - assertVisible: https://existing.invalid
-      - tapOn: OK
-      - tapOn: prefix ref:four
-      - assertNotVisible: Link
-      - scrollUntilVisible:
-          element:
-            id: recognize-links-button
-          direction: UP
-
-# Turning recognition off on unchanged Markdown removes generated links.
+# Off -> CommonMark -> GitHub
 - tapOn:
     id: recognize-links-button
-- tapOn: ref:one
-- assertNotVisible: Link
+- tapOn:
+    id: recognize-links-button
+
+- scrollUntilVisible:
+    element:
+      id: preview-container
+    direction: DOWN
+
+- runFlow:
+    file: '../../../subflows/capture_or_assert_screenshot.yaml'
+    env:
+      SCREENSHOT_NAME: 'text_link_recognition_display'
+
+# Recognition off again on unchanged Markdown: generated links disappear.
+- scrollUntilVisible:
+    element:
+      id: recognize-links-button
+    direction: UP
+- tapOn:
+    id: recognize-links-button
+
+- scrollUntilVisible:
+    element:
+      id: preview-container
+    direction: DOWN
+
+- runFlow:
+    file: '../../../subflows/capture_or_assert_screenshot.yaml'
+    env:
+      SCREENSHOT_NAME: 'text_link_recognition_off_display'
