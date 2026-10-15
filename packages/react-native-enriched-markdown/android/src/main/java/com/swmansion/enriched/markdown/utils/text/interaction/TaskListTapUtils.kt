@@ -135,7 +135,9 @@ object TaskListTapUtils {
         parentMarkerWidth = old.parentMarkerWidth,
       )
 
-    // Keep insertion order: ancestor margins must not move ahead of the task's marker.
+    // Layout draws leading margins in insertion order, and a re-added span moves to the end of it.
+    // Re-add the task's spans and everything attached after them (its ancestors) in their original
+    // order; the task's own nested items were attached first and stay where they are.
     data class ListSpanState(
       val span: BaseListSpan,
       val start: Int,
@@ -143,8 +145,10 @@ object TaskListTapUtils {
       val flags: Int,
     )
 
+    val coveringSpans = spannable.getSpans(spanStart, spanEnd, BaseListSpan::class.java)
+    val firstTarget = coveringSpans.indexOfFirst { it is TaskListSpan && it.taskIndex == targetIndex }
     val listSpans =
-      spannable.getSpans(spanStart, spanEnd, BaseListSpan::class.java).map {
+      coveringSpans.drop(firstTarget).map {
         ListSpanState(it, spannable.getSpanStart(it), spannable.getSpanEnd(it), spannable.getSpanFlags(it))
       }
     listSpans.forEach { spannable.removeSpan(it.span) }
