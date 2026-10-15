@@ -61,9 +61,14 @@ class MediaSlotView(
           val value = if (image.aspectRatio > 0) width / image.aspectRatio else image.height
           if (image.maxHeight > 0) value.coerceAtMost(image.maxHeight) else value
         }
+      // React measures the slot at the laid-out view width, but Yoga snaps a measured
+      // node outward to whole pixels, so that width can exceed the width the measure
+      // pass sees by up to 2px. Rejecting the override over that gap would size the
+      // document from the fallback height while the view draws the measured one.
+      val widthTolerance = 0.5f + PixelUtil.toDIPFromPixel(2f)
       return ceil(
         PixelUtil.toPixelFromDIP(
-          slot.heightForWidth(PixelUtil.toDIPFromPixel(width), PixelUtil.toDIPFromPixel(fallback)),
+          slot.heightForWidth(PixelUtil.toDIPFromPixel(width), PixelUtil.toDIPFromPixel(fallback), widthTolerance),
         ),
       )
     }

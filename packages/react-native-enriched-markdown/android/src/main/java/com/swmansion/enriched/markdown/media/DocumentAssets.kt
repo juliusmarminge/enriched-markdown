@@ -129,10 +129,11 @@ data class MediaSlot(
   fun heightForWidth(
     width: Float,
     fallback: Float,
+    widthTolerance: Float = 0.5f,
   ): Float {
     val value = measuredOverride ?: return fallback
     return if (value.height.isFinite() && value.height >= 0 &&
-      (value.width == 0f || abs(value.width - width) < 0.5f)
+      (value.width == 0f || abs(value.width - width) < widthTolerance)
     ) {
       value.height
     } else {
