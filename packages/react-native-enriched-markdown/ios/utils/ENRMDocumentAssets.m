@@ -84,7 +84,9 @@ CGFloat ENRMMediaSlotHeight(MarkdownASTNode *node, CGFloat width, StyleConfig *c
 {
   NSString *height = node.attributes[@"_enrmMediaHeight"];
   CGFloat measuredWidth = [node.attributes[@"_enrmMediaWidth"] doubleValue];
-  if (height && (measuredWidth == 0 || fabs(measuredWidth - width) < 0.5))
+  // React measures the slot at the laid-out width, which Yoga snaps outward to whole pixels, so it
+  // can exceed the measure pass's width by up to 2px (1pt at 2x). Allow that on top of the 0.5pt check.
+  if (height && (measuredWidth == 0 || fabs(measuredWidth - width) < 1.5))
     return MAX(0, height.doubleValue);
   if ([node.attributes[@"_enrmMediaKind"] isEqualToString:@"video"])
     return width / MAX(config.videoAspectRatio, 0.01);

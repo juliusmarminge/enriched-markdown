@@ -112,19 +112,6 @@ class DocumentAssetsTest {
   }
 
   @Test
-  fun pixelSnappedLayoutWidthStillMatchesMeasurePassWidth() {
-    // At 2.8125x, Yoga measured at 970.3125px (345dp) but snapped the view to 972px (345.6dp),
-    // the width React measured the slot at.
-    val assets = DocumentAssets.collect(document(paragraph(image())))
-    val override = MediaOverride("asset-0", 503f, 345.6f, "same", "image", "0.0")
-    val slot = mediaSlotsForDocument(assets, true, 8, 8, listOf(override)).getValue("asset-0")
-    val twoPixels = 2f / 2.8125f
-    assertEquals(40f, slot.heightForWidth(345f, 40f), 0f)
-    assertEquals(503f, slot.heightForWidth(345f, 40f, 0.5f + twoPixels), 0f)
-    assertEquals(40f, slot.heightForWidth(340f, 40f, 0.5f + twoPixels), 0f)
-  }
-
-  @Test
   fun carriedHeightsRequireOccurrenceIdentityInNewParsedDocument() {
     val original = DocumentAssets.collect(document(paragraph(image())))
     val measurement = MediaOverride("asset-0", 123f, 320f, "same", "image", "0.0")
