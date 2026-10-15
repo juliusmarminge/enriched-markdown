@@ -14,6 +14,7 @@ class UnorderedListSpan(
   context: Context,
   styleCache: SpanStyleCache,
   drawsMarker: Boolean = true,
+  parentMarkerWidth: Float? = null,
 ) : BaseListSpan(
     depth = depth,
     context = context,
@@ -28,6 +29,7 @@ class UnorderedListSpan(
     marginLeft = listStyle.marginLeft,
     gapWidth = listStyle.gapWidth,
     drawsMarker = drawsMarker,
+    parentMarkerWidth = parentMarkerWidth,
   ) {
   companion object {
     private val sharedBulletPaint =

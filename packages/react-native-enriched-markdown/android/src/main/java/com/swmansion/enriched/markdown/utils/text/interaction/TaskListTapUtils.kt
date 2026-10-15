@@ -131,6 +131,7 @@ object TaskListTapUtils {
         taskIndex = targetIndex,
         isChecked = newChecked,
         drawsMarker = old.drawsMarker,
+        parentMarkerWidth = old.parentMarkerWidth,
       )
 
     // Replace every segment of the item — spans are split around code blocks

@@ -76,34 +76,46 @@ val AppMarkdownStyle = markdownStyle {
 }
 ```
 
-Call it from a composable only when the values come from composition, such as `MaterialTheme` tokens - and in that case prefer [`rememberMarkdownStyle`](#remembermarkdownstyle).
+Call it from a composable only when the values come from composition, such as `MaterialTheme` tokens. The block is not a composable, so read those values first and build the style inside `remember`, keyed on them - see [Building styles cheaply](#building-styles-cheaply). For colors from the Material scheme, [`rememberMaterialMarkdownStyle`](#materialmarkdownstyle) does this for you.
 
-## `rememberMarkdownStyle`
+## `materialMarkdownStyle` / `rememberMaterialMarkdownStyle` {#materialmarkdownstyle}
 
 ```kotlin
+// com.swmansion.enriched.markdown.compose.material3
+fun materialMarkdownStyle(colorScheme: ColorScheme): MarkdownStyle
+
 @Composable
-fun rememberMarkdownStyle(
-  vararg keys: Any?,
-  block: MarkdownStyleBuilder.() -> Unit,
+fun rememberMaterialMarkdownStyle(
+  colorScheme: ColorScheme = MaterialTheme.colorScheme,
 ): MarkdownStyle
 ```
 
-Builds a style that tracks `MaterialTheme.colorScheme`: it remembers the result keyed on the color scheme plus any `keys` you pass, so the style is rebuilt when the Material theme changes - on a light/dark switch, for example - and reused otherwise.
+Builds a style colored from a Material 3 `ColorScheme`, so Markdown matches the rest of the app. `rememberMaterialMarkdownStyle` reads `MaterialTheme.colorScheme` and rebuilds only when the scheme changes - on a light/dark switch, for example - and reuses the result otherwise.
 
 ```kotlin
-MaterialTheme {
-  MarkdownTheme(
-    style = rememberMarkdownStyle {
-      paragraph { color = MaterialTheme.colorScheme.onSurface }
-      link { color = MaterialTheme.colorScheme.primary }
-    },
-  ) {
+MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+  MarkdownTheme(style = rememberMaterialMarkdownStyle()) {
     NavHost(...)
   }
 }
 ```
 
-Pass extra `keys` for any other value the block reads, the way you would to `remember`. For static light/dark palettes with literal colors, hoist `markdownStyle` / `merge` to file scope instead - there is nothing to track.
+Only colors come from the scheme - sizes, fonts and spacing keep the defaults. Material 3 has no tokens for the note, tip, important and warning admonitions, so they keep GitHub's alert colors for the scheme's brightness; caution uses `error`. Fenced code blocks keep the default dark style in both schemes, since the code highlighting palette is made for it. Plugin styles, such as math, are not set.
+
+To change part of the mapping, layer your overrides on top with [`merge`](#markdownstylemerge), remembered on the scheme:
+
+```kotlin
+val colorScheme = MaterialTheme.colorScheme
+val style = remember(colorScheme) {
+  materialMarkdownStyle(colorScheme).merge {
+    link { color = colorScheme.secondary }
+  }
+}
+```
+
+:::note
+`rememberMarkdownStyle { … }` is deprecated. It remembers `markdownStyle { … }` keyed on `MaterialTheme.colorScheme`, but its block is not a composable, so it cannot read `MaterialTheme` itself - the scheme has to be read outside it, at which point a plain `remember` does the same job. Use `rememberMaterialMarkdownStyle` or `remember` + `markdownStyle` instead.
+:::
 
 ## `MarkdownStyle`
 
@@ -167,7 +179,7 @@ That depends on the device configuration, so `EnrichedMarkdownText` re-resolves 
 Two consequences worth designing around:
 
 - **Hoist your styles.** Building a style inside a composable body allocates a new `MarkdownStyle` on every recomposition. Equal layers still compare equal, so nothing re-resolves - but it is free to avoid, and `LocalMarkdownStyle` being a static composition local makes an unstable theme value expensive.
-- **Use `rememberMarkdownStyle` when the values come from composition.** It is the supported way to read `MaterialTheme` tokens without rebuilding on every pass.
+- **Remember styles whose values come from composition.** Read the values in the composable, then build the style in `remember`, keyed on them, so it is rebuilt only when they change. For the Material color scheme, [`rememberMaterialMarkdownStyle`](#materialmarkdownstyle) does this for you.
 
 ```kotlin
 // Hoisted: allocated once for the whole process.
@@ -179,8 +191,9 @@ val AppMarkdownStyle = markdownStyle {
 @Composable
 fun Root() {
   // Read from composition, so it has to be remembered rather than hoisted.
-  val themed = rememberMarkdownStyle {
-    paragraph { color = MaterialTheme.colorScheme.onSurface }
+  val colorScheme = MaterialTheme.colorScheme
+  val themed = remember(colorScheme) {
+    AppMarkdownStyle.merge { paragraph { color = colorScheme.onSurface } }
   }
   MarkdownTheme(style = themed) { Content() }
 }

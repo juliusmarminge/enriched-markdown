@@ -4,8 +4,14 @@ import android.content.Context
 import android.text.Spannable
 import androidx.test.core.app.ApplicationProvider
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
+import com.swmansion.enriched.markdown.plugin.PluginSnapshot
 import com.swmansion.enriched.markdown.renderer.Renderer
+import com.swmansion.enriched.markdown.segments.MarkdownSegment
+import com.swmansion.enriched.markdown.segments.MarkdownSegmentRenderer
+import com.swmansion.enriched.markdown.segments.RenderedSegment
+import com.swmansion.enriched.markdown.segments.splitASTIntoSegments
 import com.swmansion.enriched.markdown.styles.BlockquoteStyle
+import com.swmansion.enriched.markdown.styles.CodeBlockStyle
 import com.swmansion.enriched.markdown.styles.CodeStyle
 import com.swmansion.enriched.markdown.styles.HeadingStyle
 import com.swmansion.enriched.markdown.styles.HighlightStyle
@@ -29,11 +35,20 @@ object MarkdownRenderTestSupport {
   fun render(
     document: MarkdownASTNode,
     style: StyleConfig = defaultStyle,
+    plugins: PluginSnapshot = PluginSnapshot.EMPTY,
   ): Spannable {
     val renderer = Renderer()
-    renderer.configure(style, context)
+    renderer.configure(style, context, plugins = plugins)
     return renderer.renderDocument(document, null, null)
   }
+
+  /** Renders [segments] with [defaultStyle] and no plugins. */
+  fun renderSegments(segments: List<MarkdownSegment>): List<RenderedSegment> =
+    MarkdownSegmentRenderer.render(segments, defaultStyle, context, plugins = PluginSnapshot.EMPTY)
+
+  /** Splits [document] into segments and renders them, both with no plugins. */
+  fun renderSegmentsOf(document: MarkdownASTNode): List<RenderedSegment> =
+    renderSegments(splitASTIntoSegments(document, PluginSnapshot.EMPTY))
 
   /** [defaultStyle] with only the inline line-decoration colors replaced. */
   fun styleWithDecorationColors(
@@ -45,11 +60,21 @@ object MarkdownRenderTestSupport {
       underlineStyle = UnderlineStyle(color = underlineColor),
     )
 
-  /** [defaultStyle] with only its [HighlightStyle] replaced. */
-  fun styleWithHighlight(highlightStyle: HighlightStyle): StyleConfig = copyOfDefault(highlightStyle = highlightStyle)
+  /** [defaultStyle] with its [HighlightStyle] replaced, and aligned like [styleWithTextAlign] when [textAlign] is given. */
+  fun styleWithHighlight(
+    highlightStyle: HighlightStyle,
+    textAlign: TextAlignment? = null,
+  ): StyleConfig {
+    if (textAlign == null) return copyOfDefault(highlightStyle = highlightStyle)
+    val aligned = styleWithTextAlign(textAlign)
+    return copyOfDefault(highlightStyle = highlightStyle, paragraphStyle = aligned.paragraphStyle, headingStyles = aligned.headingStyles)
+  }
 
   /** [defaultStyle] with only its [BlockquoteStyle] replaced. */
   fun styleWithBlockquote(blockquoteStyle: BlockquoteStyle): StyleConfig = copyOfDefault(blockquoteStyle = blockquoteStyle)
+
+  /** [defaultStyle] with only its [CodeBlockStyle] replaced. */
+  fun styleWithCodeBlock(codeBlockStyle: CodeBlockStyle): StyleConfig = copyOfDefault(codeBlockStyle = codeBlockStyle)
 
   /** [defaultStyle] with its inline [CodeStyle] replaced, and aligned like [styleWithTextAlign] when [textAlign] is given. */
   fun styleWithCode(
@@ -89,6 +114,7 @@ object MarkdownRenderTestSupport {
     taskListStyle: TaskListStyle? = null,
     blockquoteStyle: BlockquoteStyle? = null,
     codeStyle: CodeStyle? = null,
+    codeBlockStyle: CodeBlockStyle? = null,
     spoilerStyle: SpoilerStyle? = null,
     linkStyle: LinkStyle? = null,
     paragraphStyle: ParagraphStyle? = null,
@@ -113,7 +139,7 @@ object MarkdownRenderTestSupport {
       blockquoteStyle = blockquoteStyle ?: base.blockquoteStyle,
       listStyle = base.listStyle,
       taskListStyle = taskListStyle ?: base.taskListStyle,
-      codeBlockStyle = base.codeBlockStyle,
+      codeBlockStyle = codeBlockStyle ?: base.codeBlockStyle,
       thematicBreakStyle = base.thematicBreakStyle,
       tableStyle = base.tableStyle,
       tableTypeface = base.tableTypeface,
