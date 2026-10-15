@@ -171,18 +171,18 @@ class OrderedListMarkerWidthTest {
   }
 
   @Test
-  fun shortMixedNestsKeepTheirOriginalTextIndents() {
+  fun shortMixedNestsUseTheirOwnMarkerColumns() {
     val config = styleConfig(fontFamily = "", gapWidth = 6.0, checkboxSize = 14.0)
     val ordered = list(1, 1)
     val bullet = ordered.copy(type = NodeType.UnorderedList)
     val task = ordered.copy(children = listOf(ordered.children[0].copy(attributes = mapOf("isTask" to "true"))))
     val shapes = listOf(ordered to bullet, bullet to ordered, bullet to task, ordered to task, task to bullet)
-    val baseIndents = listOf(52f, 33f, 33f, 52f, 44f)
+    val mixedIndents = listOf(33f, 52f, 44f, 44f, 33f)
     for ((index, shape) in shapes.withIndex()) {
       val (parent, child) = shape
       val tree = parent.copy(children = listOf(parent.children[0].copy(children = parent.children[0].children + child)))
       val nested = drawMarkers(config, tree).single { it.depth == 1 }
-      assertEquals("base mixed indent for shape $index", baseIndents[index], nested.paragraphLeft, 0.01f)
+      assertEquals("mixed indent for shape $index", mixedIndents[index], nested.paragraphLeft, 0.01f)
       assertTrue(nested.marker.left >= 0f)
     }
   }

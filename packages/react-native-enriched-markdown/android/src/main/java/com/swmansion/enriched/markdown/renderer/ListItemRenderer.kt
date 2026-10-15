@@ -38,6 +38,7 @@ class ListItemRenderer(
 
     val depth = styleContext.listDepth - 1
     val listStyle = config.style.listStyle
+    val parentMarkerWidth = styleContext.listItemMarkerWidth
 
     fun makeSpan(drawsMarker: Boolean): BaseListSpan =
       if (isTask) {
@@ -51,6 +52,7 @@ class ListItemRenderer(
           isChecked = isChecked,
           drawsMarker = drawsMarker,
           ancestorMarkerOffset = styleContext.ancestorMarkerOffset,
+          parentMarkerWidth = parentMarkerWidth,
         )
       } else {
         when (listType) {
@@ -62,6 +64,7 @@ class ListItemRenderer(
               factory.styleCache,
               drawsMarker,
               styleContext.ancestorMarkerOffset,
+              parentMarkerWidth,
             )
           }
 
@@ -74,6 +77,7 @@ class ListItemRenderer(
               drawsMarker,
               styleContext.listMarkerWidth,
               styleContext.ancestorMarkerOffset,
+              parentMarkerWidth,
             ).apply {
               setItemNumber(styleContext.listItemNumber)
             }
@@ -88,10 +92,12 @@ class ListItemRenderer(
     val prevIndent = styleContext.accumulatedIndent
     styleContext.accumulatedIndent = prevIndent + markerSpan.getLeadingMargin(false)
     try {
+      styleContext.listItemMarkerWidth = markerSpan.getBaselineMarkerWidth()
       factory.renderChildren(node, builder, onLinkPress, onLinkLongPress)
     } finally {
       styleContext.accumulatedIndent = prevIndent
       styleContext.listItemMarkerExtra = previousMarkerExtra
+      styleContext.listItemMarkerWidth = parentMarkerWidth
     }
 
     if (builder.length == start || builder.substring(start).isBlank()) return

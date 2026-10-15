@@ -21,6 +21,7 @@ class OrderedListSpan(
   drawsMarker: Boolean = true,
   private val markerWidth: Float = 0f,
   ancestorMarkerOffset: Float = 0f,
+  parentMarkerWidth: Float? = null,
 ) : BaseListSpan(
     depth = depth,
     context = context,
@@ -36,6 +37,7 @@ class OrderedListSpan(
     gapWidth = listStyle.gapWidth,
     drawsMarker = drawsMarker,
     ancestorMarkerOffset = ancestorMarkerOffset,
+    parentMarkerWidth = parentMarkerWidth,
   ) {
   companion object {
     private val sharedMarkerPaint = TextPaint().apply { isAntiAlias = true }
@@ -64,12 +66,7 @@ class OrderedListSpan(
 
   internal fun measureMarkerWidth(number: Int): Float = listStyle.effectiveMarkerWidth(configureMarkerPaint().measureText("$number."))
 
-  override fun getLeadingMargin(first: Boolean): Int =
-    if (depth > 0) {
-      (listStyle.marginLeft + markerExtraWidth).toInt()
-    } else {
-      super.getLeadingMargin(first)
-    }
+  internal override fun getBaselineMarkerWidth(): Float = defaultMarkerWidth
 
   var itemNumber: Int = 1
     private set

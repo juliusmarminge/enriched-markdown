@@ -24,6 +24,7 @@ abstract class BaseListSpan(
   protected val gapWidth: Float,
   internal val drawsMarker: Boolean = true,
   internal val ancestorMarkerOffset: Float = 0f,
+  internal val parentMarkerWidth: Float? = null,
 ) : MetricAffectingSpan(),
   LeadingMarginSpan {
   private var cachedText: CharSequence? = null
@@ -39,17 +40,26 @@ abstract class BaseListSpan(
 
   protected abstract fun getMarkerWidth(): Float
 
+  /** The marker column a child measures its offset against. */
+  internal open fun getBaselineMarkerWidth(): Float = getMarkerWidth()
+
   override fun updateMeasureState(textPaint: TextPaint) = applyTextStyle(textPaint)
 
   override fun updateDrawState(textPaint: TextPaint) = applyTextStyle(textPaint)
 
-  override fun getLeadingMargin(first: Boolean): Int =
-    if (depth == 0) {
-      val effectiveGap = gapWidth.coerceAtLeast(DEFAULT_MIN_GAP)
-      (getMarkerWidth() + effectiveGap).toInt()
-    } else {
-      marginLeft.toInt()
-    }
+  override fun getLeadingMargin(first: Boolean): Int {
+    val effectiveGap = gapWidth.coerceAtLeast(DEFAULT_MIN_GAP)
+    val markerWidth = getMarkerWidth()
+    if (depth == 0) return (markerWidth + effectiveGap).toInt()
+
+    val parentWidth = parentMarkerWidth ?: getBaselineMarkerWidth()
+    if (parentWidth == markerWidth) return marginLeft.toInt()
+
+    // Subtract truncated absolute indents so mixed columns do not accumulate their own rounding.
+    val indent = (depth * marginLeft + markerWidth + effectiveGap).toInt()
+    val parentIndent = ((depth - 1) * marginLeft + parentWidth + effectiveGap).toInt()
+    return indent - parentIndent
+  }
 
   override fun drawLeadingMargin(
     canvas: Canvas,

@@ -40,6 +40,7 @@ class BlockStyleContext {
   var blockquoteDepth = 0
   var listDepth = 0
   var listType: ListType? = null
+  var listItemMarkerWidth: Float? = null
   var listItemNumber = 0
   var listMarkerWidth = 0f
   var ancestorMarkerOffset = 0f
@@ -157,6 +158,7 @@ class BlockStyleContext {
     listMarkerWidth = 0f
     ancestorMarkerOffset = 0f
     listItemMarkerExtra = 0f
+    listItemMarkerWidth = null
     taskItemCount = 0
     accumulatedIndent = 0
     listItemStarts.clear()

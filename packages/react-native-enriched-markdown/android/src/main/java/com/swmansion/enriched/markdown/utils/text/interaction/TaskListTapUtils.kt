@@ -132,6 +132,7 @@ object TaskListTapUtils {
         isChecked = newChecked,
         drawsMarker = old.drawsMarker,
         ancestorMarkerOffset = old.ancestorMarkerOffset,
+        parentMarkerWidth = old.parentMarkerWidth,
       )
 
     // Keep insertion order: ancestor margins must not move ahead of the task's marker.
